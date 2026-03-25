@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+
+# Block AI scrapers from training on your content (optional — remove if you disagree)
+User-agent: GPTBot
+Disallow: /
+
+User-agent: ClaudeBot
+Disallow: /
+
+User-agent: anthropic-ai
+Disallow: /
+
+Sitemap: https://linuxcore.dev/sitemap-index.xml

@@ -1,0 +1,136 @@
+---
+// src/components/Nav.astro
+// Receives the current URL to highlight active links
+const { currentPath = '/' } = Astro.props;
+
+const links = [
+  { href: '/guides',     label: '/guides'     },
+  { href: '/tools',      label: '/tools'      },
+  { href: '/my-lab',     label: '/my-lab'     },
+  { href: '/scripts',    label: '/scripts'    },
+  { href: '/aws-hybrid', label: '/aws-hybrid' },
+];
+---
+
+<nav class="lc-nav">
+  <a href="/" class="nav-logo" aria-label="linuxcore.dev home">
+    <div class="logo-mark">LC</div>
+    <span class="logo-text">linuxcore<span class="logo-tld">.dev</span></span>
+  </a>
+
+  <div class="nav-links">
+    {links.map(link => (
+      <a
+        href={link.href}
+        class:list={['nav-link', { active: currentPath.startsWith(link.href) }]}
+      >
+        {link.label}
+      </a>
+    ))}
+    <a href="/newsletter" class="nav-cta">SUBSCRIBE →</a>
+  </div>
+
+  <!-- Mobile hamburger -->
+  <button class="nav-toggle" aria-label="Toggle menu" id="nav-toggle">☰</button>
+  <!-- Reading progress bar — sits at the very bottom of the nav -->
+  <div class="nav-progress-track">
+    <div id="nav-progress" class="nav-progress-bar"></div>
+  </div>
+</nav>
+
+<style>
+  .lc-nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 900;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 40px;
+    background: rgba(6,12,6,0.88);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-logo {
+    display: flex; align-items: center; gap: 10px; text-decoration: none;
+  }
+  .logo-mark {
+    width: 28px; height: 28px; border: 1.5px solid var(--green);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; color: var(--green);
+    box-shadow: 0 0 12px rgba(0,255,136,0.2);
+  }
+  .logo-text {
+    font-family: var(--sans); font-weight: 800; font-size: 16px;
+    color: var(--green); letter-spacing: 0.05em;
+  }
+  .logo-tld { color: var(--text-dim); }
+  .nav-links { display: flex; gap: 28px; align-items: center; }
+  .nav-link {
+    color: var(--text-dim); font-size: 11px;
+    letter-spacing: 0.1em; transition: color 0.15s;
+    text-decoration: none;
+  }
+  .nav-link:hover, .nav-link.active { color: var(--green); }
+  .nav-cta {
+    border: 1px solid var(--green); color: var(--green) !important;
+    padding: 5px 14px; font-size: 11px !important;
+    letter-spacing: 0.1em; transition: all 0.15s;
+    text-decoration: none;
+  }
+  .nav-cta:hover { background: var(--green); color: var(--bg) !important; }
+  .nav-toggle { display: none; background: none; border: none; color: var(--green); font-size: 20px; cursor: pointer; }
+
+  /* Reading progress bar */
+  .nav-progress-track {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: transparent;
+    overflow: hidden;
+  }
+  .nav-progress-bar {
+    height: 100%;
+    width: 100%;
+    background: var(--green);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.1s linear;
+    opacity: 0;                   /* invisible on non-article pages */
+  }
+
+  @media (max-width: 768px) {
+    .lc-nav { padding: 14px 20px; }
+    .nav-links { display: none; }
+    .nav-links.open {
+      display: flex; flex-direction: column; gap: 16px;
+      position: fixed; top: 56px; left: 0; right: 0;
+      background: var(--bg2); border-bottom: 1px solid var(--border);
+      padding: 20px;
+    }
+    .nav-toggle { display: block; }
+  }
+</style>
+
+<script>
+  // Mobile menu toggle
+  const toggle = document.getElementById('nav-toggle');
+  const links  = document.querySelector('.nav-links');
+  toggle?.addEventListener('click', () => links?.classList.toggle('open'));
+
+  // Reading progress bar — only active on guide/post pages
+  const bar     = document.getElementById('nav-progress');
+  const article = document.querySelector<HTMLElement>('.prose-content');
+
+  if (bar && article) {
+    // Show the bar
+    bar.style.opacity = '1';
+
+    const update = () => {
+      const articleTop    = article.offsetTop;
+      const articleHeight = article.offsetHeight;
+      const scrolled      = window.scrollY - articleTop;
+      const pct = Math.min(100, Math.max(0, (scrolled / articleHeight) * 100));
+      bar.style.transform = `scaleX(${pct / 100})`;
+    };
+
+    window.addEventListener('scroll', update, { passive: true });
+    update();
+  }
+</script>

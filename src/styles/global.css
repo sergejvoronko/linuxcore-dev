@@ -1,0 +1,103 @@
+/* ── Google Fonts ─────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;600;700&family=Syne:wght@400;600;700;800&display=swap');
+
+/* ── CSS Custom Properties ────────────────────────────────────── */
+:root {
+  --green:       #00ff88;
+  --green-dim:   #00cc66;
+  --green-dark:  #003322;
+  --cyan:        #00e5ff;
+  --amber:       #ffb300;
+  --red:         #ff4466;
+  --purple:      #b388ff;
+  --bg:          #060c06;
+  --bg2:         #080e08;
+  --bg3:         #0c160c;
+  --text:        #c8e6c8;
+  --text-dim:    #5a7a5a;
+  --text-bright: #e8f5e8;
+  --border:      #1a2e1a;
+  --mono:        'IBM Plex Mono', monospace;
+  --sans:        'Syne', sans-serif;
+}
+
+/* ── Base Reset ───────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 14px;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Scrollbar ────────────────────────────────────────────────── */
+::-webkit-scrollbar       { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: rgba(0,255,136,0.25); }
+
+/* ── CRT scanline overlay ─────────────────────────────────────── */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.025) 2px,
+    rgba(0,0,0,0.025) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ── Selection ────────────────────────────────────────────────── */
+::selection { background: rgba(0,255,136,0.2); color: var(--text-bright); }
+
+/* ── Links ────────────────────────────────────────────────────── */
+a { color: var(--green); text-decoration: none; transition: color 0.15s; }
+a:hover { color: #00ffaa; }
+
+/* ── Code blocks (from Shiki) ─────────────────────────────────── */
+pre {
+  border: 1px solid var(--border);
+  border-radius: 0;
+  padding: 1.25rem 1.5rem !important;
+  overflow-x: auto;
+  font-size: 13px !important;
+  line-height: 1.7 !important;
+  background: var(--bg2) !important;
+}
+code:not(pre code) {
+  background: rgba(0,229,255,0.08);
+  color: var(--cyan);
+  padding: 1px 6px;
+  font-size: 0.88em;
+}
+
+/* ── Utility classes ──────────────────────────────────────────── */
+.badge {
+  display: inline-block;
+  font-size: 10px; letter-spacing: 0.1em; font-weight: 700;
+  padding: 2px 8px;
+  font-family: var(--mono);
+}
+
+.section-label {
+  font-size: 10px; letter-spacing: 0.2em;
+  color: var(--green); margin-bottom: 10px;
+}
+.section-label::before { content: '// '; color: var(--text-dim); }
+
+/* ── Animations ───────────────────────────────────────────────── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+.animate-fadeup { animation: fadeUp 0.5s ease both; }
+.cursor-blink   { animation: blink 1s step-end infinite; }

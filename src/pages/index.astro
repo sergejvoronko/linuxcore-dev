@@ -1,0 +1,219 @@
+---
+// src/pages/index.astro
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PostCard from '../components/PostCard.astro';
+import NewsletterForm from '../components/NewsletterForm.astro';
+import { getCollection } from 'astro:content';
+
+// Fetch all non-draft guides, sorted newest first
+const allGuides = await getCollection('guides', ({ data }) => !data.draft);
+const sorted    = allGuides.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+const featured  = sorted.find(p => p.data.featured) ?? sorted[0];
+const recent    = sorted.filter(p => p.slug !== featured?.slug).slice(0, 4);
+
+const pillars = [
+  { icon: '🤖', name: 'Self-Hosted AI',   slug: 'self-hosted-ai',   count: 28, color: '#00e5ff' },
+  { icon: '🐧', name: 'Linux Automation', slug: 'linux-automation',  count: 34, color: '#ffb300' },
+  { icon: '☁️', name: 'AWS Hybrid',       slug: 'aws-hybrid',        count: 19, color: '#ffb300' },
+  { icon: '📊', name: 'Monitoring',       slug: 'monitoring',        count: 22, color: '#b388ff' },
+  { icon: '🔐', name: 'Security',         slug: 'security',          count: 17, color: '#ff4466' },
+];
+---
+
+<BaseLayout title="Enterprise Linux & AI Automation for the Modern Homelab">
+
+  <!-- ── HERO ─────────────────────────────────────────────────── -->
+  <section class="hero">
+    <div class="hero-grid"></div>
+    <div class="hero-glow"></div>
+
+    <div class="hero-inner">
+      <div class="hero-badge">
+        <span class="live-dot"></span>
+        ENTERPRISE LINUX · AI AUTOMATION · HOMELAB
+      </div>
+
+      <h1 class="hero-title">
+        Run your infrastructure<br>
+        <span class="accent">like a pro.</span>
+        <span class="outline">Own your stack.</span>
+      </h1>
+
+      <p class="hero-sub">
+        Deep-dive guides on <strong>self-hosted AI</strong>, Linux automation,
+        and hybrid <strong>AWS + homelab</strong> architecture — written by a
+        sysadmin, not a content farm.
+      </p>
+
+      <div class="hero-actions">
+        <a href="/guides" class="btn-primary">▶ START HERE</a>
+        <a href="/tools"  class="btn-secondary">⬡ TOOLS & STACK</a>
+      </div>
+    </div>
+
+    <!-- Terminal widget (decorative) -->
+    <div class="terminal" aria-hidden="true">
+      <div class="term-bar">
+        <span class="dot red"></span><span class="dot yellow"></span><span class="dot green-dot"></span>
+        <span class="term-title">root@homelab ~ bash</span>
+      </div>
+      <div class="term-body">
+        <div><span class="prompt">root@homelab:~#</span> ollama pull llama3.2</div>
+        <div class="out ok">✓ model ready on :11434</div>
+        <div><span class="prompt">root@homelab:~#</span> docker compose up -d</div>
+        <div class="out ok">✓ grafana started on :3000</div>
+        <div><span class="prompt">root@homelab:~#</span> ansible-playbook site.yml</div>
+        <div class="out ok">✓ PLAY RECAP — ok=24 changed=3</div>
+        <div><span class="prompt">root@homelab:~#</span> <span class="blink">▌</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── STATS STRIP ───────────────────────────────────────────── -->
+  <div class="stats-strip">
+    {[
+      { val: '120+', label: 'GUIDES',             color: '#00ff88' },
+      { val: '15K',  label: 'MONTHLY READERS',    color: '#00e5ff' },
+      { val: '48',   label: 'FREE SCRIPTS',        color: '#ffb300' },
+      { val: '2.4K', label: 'NEWSLETTER SUBS',    color: '#b388ff' },
+    ].map(s => (
+      <div class="stat" style={`--c:${s.color}`}>
+        <div class="stat-val">{s.val}</div>
+        <div class="stat-label">{s.label}</div>
+      </div>
+    ))}
+  </div>
+
+  <!-- ── PILLARS ───────────────────────────────────────────────── -->
+  <section class="section alt-bg">
+    <div class="section-inner">
+      <div class="section-label">CONTENT PILLARS</div>
+      <h2 class="section-title">Five tracks.<br><span>One goal: own your stack.</span></h2>
+
+      <div class="pillars-grid">
+        {pillars.map(p => (
+          <a href={`/guides?pillar=${p.slug}`} class="pillar-card" style={`--pc:${p.color}`}>
+            <span class="p-icon">{p.icon}</span>
+            <span class="p-name">{p.name}</span>
+            <span class="p-count">{p.count} articles</span>
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ── FEATURED POST ─────────────────────────────────────────── -->
+  <section class="section">
+    <div class="section-inner">
+      <div class="section-label">FEATURED GUIDE</div>
+      {featured && <PostCard post={featured} featured={true} />}
+    </div>
+  </section>
+
+  <!-- ── RECENT POSTS ──────────────────────────────────────────── -->
+  <section class="section alt-bg">
+    <div class="section-inner">
+      <div class="section-label">LATEST GUIDES</div>
+      <div class="grid-4">
+        {recent.map(post => <PostCard post={post} />)}
+      </div>
+      <div style="margin-top:24px; text-align:center">
+        <a href="/guides" class="btn-secondary">VIEW ALL GUIDES →</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── NEWSLETTER ────────────────────────────────────────────── -->
+  <section class="section">
+    <div class="section-inner">
+      <NewsletterForm />
+    </div>
+  </section>
+
+</BaseLayout>
+
+<style>
+  /* Hero */
+  .hero {
+    min-height: 90vh; display: flex; align-items: center;
+    padding: 80px 40px; position: relative; overflow: hidden;
+  }
+  .hero-grid {
+    position: absolute; inset: 0;
+    background-image: linear-gradient(rgba(0,255,136,.04) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(0,255,136,.04) 1px, transparent 1px);
+    background-size: 60px 60px;
+    mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black, transparent);
+  }
+  .hero-glow {
+    position: absolute; top: 20%; left: 50%; transform: translate(-50%,-50%);
+    width: 600px; height: 300px;
+    background: radial-gradient(ellipse, rgba(0,255,136,.07) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-inner { max-width: 600px; z-index: 1; }
+  .hero-badge { font-size: 10px; letter-spacing: .2em; color: var(--green); display: flex; align-items: center; gap: 8px; margin-bottom: 18px; }
+  .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:.5} 50%{opacity:1} }
+  .hero-title { font-family: var(--sans); font-weight: 800; font-size: clamp(36px, 6vw, 68px); line-height: 1.0; color: var(--text-bright); margin-bottom: 10px; }
+  .accent { color: var(--green); display: block; }
+  .outline { display: block; color: transparent; -webkit-text-stroke: 1px rgba(200,230,200,.3); }
+  .hero-sub { font-size: 14px; color: var(--text-dim); line-height: 1.8; max-width: 520px; margin-bottom: 32px; }
+  .hero-sub strong { color: var(--cyan); font-weight: 400; }
+  .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+
+  /* Terminal */
+  .terminal {
+    position: absolute; right: 40px; top: 50%; transform: translateY(-50%);
+    width: 400px; background: var(--bg2); border: 1px solid var(--border);
+    box-shadow: 0 0 40px rgba(0,255,136,.05); font-size: 12px; line-height: 2;
+  }
+  @media (max-width: 1050px) { .terminal { display: none; } }
+  .term-bar { background: var(--bg3); border-bottom: 1px solid var(--border); padding: 9px 14px; display: flex; align-items: center; gap: 6px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .red { background: #ff5f57; }  .yellow { background: #ffbd2e; }  .green-dot { background: #28c840; }
+  .term-title { color: var(--text-dim); font-size: 10px; letter-spacing: .1em; margin-left: 8px; }
+  .term-body { padding: 14px 16px; }
+  .prompt { color: var(--green); margin-right: 6px; }
+  .out { padding-left: 16px; }
+  .ok { color: rgba(0,255,136,.7); }
+  .blink { animation: blink 1s step-end infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* Buttons */
+  .btn-primary { background: var(--green); color: var(--bg); border: none; padding: 11px 26px; font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: .08em; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; transition: background .15s; }
+  .btn-primary:hover { background: #00ffaa; color: var(--bg); }
+  .btn-secondary { background: transparent; color: var(--text); border: 1px solid var(--border); padding: 11px 26px; font-family: var(--mono); font-size: 12px; letter-spacing: .08em; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; transition: all .15s; }
+  .btn-secondary:hover { border-color: var(--green); color: var(--green); }
+
+  /* Stats */
+  .stats-strip { display: flex; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); background: var(--bg2); overflow-x: auto; }
+  .stat { flex: 1; min-width: 140px; padding: 18px 24px; border-right: 1px solid var(--border); border-top: 2px solid var(--c); }
+  .stat-val { font-family: var(--sans); font-size: 26px; font-weight: 800; color: var(--c); line-height: 1; margin-bottom: 3px; }
+  .stat-label { font-size: 9px; color: var(--text-dim); letter-spacing: .12em; }
+
+  /* Sections */
+  .section { padding: 64px 40px; }
+  .alt-bg { background: var(--bg2); }
+  .section-inner { max-width: 1100px; margin: 0 auto; }
+  .section-label { font-size: 10px; letter-spacing: .2em; color: var(--green); margin-bottom: 10px; }
+  .section-label::before { content: '// '; color: var(--text-dim); }
+  .section-title { font-family: var(--sans); font-weight: 800; font-size: clamp(22px, 3vw, 36px); color: var(--text-bright); line-height: 1.15; margin-bottom: 32px; }
+  .section-title span { color: var(--green); }
+
+  /* Pillars */
+  .pillars-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); }
+  .pillar-card { display: flex; flex-direction: column; gap: 6px; background: var(--bg2); padding: 24px 20px; text-decoration: none; transition: background .15s, border-color .15s; border-top: 2px solid transparent; }
+  .pillar-card:hover { background: var(--bg3); border-top-color: var(--pc); }
+  .p-icon { font-size: 22px; }
+  .p-name { font-family: var(--sans); font-weight: 700; color: var(--text-bright); font-size: 13px; }
+  .p-count { color: var(--text-dim); font-size: 11px; }
+
+  /* Grid */
+  .grid-4 { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+
+  @media (max-width: 600px) {
+    .hero { padding: 60px 20px; }
+    .section { padding: 48px 20px; }
+  }
+</style>

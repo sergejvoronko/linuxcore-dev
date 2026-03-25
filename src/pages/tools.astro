@@ -1,0 +1,141 @@
+---
+// src/pages/tools.astro
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+const tools = [
+  {
+    category: 'Self-Hosted AI',
+    color: '#00e5ff',
+    items: [
+      { name: 'Ollama',       desc: 'Local LLM runtime. One command to pull and run any open model. GPU + CPU. OpenAI-compatible API on :11434.',        badge: 'FREE',     link: 'https://ollama.com',          guide: '/guides/ollama-linux-setup' },
+      { name: 'Open WebUI',   desc: 'ChatGPT-like web UI for Ollama. Docker-based, supports multiple users, model management, and RAG.',               badge: 'FREE',     link: 'https://github.com/open-webui/open-webui', guide: null },
+      { name: 'n8n',          desc: 'Self-hosted workflow automation. Wire Ollama, webhooks, SSH, APIs together. Think Zapier but private.',             badge: 'FREE',     link: 'https://n8n.io',              guide: null },
+      { name: 'AnythingLLM',  desc: 'Document intelligence platform. Drag and drop files, chat with your own docs. RAG built-in.',                      badge: 'FREE',     link: 'https://useanything.com',     guide: null },
+    ],
+  },
+  {
+    category: 'Infrastructure',
+    color: '#00ff88',
+    items: [
+      { name: 'Proxmox VE',   desc: 'Type-1 hypervisor for VMs and LXC containers. The backbone of any serious homelab. Free, open-source.',            badge: 'FREE',     link: 'https://proxmox.com',         guide: null },
+      { name: 'Docker',       desc: 'Container runtime. Every service in this list runs in Docker. Non-negotiable.',                                     badge: 'FREE',     link: 'https://docker.com',          guide: null },
+      { name: 'Portainer',    desc: 'Web UI for Docker and Kubernetes. Deploy, manage, and monitor container stacks without touching CLI.',              badge: 'FREE',     link: 'https://portainer.io',        guide: null },
+      { name: 'Traefik',      desc: 'Reverse proxy that auto-discovers Docker containers and handles HTTPS via Let\'s Encrypt. Zero config.',            badge: 'FREE',     link: 'https://traefik.io',          guide: null },
+    ],
+  },
+  {
+    category: 'Monitoring',
+    color: '#b388ff',
+    items: [
+      { name: 'Grafana',      desc: 'Dashboards for everything. CPU, memory, Docker stats, custom app metrics. The best open-source visualization tool.', badge: 'FREE',    link: 'https://grafana.com',         guide: null },
+      { name: 'Prometheus',   desc: 'Metrics collection and alerting. The standard for server monitoring. Pairs perfectly with Grafana.',                badge: 'FREE',     link: 'https://prometheus.io',       guide: null },
+      { name: 'Uptime Kuma',  desc: 'Simple, beautiful status page and uptime monitor. Check if your services are up, get notified if they go down.',    badge: 'FREE',     link: 'https://github.com/louislam/uptime-kuma', guide: null },
+      { name: 'Netdata',      desc: 'Real-time performance monitoring with AI anomaly detection built in. Zero config agent.',                            badge: 'FREE',     link: 'https://netdata.cloud',       guide: null },
+    ],
+  },
+  {
+    category: 'Security & Networking',
+    color: '#ff4466',
+    items: [
+      { name: 'Tailscale',    desc: 'Zero-config WireGuard mesh VPN. Access your entire lab from anywhere. 3 devices free, affordable for more.',        badge: 'FREEMIUM', link: 'https://tailscale.com',       guide: null },
+      { name: 'CrowdSec',     desc: 'Collaborative IP reputation and threat detection. Bans bad actors automatically across your whole stack.',           badge: 'FREE',     link: 'https://crowdsec.net',        guide: null },
+      { name: 'Vaultwarden',  desc: 'Self-hosted Bitwarden-compatible password manager. Full control of your credentials.',                              badge: 'FREE',     link: 'https://github.com/dani-garcia/vaultwarden', guide: null },
+    ],
+  },
+  {
+    category: 'Automation',
+    color: '#ffb300',
+    items: [
+      { name: 'Ansible',      desc: 'Agentless infrastructure automation. Provision your entire lab from a single playbook. YAML-based, idempotent.',    badge: 'FREE',     link: 'https://ansible.com',         guide: '/guides/ansible-homelab' },
+      { name: 'Watchtower',   desc: 'Automatically updates Docker containers when new images are available. Set and forget.',                             badge: 'FREE',     link: 'https://containrrr.dev/watchtower', guide: null },
+    ],
+  },
+  {
+    category: 'Hosting (Recommended)',
+    color: '#ffb300',
+    items: [
+      { name: 'Hetzner Cloud', desc: 'Best price-to-performance VPS in Europe. €3.79/mo for a real ARM server. My AWS alternative for smaller workloads.', badge: 'AFFILIATE', link: 'https://hetzner.com/cloud', guide: null },
+      { name: 'Cloudflare',    desc: 'Free CDN, DNS, DDoS protection, and Cloudflare Pages for static site hosting. Zero cost for most homelab use.',    badge: 'FREE',     link: 'https://cloudflare.com',      guide: null },
+    ],
+  },
+];
+
+const badgeColors: Record<string, string> = {
+  FREE:      '#00ff88',
+  FREEMIUM:  '#ffb300',
+  AFFILIATE: '#ff6688',
+};
+---
+
+<BaseLayout title="Tools & Stack" description="The exact tools running in my homelab — with honest notes and setup guides.">
+  <section class="tools-page">
+    <div class="tools-inner">
+
+      <header class="tools-header">
+        <div class="section-label">TOOLS & STACK</div>
+        <h1 class="tools-title">The exact tools I run.<br><span>No fluff.</span></h1>
+        <p class="tools-desc">
+          Every tool listed here is something I actually use. Setup guides linked where available.
+          Affiliate links marked clearly — they help keep the site running.
+        </p>
+      </header>
+
+      {tools.map(cat => (
+        <div class="tool-category">
+          <h2 class="cat-title" style={`border-color:${cat.color}44; color:${cat.color}`}>
+            {cat.category}
+          </h2>
+          <div class="cat-grid">
+            {cat.items.map(tool => (
+              <div class="tool-card" style={`--tc:${cat.color}`}>
+                <div class="tool-header">
+                  <span class="tool-name">{tool.name}</span>
+                  <span class="tool-badge" style={`background:${badgeColors[tool.badge]}22; color:${badgeColors[tool.badge]}; border-color:${badgeColors[tool.badge]}44`}>
+                    {tool.badge}
+                  </span>
+                </div>
+                <p class="tool-desc">{tool.desc}</p>
+                <div class="tool-links">
+                  <a href={tool.link} target="_blank" rel="noopener" class="tool-ext-link">↗ Website</a>
+                  {tool.guide && (
+                    <a href={tool.guide} class="tool-guide-link">→ Setup Guide</a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .tools-page { padding: 48px 40px 80px; }
+  .tools-inner { max-width: 1100px; margin: 0 auto; }
+  .tools-header { margin-bottom: 48px; }
+  .section-label { font-size: 10px; letter-spacing: .2em; color: var(--green); margin-bottom: 8px; }
+  .section-label::before { content: '// '; color: var(--text-dim); }
+  .tools-title { font-family: var(--sans); font-weight: 800; font-size: clamp(24px, 3vw, 40px); color: var(--text-bright); line-height: 1.15; margin-bottom: 12px; }
+  .tools-title span { color: var(--green); }
+  .tools-desc { color: var(--text-dim); font-size: 13px; line-height: 1.7; max-width: 600px; }
+
+  .tool-category { margin-bottom: 44px; }
+  .cat-title { font-family: var(--sans); font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; border-left: 3px solid; padding-left: 12px; margin-bottom: 16px; }
+  .cat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+
+  .tool-card { border: 1px solid var(--border); background: var(--bg2); padding: 18px; transition: border-color .15s, background .15s; }
+  .tool-card:hover { border-color: var(--tc); background: var(--bg3); }
+  .tool-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .tool-name { font-family: var(--sans); font-weight: 700; color: var(--text-bright); font-size: 14px; }
+  .tool-badge { font-size: 9px; letter-spacing: .1em; font-weight: 700; padding: 2px 7px; border: 1px solid; margin-left: auto; font-family: var(--mono); }
+  .tool-desc { color: var(--text-dim); font-size: 11px; line-height: 1.7; margin-bottom: 12px; }
+  .tool-links { display: flex; gap: 14px; }
+  .tool-ext-link  { color: var(--text-dim); font-size: 11px; text-decoration: none; transition: color .15s; }
+  .tool-guide-link { color: var(--tc); font-size: 11px; text-decoration: none; transition: opacity .15s; }
+  .tool-ext-link:hover  { color: var(--text-bright); }
+  .tool-guide-link:hover { opacity: 0.7; }
+
+  @media (max-width: 600px) { .tools-page { padding: 32px 20px; } }
+</style>

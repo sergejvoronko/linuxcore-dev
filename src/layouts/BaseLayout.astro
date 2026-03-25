@@ -1,0 +1,77 @@
+---
+// src/layouts/BaseLayout.astro
+// Wraps every page with <head>, Nav, Footer, and global styles.
+
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description?: string;
+  image?: string;          // OG image path (relative to /public)
+  noIndex?: boolean;
+}
+
+const {
+  title,
+  description = 'Enterprise Linux & AI automation for the modern homelab. Deep-dive guides on self-hosted AI, Ansible, AWS hybrid, and monitoring.',
+  image = '/og-default.png',
+  noIndex = false,
+} = Astro.props;
+
+const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+const currentPath  = Astro.url.pathname;
+---
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="canonical" href={canonicalURL} />
+
+  <!-- Primary Meta Tags -->
+  <title>{title} | linuxcore.dev</title>
+  <meta name="description" content={description} />
+  {noIndex && <meta name="robots" content="noindex, nofollow" />}
+
+  <!-- Open Graph / Social -->
+  <meta property="og:type"        content="website" />
+  <meta property="og:url"         content={canonicalURL} />
+  <meta property="og:title"       content={`${title} | linuxcore.dev`} />
+  <meta property="og:description" content={description} />
+  <meta property="og:image"       content={new URL(image, Astro.site)} />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card"        content="summary_large_image" />
+  <meta name="twitter:title"       content={`${title} | linuxcore.dev`} />
+  <meta name="twitter:description" content={description} />
+  <meta name="twitter:image"       content={new URL(image, Astro.site)} />
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+  <!-- RSS Feed -->
+  <link rel="alternate" type="application/rss+xml" title="linuxcore.dev" href="/rss.xml" />
+</head>
+
+<body>
+  <Nav currentPath={currentPath} />
+
+  <main class="page-main">
+    <slot />  <!-- ← page content goes here -->
+  </main>
+
+  <Footer />
+</body>
+</html>
+
+<style>
+  .page-main {
+    padding-top: 57px;     /* offset for fixed nav height */
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+</style>

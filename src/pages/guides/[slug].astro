@@ -1,0 +1,160 @@
+---
+// src/pages/guides/[slug].astro
+// Individual guide post with sticky table of contents sidebar
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import TableOfContents from '../../components/TableOfContents.astro';
+import { getCollection } from 'astro:content';
+
+// Tell Astro which slugs to build at compile time
+export async function getStaticPaths() {
+  const guides = await getCollection('guides', ({ data }) => !data.draft);
+  return guides.map(guide => ({
+    params: { slug: guide.slug },
+    props:  { guide },
+  }));
+}
+
+const { guide } = Astro.props;
+const { Content, headings } = await guide.render();
+
+const { title, description, pubDate, updatedDate, pillar, type, tags, readTime, heroImage } = guide.data;
+
+const pillarColors: Record<string, string> = {
+  'Infrastructure':   '#00ff88',
+  'Self-Hosted AI':   '#00e5ff',
+  'Linux Automation': '#ffb300',
+  'Monitoring':       '#b388ff',
+  'Security':         '#ff4466',
+  'AWS Hybrid':       '#ffb300',
+};
+const color = pillarColors[pillar] ?? '#00ff88';
+
+const formatDate = (d: Date) => new Date(d).toLocaleDateString('en-GB', {
+  day: '2-digit', month: 'long', year: 'numeric'
+});
+---
+
+<BaseLayout title={title} description={description} image={heroImage}>
+  <div class="post-page">
+
+    <!-- full-width header -->
+    <header class="post-header">
+      <div class="post-header-inner">
+        <div class="post-tags">
+          <span class="tag-pill" style={`color:${color}; border-color:${color}44; background:${color}11`}>{pillar}</span>
+          <span class="tag-pill dimmed">{type}</span>
+        </div>
+        <h1 class="post-title">{title}</h1>
+        <p class="post-desc">{description}</p>
+        <div class="post-meta">
+          <span>📅 {formatDate(pubDate)}</span>
+          {updatedDate && <span>✏️ Updated: {formatDate(updatedDate)}</span>}
+          <span>⏱ {readTime} min read</span>
+        </div>
+      </div>
+      <div class="header-line"></div>
+    </header>
+
+    <!-- two-column: article + sticky TOC -->
+    <div class="post-layout">
+
+      <article class="post-article">
+        {heroImage && (
+          <div class="post-hero">
+            <img src={heroImage} alt={title} width="1200" height="630" loading="eager" />
+          </div>
+        )}
+
+        <div class="prose-content">
+          <Content />
+        </div>
+
+        <footer class="post-footer">
+          <div class="tag-list">
+            {tags.map(tag => (
+              <a href={`/guides?tag=${tag}`} class="post-tag">#{tag}</a>
+            ))}
+          </div>
+          <a href="/guides" class="back-link">← Back to all guides</a>
+        </footer>
+      </article>
+
+      <!-- sticky sidebar -->
+      <aside class="toc-sidebar">
+        <TableOfContents headings={headings} />
+      </aside>
+
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .post-page { max-width: 1200px; margin: 0 auto; padding: 0 40px 80px; }
+  @media (max-width: 600px) { .post-page { padding: 0 20px 60px; } }
+
+  /* Header — max-width so it doesn't stretch too wide */
+  .post-header { max-width: 760px; padding: 48px 0 0; margin-bottom: 40px; }
+  .post-tags { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  .tag-pill { font-size: 9px; letter-spacing: .12em; font-weight: 700; padding: 2px 10px; border: 1px solid; font-family: var(--mono); }
+  .tag-pill.dimmed { color: var(--text-dim); border-color: var(--border); }
+  .post-title { font-family: var(--sans); font-weight: 800; font-size: clamp(22px, 4vw, 36px); color: var(--text-bright); line-height: 1.15; margin-bottom: 12px; }
+  .post-desc { color: var(--text-dim); font-size: 15px; line-height: 1.7; margin-bottom: 14px; }
+  .post-meta { display: flex; gap: 20px; font-size: 11px; color: var(--text-dim); flex-wrap: wrap; }
+  .header-line { height: 1px; background: var(--border); margin-top: 22px; }
+
+  /* Two-column layout */
+  .post-layout {
+    display: grid;
+    grid-template-columns: 1fr 220px;
+    gap: 60px;
+    align-items: start;
+  }
+  @media (max-width: 900px) {
+    .post-layout { grid-template-columns: 1fr; }
+    .toc-sidebar {
+      order: -1;
+      position: static !important;
+      border: 1px solid var(--border);
+      padding: 16px;
+      margin-bottom: 24px;
+    }
+  }
+
+  /* Article prose */
+  .post-hero { margin-bottom: 32px; border: 1px solid var(--border); }
+  .post-hero img { width: 100%; height: auto; display: block; }
+
+  .prose-content { color: var(--text); font-size: 15px; line-height: 1.8; }
+  .prose-content :global(h2) {
+    font-family: var(--sans); font-weight: 800; font-size: 22px;
+    color: var(--text-bright); margin: 2.5em 0 0.8em;
+    border-bottom: 1px solid var(--border); padding-bottom: 8px;
+    scroll-margin-top: 90px;
+  }
+  .prose-content :global(h3) {
+    font-family: var(--sans); font-weight: 700; font-size: 17px;
+    color: var(--text-bright); margin: 1.8em 0 0.6em;
+    scroll-margin-top: 90px;
+  }
+  .prose-content :global(p)  { margin-bottom: 1.3em; }
+  .prose-content :global(ul), .prose-content :global(ol) { padding-left: 1.5em; margin-bottom: 1.3em; }
+  .prose-content :global(li) { margin-bottom: 0.4em; }
+  .prose-content :global(strong) { color: var(--text-bright); font-weight: 600; }
+  .prose-content :global(a)  { color: var(--green); border-bottom: 1px solid rgba(0,255,136,.3); transition: border-color .15s; }
+  .prose-content :global(a:hover) { border-bottom-color: var(--green); }
+  .prose-content :global(blockquote) { border-left: 3px solid var(--green); padding-left: 16px; color: var(--text-dim); font-style: italic; margin: 1.5em 0; }
+  .prose-content :global(hr) { border: none; border-top: 1px solid var(--border); margin: 2.5em 0; }
+  .prose-content :global(table) { border: 1px solid var(--border); width: 100%; border-collapse: collapse; margin: 1.5em 0; font-size: 13px; }
+  .prose-content :global(th) { background: var(--bg2); color: var(--green); font-size: 11px; letter-spacing: .1em; padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); font-family: var(--mono); }
+  .prose-content :global(td) { padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .prose-content :global(tr:last-child td) { border-bottom: none; }
+
+  /* Footer */
+  .post-footer { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px; }
+  .tag-list { display: flex; gap: 8px; flex-wrap: wrap; }
+  .post-tag { color: var(--text-dim); font-size: 11px; border: 1px solid var(--border); padding: 2px 8px; text-decoration: none; transition: all .15s; font-family: var(--mono); }
+  .post-tag:hover { border-color: var(--green); color: var(--green); }
+  .back-link { color: var(--text-dim); font-size: 12px; text-decoration: none; transition: color .15s; }
+  .back-link:hover { color: var(--green); }
+</style>
