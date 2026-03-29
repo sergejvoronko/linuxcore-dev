@@ -14,6 +14,7 @@ const year = new Date().getFullYear();
       <a href="/guides">Guides</a>
       <a href="/tools">Tools</a>
       <a href="/scripts">Scripts</a>
+      <a href="/about">About</a>
       <a href="/newsletter">Newsletter</a>
       <a href="/consulting">Consulting</a>
       <a href="/rss.xml">RSS</a>
@@ -39,14 +40,14 @@ const year = new Date().getFullYear();
   }
   .footer-logo { display: flex; align-items: center; gap: 8px; text-decoration: none; }
   .logo-mark-sm {
-    width: 22px; height: 22px; border: 1px solid var(--green);
+    width: 22px; height: 22px; border: 1px solid var(--amber);
     display: flex; align-items: center; justify-content: center;
-    font-size: 10px; font-weight: 700; color: var(--green);
+    font-size: 10px; font-weight: 700; color: var(--amber);
   }
-  .footer-name { font-family: var(--sans); font-weight: 800; font-size: 14px; color: var(--green); }
+  .footer-name { font-family: var(--mono); font-weight: 700; font-size: 14px; color: var(--amber); }
   .footer-links { display: flex; gap: 20px; flex-wrap: wrap; }
-  .footer-links a { color: var(--text-dim); font-size: 11px; text-decoration: none; letter-spacing: 0.05em; transition: color 0.15s; }
-  .footer-links a:hover { color: var(--green); }
-  .footer-copy { color: var(--text-dim); font-size: 10px; letter-spacing: 0.05em; }
+  .footer-links a { color: var(--text-dim); font-size: 11px; text-decoration: none; letter-spacing: 0.05em; transition: color 0.15s; font-family: var(--mono); }
+  .footer-links a:hover { color: var(--amber); }
+  .footer-copy { color: var(--text-dim); font-size: 10px; letter-spacing: 0.05em; font-family: var(--mono); }
   @media (max-width: 600px) { .footer-inner { padding: 20px; } }
 </style>

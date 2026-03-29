@@ -1,24 +1,37 @@
 /* ── Google Fonts ─────────────────────────────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;600;700&family=Syne:wght@400;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
 
 /* ── CSS Custom Properties ────────────────────────────────────── */
 :root {
-  --green:       #00ff88;
-  --green-dim:   #00cc66;
-  --green-dark:  #003322;
-  --cyan:        #00e5ff;
-  --amber:       #ffb300;
-  --red:         #ff4466;
-  --purple:      #b388ff;
-  --bg:          #060c06;
-  --bg2:         #080e08;
-  --bg3:         #0c160c;
-  --text:        #c8e6c8;
-  --text-dim:    #5a7a5a;
-  --text-bright: #e8f5e8;
-  --border:      #1a2e1a;
-  --mono:        'IBM Plex Mono', monospace;
-  --sans:        'Syne', sans-serif;
+  /* Warm terminal palette */
+  --amber:       #f0a500;
+  --amber-dim:   rgba(240, 165, 0, 0.15);
+  --amber-glow:  rgba(240, 165, 0, 0.08);
+  --green:       #4eca8b;
+  --red:         #ff6b6b;
+  --blue:        #7eb8d4;
+
+  /* Backgrounds — warm brown tones */
+  --bg:          #18120a;
+  --bg2:         #1e1710;
+  --bg3:         #261f14;
+  --bg-code:     #100d07;
+
+  /* Text — warm cream */
+  --text:        #e8dcc8;
+  --text-dim:    rgba(232, 220, 200, 0.4);
+  --text-mid:    rgba(232, 220, 200, 0.65);
+  --text-bright: #f5ede0;
+
+  /* Borders */
+  --border:      rgba(232, 220, 200, 0.08);
+  --border-mid:  rgba(232, 220, 200, 0.14);
+  --border-amber: rgba(240, 165, 0, 0.22);
+
+  /* Fonts */
+  --mono:        'Space Mono', 'Fira Code', monospace;
+  --sans:        'IBM Plex Sans', system-ui, sans-serif;
+  --display:     'Fraunces', Georgia, serif;
 }
 
 /* ── Base Reset ───────────────────────────────────────────────── */
@@ -28,54 +41,52 @@ html { scroll-behavior: smooth; }
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: var(--mono);
-  font-size: 14px;
-  line-height: 1.7;
+  font-family: var(--sans);
+  font-size: 18px;
+  line-height: 1.8;
   -webkit-font-smoothing: antialiased;
 }
 
 /* ── Scrollbar ────────────────────────────────────────────────── */
 ::-webkit-scrollbar       { width: 4px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
-::-webkit-scrollbar-thumb { background: rgba(0,255,136,0.25); }
+::-webkit-scrollbar-thumb { background: rgba(240,165,0,0.2); }
 
-/* ── CRT scanline overlay ─────────────────────────────────────── */
+/* ── Subtle warm grain overlay ────────────────────────────────── */
 body::before {
   content: '';
   position: fixed; inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0,0,0,0.025) 2px,
-    rgba(0,0,0,0.025) 4px
-  );
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
   pointer-events: none;
   z-index: 9999;
+  opacity: 0.4;
 }
 
 /* ── Selection ────────────────────────────────────────────────── */
-::selection { background: rgba(0,255,136,0.2); color: var(--text-bright); }
+::selection { background: rgba(240,165,0,0.2); color: var(--text-bright); }
 
 /* ── Links ────────────────────────────────────────────────────── */
-a { color: var(--green); text-decoration: none; transition: color 0.15s; }
-a:hover { color: #00ffaa; }
+a { color: var(--amber); text-decoration: none; transition: color 0.15s; }
+a:hover { color: #ffc13d; }
 
-/* ── Code blocks (from Shiki) ─────────────────────────────────── */
+/* ── Code blocks ──────────────────────────────────────────────── */
 pre {
   border: 1px solid var(--border);
+  border-left: 2px solid var(--border-amber);
   border-radius: 0;
   padding: 1.25rem 1.5rem !important;
   overflow-x: auto;
   font-size: 13px !important;
-  line-height: 1.7 !important;
-  background: var(--bg2) !important;
+  line-height: 1.75 !important;
+  background: var(--bg-code) !important;
+  font-family: var(--mono);
 }
 code:not(pre code) {
-  background: rgba(0,229,255,0.08);
-  color: var(--cyan);
+  background: rgba(240,165,0,0.1);
+  color: var(--amber);
   padding: 1px 6px;
-  font-size: 0.88em;
+  font-size: 0.85em;
+  font-family: var(--mono);
 }
 
 /* ── Utility classes ──────────────────────────────────────────── */
@@ -88,7 +99,8 @@ code:not(pre code) {
 
 .section-label {
   font-size: 10px; letter-spacing: 0.2em;
-  color: var(--green); margin-bottom: 10px;
+  color: var(--amber); margin-bottom: 10px;
+  font-family: var(--mono);
 }
 .section-label::before { content: '// '; color: var(--text-dim); }
 

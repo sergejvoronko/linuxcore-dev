@@ -62,14 +62,14 @@ const toc = headings.filter(h => h.depth === 2 || h.depth === 3);
     gap: 8px;
     margin-bottom: 12px;
     padding-bottom: 10px;
-    border-bottom: 1px solid #1a2e1a;
+    border-bottom: 1px solid var(--border);
   }
   .toc-label {
     font-size: 10px;
     letter-spacing: 0.18em;
-    color: #5a7a5a;
-    font-family: 'IBM Plex Mono', monospace;
-    font-weight: 600;
+    color: var(--amber);
+    font-family: var(--mono);
+    font-weight: 700;
   }
 
   .toc-list {
@@ -87,44 +87,41 @@ const toc = headings.filter(h => h.depth === 2 || h.depth === 3);
     display: block;
     font-size: 12px;
     line-height: 1.5;
-    color: #5a7a5a;
+    color: var(--text-dim);
     text-decoration: none;
-    padding: 4px 10px 4px 0;
+    padding: 4px 10px 4px 10px;
     border-left: 2px solid transparent;
-    padding-left: 10px;
     transition: color 0.15s, border-color 0.15s, background 0.15s;
-    border-radius: 0 4px 4px 0;
+    font-family: var(--sans);
   }
   .toc-link:hover {
-    color: #c8e6c8;
-    border-left-color: #1a2e1a;
+    color: var(--text);
+    border-left-color: var(--border-mid);
   }
   .toc-link.active {
-    color: #00ff88;
-    border-left-color: #00ff88;
-    background: rgba(0, 255, 136, 0.05);
+    color: var(--amber);
+    border-left-color: var(--amber);
+    background: var(--amber-glow);
   }
 
-  /* H3 items are indented */
   .toc-h3 .toc-link {
     padding-left: 22px;
     font-size: 11px;
   }
 
-  /* Reading progress bar at the bottom of TOC */
   .toc-progress {
     margin-top: 16px;
     padding-top: 12px;
-    border-top: 1px solid #1a2e1a;
+    border-top: 1px solid var(--border);
     height: 3px;
-    background: #0c160c;
+    background: var(--bg3);
     border-radius: 2px;
     overflow: hidden;
   }
   .toc-progress-bar {
     height: 100%;
     width: 0%;
-    background: #00ff88;
+    background: var(--amber);
     border-radius: 2px;
     transition: width 0.1s linear;
   }

@@ -4,11 +4,11 @@
 const { currentPath = '/' } = Astro.props;
 
 const links = [
-  { href: '/guides',     label: '/guides'     },
-  { href: '/tools',      label: '/tools'      },
-  { href: '/my-lab',     label: '/my-lab'     },
-  { href: '/scripts',    label: '/scripts'    },
-  { href: '/aws-hybrid', label: '/aws-hybrid' },
+  { href: '/guides',  label: '/guides'  },
+  { href: '/tools',   label: '/tools'   },
+  { href: '/scripts', label: '/scripts' },
+  { href: '/about',   label: '/about'   },
+  { href: '/contact', label: '/contact' },
 ];
 ---
 
@@ -43,7 +43,7 @@ const links = [
     position: fixed; top: 0; left: 0; right: 0; z-index: 900;
     display: flex; align-items: center; justify-content: space-between;
     padding: 14px 40px;
-    background: rgba(6,12,6,0.88);
+    background: rgba(24,18,10,0.92);
     backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--border);
   }
@@ -51,31 +51,31 @@ const links = [
     display: flex; align-items: center; gap: 10px; text-decoration: none;
   }
   .logo-mark {
-    width: 28px; height: 28px; border: 1.5px solid var(--green);
+    width: 28px; height: 28px; border: 1.5px solid var(--amber);
     display: flex; align-items: center; justify-content: center;
-    font-size: 11px; font-weight: 700; color: var(--green);
-    box-shadow: 0 0 12px rgba(0,255,136,0.2);
+    font-size: 11px; font-weight: 700; color: var(--amber);
+    box-shadow: 0 0 12px rgba(240,165,0,0.15);
   }
   .logo-text {
-    font-family: var(--sans); font-weight: 800; font-size: 16px;
-    color: var(--green); letter-spacing: 0.05em;
+    font-family: var(--mono); font-weight: 700; font-size: 16px;
+    color: var(--amber); letter-spacing: 0.05em;
   }
   .logo-tld { color: var(--text-dim); }
   .nav-links { display: flex; gap: 28px; align-items: center; }
   .nav-link {
     color: var(--text-dim); font-size: 11px;
     letter-spacing: 0.1em; transition: color 0.15s;
-    text-decoration: none;
+    text-decoration: none; font-family: var(--mono);
   }
-  .nav-link:hover, .nav-link.active { color: var(--green); }
+  .nav-link:hover, .nav-link.active { color: var(--amber); }
   .nav-cta {
-    border: 1px solid var(--green); color: var(--green) !important;
+    border: 1px solid var(--amber); color: var(--amber) !important;
     padding: 5px 14px; font-size: 11px !important;
     letter-spacing: 0.1em; transition: all 0.15s;
-    text-decoration: none;
+    text-decoration: none; font-family: var(--mono);
   }
-  .nav-cta:hover { background: var(--green); color: var(--bg) !important; }
-  .nav-toggle { display: none; background: none; border: none; color: var(--green); font-size: 20px; cursor: pointer; }
+  .nav-cta:hover { background: var(--amber); color: var(--bg) !important; }
+  .nav-toggle { display: none; background: none; border: none; color: var(--amber); font-size: 20px; cursor: pointer; }
 
   /* Reading progress bar */
   .nav-progress-track {
@@ -88,11 +88,11 @@ const links = [
   .nav-progress-bar {
     height: 100%;
     width: 100%;
-    background: var(--green);
+    background: var(--amber);
     transform: scaleX(0);
     transform-origin: left;
     transition: transform 0.1s linear;
-    opacity: 0;                   /* invisible on non-article pages */
+    opacity: 0;
   }
 
   @media (max-width: 768px) {

@@ -1,0 +1,605 @@
+---
+// src/pages/about.astro
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout
+  title="About"
+  description="Sergej is a Linux infrastructure engineer and SAP Basis architect with 15+ years running production systems on Linux, AWS, and bare metal. linuxcore.dev is where that experience becomes practical guides."
+>
+  <div class="about-page">
+
+    <!-- ── HEADER ──────────────────────────────────────────────── -->
+    <header class="about-header">
+      <div class="about-header-inner">
+        <div class="about-label">// ABOUT THE AUTHOR</div>
+        <h1 class="about-title">Real infrastructure.<br><span class="accent">Real experience.</span></h1>
+        <p class="about-lead">
+          linuxcore.dev is written by Sergej — a Linux infrastructure engineer
+          and SAP Basis architect who has spent 15+ years running production
+          systems on Linux, AWS, and bare metal. This isn't a content farm.
+          Every guide is tested on hardware that's actually running.
+        </p>
+      </div>
+      <div class="about-header-rule"></div>
+    </header>
+
+    <!-- ── PHOTO + BIO ─────────────────────────────────────────── -->
+    <section class="bio-section">
+      <div class="bio-grid">
+
+        <div class="bio-identity">
+          <!-- Avatar placeholder — replace src with your photo -->
+          <div class="avatar-wrap">
+            <div class="avatar-placeholder" aria-hidden="true">S</div>
+            <div class="avatar-online">
+              <span class="live-dot"></span>
+              ONLINE
+            </div>
+          </div>
+
+          <div class="bio-meta">
+            <div class="bio-name">Sergej</div>
+            <div class="bio-role">Linux Infrastructure Engineer</div>
+            <div class="bio-role">SAP Basis Architect</div>
+            <div class="bio-location">
+              <span class="meta-icon">📍</span> Germany
+            </div>
+          </div>
+
+          <!-- Social / professional links -->
+          <div class="bio-links">
+            <a href="https://github.com/YOUR_USERNAME" target="_blank" rel="noopener noreferrer" class="bio-link">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+              GitHub
+            </a>
+            <a href="https://linkedin.com/in/YOUR_USERNAME" target="_blank" rel="noopener noreferrer" class="bio-link">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+              LinkedIn
+            </a>
+            <a href="/rss.xml" class="bio-link">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6.18 15.64a2.18 2.18 0 012.18 2.18C8.36 19.01 7.38 20 6.18 20C4.98 20 4 19.01 4 17.82a2.18 2.18 0 012.18-2.18M4 4.44A15.56 15.56 0 0119.56 20h-2.83A12.73 12.73 0 004 7.27V4.44m0 5.66a9.9 9.9 0 019.9 9.9h-2.83A7.07 7.07 0 004 12.93V10.1z"/></svg>
+              RSS Feed
+            </a>
+          </div>
+        </div>
+
+        <div class="bio-text">
+          <h2 class="bio-section-title">Background</h2>
+          <p>
+            I started in enterprise IT managing SAP landscapes on Linux — the kind
+            of environments where downtime costs real money and "it works on my machine"
+            is not an acceptable answer. That meant learning Linux deeply: not just
+            running commands, but understanding what they do to the kernel, the filesystem,
+            and the network stack underneath.
+          </p>
+          <p>
+            Over time I moved into cloud infrastructure, building hybrid AWS setups
+            that connect on-premises SAP systems with cloud-native services. The gap
+            between enterprise infrastructure knowledge and homelab content online is
+            enormous — most homelab guides are written by people who've never run
+            anything in production. This site exists to close that gap.
+          </p>
+          <p>
+            Today I run a homelab that's a testing ground for everything on this site.
+            If a guide says something works, it's because I've run it myself — on the
+            same Beelink mini PC and TrueNAS setup described in the hardware articles,
+            with the same Ansible playbooks available for download.
+          </p>
+
+          <h2 class="bio-section-title">What I actually know</h2>
+          <p>
+            My strongest areas are Linux system administration (Red Hat, Ubuntu, SLES),
+            SAP Basis on Linux (HANA, NetWeaver, transport management), AWS infrastructure
+            (EC2, S3, VPC, IAM, hybrid connectivity), and the self-hosting stack that's
+            grown up around Proxmox, Docker, and the tools this site covers.
+          </p>
+          <p>
+            I'm not a developer by background. I write scripts and automation — Ansible,
+            bash, some Python — but the perspective here is infrastructure-first, not
+            software-first. That's a useful angle when most homelab content comes from
+            developers who treat servers as an afterthought.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── EXPERIENCE TIMELINE ─────────────────────────────────── -->
+    <section class="section">
+      <div class="section-inner">
+        <div class="section-label">// EXPERIENCE</div>
+        <h2 class="section-title">15+ years in production Linux</h2>
+
+        <div class="timeline">
+
+          <div class="tl-item">
+            <div class="tl-dot"></div>
+            <div class="tl-content">
+              <div class="tl-date">2024 — Present</div>
+              <div class="tl-role">Linux Infrastructure Engineer · Freelance</div>
+              <p class="tl-desc">
+                Hybrid AWS + on-premises infrastructure for mid-size businesses.
+                Proxmox clusters, Docker Compose stacks, Ansible automation,
+                AWS cost optimisation. Building linuxcore.dev in parallel.
+              </p>
+            </div>
+          </div>
+
+          <div class="tl-item">
+            <div class="tl-dot"></div>
+            <div class="tl-content">
+              <div class="tl-date">2018 — 2024</div>
+              <div class="tl-role">SAP Basis Architect · Enterprise</div>
+              <p class="tl-desc">
+                SAP HANA and NetWeaver on Linux (SLES, RHEL). Transport management,
+                system copies, performance tuning, high-availability setups.
+                AWS Cloud migration of SAP workloads.
+              </p>
+            </div>
+          </div>
+
+          <div class="tl-item">
+            <div class="tl-dot"></div>
+            <div class="tl-content">
+              <div class="tl-date">2012 — 2018</div>
+              <div class="tl-role">Linux System Administrator</div>
+              <p class="tl-desc">
+                Physical and virtual Linux servers (VMware, KVM). Monitoring
+                with Nagios and later Prometheus. Shell scripting, backup
+                automation, storage management.
+              </p>
+            </div>
+          </div>
+
+          <div class="tl-item">
+            <div class="tl-dot"></div>
+            <div class="tl-content">
+              <div class="tl-date">2008 — 2012</div>
+              <div class="tl-role">IT Support · Junior Sysadmin</div>
+              <p class="tl-desc">
+                First Linux servers. First broken deployments. First late-night
+                recoveries. The foundation.
+              </p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ── CURRENT STACK ───────────────────────────────────────── -->
+    <section class="section section-alt">
+      <div class="section-inner">
+        <div class="section-label">// WHAT I RUN</div>
+        <h2 class="section-title">The actual homelab</h2>
+        <p class="section-sub">
+          Every guide on this site is tested on this hardware before publishing.
+        </p>
+
+        <div class="stack-grid">
+
+          <div class="stack-card">
+            <div class="stack-card-label">COMPUTE</div>
+            <ul class="stack-list">
+              <li><span class="stack-name">Beelink EQ12 Pro</span><span class="stack-detail">N100 · 16GB · Proxmox main node</span></li>
+              <li><span class="stack-name">ThinkCentre M93p</span><span class="stack-detail">i5 · 8GB · Secondary / backups</span></li>
+            </ul>
+          </div>
+
+          <div class="stack-card">
+            <div class="stack-card-label">STORAGE</div>
+            <ul class="stack-list">
+              <li><span class="stack-name">TrueNAS SCALE</span><span class="stack-detail">ZFS RAIDZ1 · 4× WD Red Plus 4TB</span></li>
+              <li><span class="stack-name">S3 Glacier</span><span class="stack-detail">Offsite restic backups · ~€2/month</span></li>
+            </ul>
+          </div>
+
+          <div class="stack-card">
+            <div class="stack-card-label">NETWORKING</div>
+            <ul class="stack-list">
+              <li><span class="stack-name">OPNsense</span><span class="stack-detail">Beelink EQ14 · VLAN segmentation</span></li>
+              <li><span class="stack-name">TP-Link 2.5GbE</span><span class="stack-detail">TL-SG3210XHP-M2 managed switch</span></li>
+              <li><span class="stack-name">Tailscale</span><span class="stack-detail">Zero-trust remote access</span></li>
+            </ul>
+          </div>
+
+          <div class="stack-card">
+            <div class="stack-card-label">SERVICES</div>
+            <ul class="stack-list">
+              <li><span class="stack-name">Ollama + Open-WebUI</span><span class="stack-detail">Local LLM (llama3.2, codellama)</span></li>
+              <li><span class="stack-name">Immich</span><span class="stack-detail">Self-hosted Google Photos replacement</span></li>
+              <li><span class="stack-name">Grafana + Prometheus</span><span class="stack-detail">Full homelab monitoring</span></li>
+              <li><span class="stack-name">Vaultwarden</span><span class="stack-detail">Self-hosted Bitwarden</span></li>
+            </ul>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ── WHY THIS SITE ───────────────────────────────────────── -->
+    <section class="section">
+      <div class="section-inner section-narrow">
+        <div class="section-label">// WHY LINUXCORE.DEV</div>
+        <h2 class="section-title">What makes this different</h2>
+
+        <div class="why-grid">
+          <div class="why-card">
+            <div class="why-icon">⚙️</div>
+            <div class="why-title">Enterprise perspective</div>
+            <p class="why-desc">
+              Most homelab content is written by developers. The guides here come
+              from someone who ran production Linux for enterprises — which means
+              the approach to reliability, monitoring, and security is different.
+            </p>
+          </div>
+          <div class="why-card">
+            <div class="why-icon">🧪</div>
+            <div class="why-title">Everything is tested</div>
+            <p class="why-desc">
+              No guides are published from documentation alone. Every setup is
+              deployed on real hardware first. If a command is in a guide,
+              it has been run and checked.
+            </p>
+          </div>
+          <div class="why-card">
+            <div class="why-icon">💶</div>
+            <div class="why-title">Real cost numbers</div>
+            <p class="why-desc">
+              Electricity costs, S3 storage costs, hardware prices — all cited
+              in real euros based on actual bills, not estimates copied from
+              other articles.
+            </p>
+          </div>
+          <div class="why-card">
+            <div class="why-icon">🔓</div>
+            <div class="why-title">No paywalls, no fluff</div>
+            <p class="why-desc">
+              Every guide is free. The site earns through affiliate hardware
+              recommendations and a paid Ansible bundle — both are clearly
+              labelled and never distort the advice.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── CTA ────────────────────────────────────────────────── -->
+    <section class="about-cta">
+      <div class="cta-inner">
+        <div class="cta-text">
+          <div class="section-label">// GET STARTED</div>
+          <h2 class="cta-title">Ready to build something?</h2>
+          <p class="cta-sub">Start with the most popular guide, or browse by topic.</p>
+        </div>
+        <div class="cta-buttons">
+          <a href="/guides" class="btn-primary">Browse all guides →</a>
+          <a href="/contact" class="btn-secondary">Get in touch</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</BaseLayout>
+
+<style>
+  .about-page { max-width: 100%; }
+
+  /* ── Header ─────────────────────────────────────────────────── */
+  .about-header {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 52px 48px 0;
+  }
+  .about-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: var(--amber);
+    margin-bottom: 16px;
+  }
+  .about-title {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: clamp(32px, 5vw, 56px);
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    color: var(--text-bright);
+    margin-bottom: 20px;
+  }
+  .accent { color: var(--amber); font-style: italic; }
+  .about-lead {
+    font-size: 19px;
+    line-height: 1.7;
+    color: var(--text-mid);
+    max-width: 760px;
+    font-weight: 300;
+    margin-bottom: 40px;
+  }
+  .about-header-rule { height: 1px; background: var(--border); }
+
+  /* ── Bio section ─────────────────────────────────────────────── */
+  .bio-section {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 52px 48px;
+  }
+  .bio-grid {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 64px;
+    align-items: start;
+  }
+  @media (max-width: 860px) {
+    .bio-grid { grid-template-columns: 1fr; gap: 36px; }
+  }
+
+  /* Identity column */
+  .bio-identity { display: flex; flex-direction: column; gap: 20px; }
+
+  .avatar-wrap { position: relative; display: inline-block; }
+  .avatar-placeholder {
+    width: 100px; height: 100px;
+    background: var(--bg3);
+    border: 2px solid var(--border-amber);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--display);
+    font-size: 42px;
+    font-weight: 600;
+    color: var(--amber);
+    letter-spacing: -0.02em;
+  }
+  /* Replace avatar-placeholder with an img tag once you have a photo:
+     <img src="/photo.jpg" alt="Sergej" class="avatar-img" />
+     .avatar-img { width: 100px; height: 100px; object-fit: cover; border: 2px solid var(--border-amber); }
+  */
+  .avatar-online {
+    position: absolute;
+    bottom: -8px; left: 0;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: 2px 8px;
+    display: flex; align-items: center; gap: 5px;
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+  }
+  .live-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .bio-meta { display: flex; flex-direction: column; gap: 4px; }
+  .bio-name {
+    font-family: var(--display);
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text-bright);
+    letter-spacing: -0.02em;
+  }
+  .bio-role {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--amber);
+    letter-spacing: 0.05em;
+  }
+  .bio-location {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  .bio-links {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+  .bio-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-dim);
+    text-decoration: none;
+    transition: color 0.15s;
+    border: none;
+  }
+  .bio-link:hover { color: var(--amber); }
+
+  /* Bio text column */
+  .bio-text { color: var(--text); font-size: 17px; line-height: 1.8; }
+  .bio-text p { margin-bottom: 1.2em; }
+  .bio-section-title {
+    font-family: var(--display);
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text-bright);
+    letter-spacing: -0.02em;
+    margin: 1.8em 0 0.6em;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .bio-section-title:first-child { margin-top: 0; }
+
+  /* ── Section base ────────────────────────────────────────────── */
+  .section { padding: 52px 48px; }
+  .section-alt { background: var(--bg2); }
+  .section-inner { max-width: 1200px; margin: 0 auto; }
+  .section-narrow { max-width: 900px; }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 10px; letter-spacing: 0.2em;
+    color: var(--amber); margin-bottom: 10px;
+  }
+  .section-title {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: clamp(24px, 3vw, 36px);
+    color: var(--text-bright);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    margin-bottom: 12px;
+  }
+  .section-sub {
+    font-size: 17px;
+    color: var(--text-dim);
+    margin-bottom: 36px;
+  }
+
+  /* ── Timeline ────────────────────────────────────────────────── */
+  .timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-top: 36px;
+    padding-left: 24px;
+    border-left: 2px solid var(--border);
+  }
+  .tl-item {
+    position: relative;
+    padding: 0 0 36px 32px;
+  }
+  .tl-item:last-child { padding-bottom: 0; }
+  .tl-dot {
+    position: absolute;
+    left: -7px; top: 5px;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--bg);
+    border: 2px solid var(--amber);
+  }
+  .tl-date {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--amber);
+    letter-spacing: 0.08em;
+    margin-bottom: 4px;
+  }
+  .tl-role {
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--text-bright);
+    margin-bottom: 8px;
+  }
+  .tl-desc {
+    font-size: 15px;
+    color: var(--text-dim);
+    line-height: 1.7;
+    max-width: 620px;
+  }
+
+  /* ── Stack grid ──────────────────────────────────────────────── */
+  .stack-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    margin-top: 36px;
+  }
+  .stack-card {
+    background: var(--bg2);
+    padding: 24px;
+  }
+  .stack-card-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--amber);
+    margin-bottom: 16px;
+    font-weight: 700;
+  }
+  .stack-list { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+  .stack-list li { display: flex; flex-direction: column; gap: 2px; }
+  .stack-name { font-size: 15px; font-weight: 500; color: var(--text-bright); }
+  .stack-detail { font-family: var(--mono); font-size: 11px; color: var(--text-dim); }
+
+  /* ── Why grid ────────────────────────────────────────────────── */
+  .why-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 24px;
+    margin-top: 36px;
+  }
+  .why-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    padding: 24px;
+    transition: border-color 0.2s;
+  }
+  .why-card:hover { border-color: var(--border-amber); }
+  .why-icon { font-size: 24px; margin-bottom: 12px; }
+  .why-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-bright);
+    margin-bottom: 8px;
+  }
+  .why-desc { font-size: 14px; color: var(--text-dim); line-height: 1.7; }
+
+  /* ── CTA strip ───────────────────────────────────────────────── */
+  .about-cta {
+    background: var(--bg2);
+    border-top: 1px solid var(--border);
+    margin-top: 0;
+  }
+  .cta-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 52px 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 40px;
+    flex-wrap: wrap;
+  }
+  .cta-title {
+    font-family: var(--display);
+    font-size: clamp(22px, 3vw, 32px);
+    font-weight: 600;
+    color: var(--text-bright);
+    letter-spacing: -0.02em;
+    margin-bottom: 8px;
+  }
+  .cta-sub { font-size: 16px; color: var(--text-dim); }
+  .cta-buttons { display: flex; gap: 12px; flex-wrap: wrap; }
+
+  .btn-primary {
+    background: var(--amber); color: var(--bg);
+    padding: 12px 24px;
+    font-family: var(--mono); font-size: 13px; font-weight: 700;
+    letter-spacing: 0.05em; text-decoration: none;
+    display: inline-flex; align-items: center;
+    transition: background 0.15s;
+    border: none;
+  }
+  .btn-primary:hover { background: #ffc13d; color: var(--bg); }
+
+  .btn-secondary {
+    background: transparent; color: var(--text);
+    border: 1px solid var(--border-mid);
+    padding: 12px 24px;
+    font-family: var(--mono); font-size: 13px;
+    letter-spacing: 0.05em; text-decoration: none;
+    display: inline-flex; align-items: center;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .btn-secondary:hover { border-color: var(--amber); color: var(--amber); }
+
+  /* ── Mobile ──────────────────────────────────────────────────── */
+  @media (max-width: 600px) {
+    .about-header, .bio-section, .section { padding-left: 18px; padding-right: 18px; }
+    .cta-inner { padding: 36px 18px; flex-direction: column; align-items: flex-start; }
+    .timeline { padding-left: 16px; }
+  }
+</style>
