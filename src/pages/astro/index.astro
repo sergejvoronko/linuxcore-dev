@@ -11,28 +11,6 @@ const posts = allPosts.sort(
   (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
 );
 
-const comingSoon = [
-  {
-    title:       'Adding Comments to Your Astro Blog with Giscus',
-    description: 'GitHub-backed comments with zero external dependencies, no database, no fees.',
-  },
-  {
-    title:       'Contact Forms with Cloudflare Pages Functions',
-    description: 'Send email from a static site using Cloudflare Workers and MailChannels.',
-  },
-  {
-    title:       'Building a Shop in Astro with Printify and Stripe',
-    description: 'Print-on-demand merch store with Cloudflare Functions handling checkout.',
-  },
-  {
-    title:       'SEO in Astro Without Plugins',
-    description: 'Sitemaps, structured data, Open Graph images, and canonicals from scratch.',
-  },
-  {
-    title:       'Newsletter Integration in Astro with MailerLite',
-    description: 'Connect a static Astro site to MailerLite without a backend.',
-  },
-];
 ---
 
 <BaseLayout
@@ -59,8 +37,7 @@ const comingSoon = [
 
     {posts.length > 0 && (
       <section class="articles-section">
-        <h2 class="sub-heading"><span class="sh-pre">$</span> Published</h2>
-        <ul class="article-grid" role="list">
+<ul class="article-grid" role="list">
           {posts.map(post => (
             <li>
               <ArticleCard
@@ -76,19 +53,6 @@ const comingSoon = [
         </ul>
       </section>
     )}
-
-    <section class="articles-section">
-      <h2 class="sub-heading"><span class="sh-pre">$</span> Coming Soon</h2>
-      <ul class="coming-list" role="list">
-        {comingSoon.map(item => (
-          <li class="coming-item">
-            <div class="coming-badge">Coming soon</div>
-            <h3 class="coming-title">{item.title}</h3>
-            <p class="coming-desc">{item.description}</p>
-          </li>
-        ))}
-      </ul>
-    </section>
 
     <section class="nl-cta">
       <p class="nl-eyebrow"><span class="tb">[</span>newsletter<span class="tb">]</span></p>
@@ -120,19 +84,6 @@ const comingSoon = [
   .sh-pre { color: var(--amber); }
 
   .article-grid { list-style: none; margin: 0; padding: 0; display: grid; gap: 1.25rem; }
-
-  .coming-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.85rem; }
-  .coming-item {
-    padding: 1.25rem 1.5rem;
-    background: var(--amber-dim);
-    border: 1px solid var(--amber-border);
-    border-left: 3px solid rgba(240,165,0,0.3);
-    border-radius: 6px;
-    opacity: 0.75;
-  }
-  .coming-badge { font-family: var(--font-mono); font-size: 0.62rem; color: var(--amber); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.4rem; }
-  .coming-title { font-family: var(--font-sans); font-size: 0.95rem; font-weight: 600; color: var(--text-bright); margin-bottom: 0.3rem; }
-  .coming-desc { font-size: 0.82rem; color: var(--text-mid); line-height: 1.5; margin: 0; }
 
   .nl-cta { margin-top: 3.5rem; padding: 2.5rem; background: var(--bg2); border: 1px solid var(--amber-border); border-radius: 10px; text-align: center; }
   .nl-eyebrow { font-family: var(--font-mono); font-size: 0.72rem; color: var(--amber); margin-bottom: 0.6rem; }
