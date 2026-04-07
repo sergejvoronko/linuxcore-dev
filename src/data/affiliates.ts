@@ -13,27 +13,27 @@ export const affiliates: AffiliateLink[] = [
   // ── Hardware ────────────────────────────────────────────────────
   {
     slug:        'beelink-mini-s12',
-    destination: 'https://amzn.to/beelink-mini-s12',
+    destination: 'https://www.amazon.com/dp/B0BW8JSQCH/?tag=aircom01f20-20',
     label:       'Beelink Mini S12 Pro',
   },
   {
     slug:        'zimaboard',
-    destination: 'https://amzn.to/zimaboard',
+    destination: 'https://www.amazon.com/dp/B0FYPBZQ3Z/?tag=aircom01f20-20',
     label:       'ZimaBoard Single Board Server',
   },
   {
     slug:        'synology-ds923',
-    destination: 'https://amzn.to/synology-ds923',
+    destination: 'https://www.amazon.com/dp/B0BM7KDN6R/?tag=aircom01f20-20',
     label:       'Synology DS923+ NAS',
   },
   {
     slug:        'tp-link-switch',
-    destination: 'https://amzn.to/tp-link-switch',
+    destination: 'https://www.amazon.com/dp/B00K4DS5KU/?tag=aircom01f20-20',
     label:       'TP-Link 8-Port Managed Switch',
   },
   {
     slug:        'crucial-ddr5',
-    destination: 'https://amzn.to/crucial-ddr5',
+    destination: 'https://www.amazon.com/dp/B0BLTGP2JX/?tag=aircom01f20-20',
     label:       'Crucial 32GB DDR5 RAM',
   },
 
@@ -45,7 +45,7 @@ export const affiliates: AffiliateLink[] = [
   },
   {
     slug:        'hetzner',
-    destination: 'https://www.hetzner.com/cloud',
+    destination: 'https://hetzner.cloud/?ref=linuxcore',
     label:       'Hetzner Cloud VPS',
   },
   {
@@ -57,7 +57,7 @@ export const affiliates: AffiliateLink[] = [
   // ── Digital Products ──────────────────────────────────────────────
   {
     slug:        'ansible-bundle',
-    destination: 'https://YOUR_USERNAME.gumroad.com/l/ansible-homelab-bundle',
+    destination: 'https://linuxcore-dev.gumroad.com/l/ansible-homelab-bundle',
     label:       'Ansible Homelab Bundle (Gumroad)',
   },
 ];
