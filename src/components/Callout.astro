@@ -1,0 +1,52 @@
+---
+// src/components/Callout.astro
+// Usage in MDX: <Callout type="info">Your message here</Callout>
+// Types: info | tip | warning | danger
+
+interface Props { type?: 'info' | 'tip' | 'warning' | 'danger'; }
+const { type = 'info' } = Astro.props;
+
+const icons = {
+  info:    'ℹ',
+  tip:     '→',
+  warning: '⚠',
+  danger:  '✕',
+};
+---
+
+<aside class={`callout callout-${type}`}>
+  <span class="callout-icon" aria-hidden="true">{icons[type]}</span>
+  <div class="callout-body"><slot /></div>
+</aside>
+
+<style>
+  .callout {
+    display: flex;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    border-radius: 6px;
+    border-left: 3px solid;
+    margin: 1.5em 0;
+    font-size: 0.92rem;
+    line-height: 1.65;
+  }
+
+  .callout-info    { background: rgba(126,184,212,0.08); border-color: #7eb8d4; color: var(--text-mid); }
+  .callout-tip     { background: rgba(78,202,139,0.08);  border-color: #4eca8b; color: var(--text-mid); }
+  .callout-warning { background: rgba(240,165,0,0.08);   border-color: var(--amber); color: var(--text-mid); }
+  .callout-danger  { background: rgba(255,107,107,0.08); border-color: #ff6b6b; color: var(--text-mid); }
+
+  .callout-icon {
+    font-size: 0.85rem;
+    flex-shrink: 0;
+    margin-top: 0.1em;
+    opacity: 0.8;
+  }
+
+  .callout-info .callout-icon    { color: #7eb8d4; }
+  .callout-tip .callout-icon     { color: #4eca8b; }
+  .callout-warning .callout-icon { color: var(--amber); }
+  .callout-danger .callout-icon  { color: #ff6b6b; }
+
+  .callout-body :global(p) { margin: 0; }
+</style>

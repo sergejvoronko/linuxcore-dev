@@ -1,0 +1,294 @@
+---
+title: "How to Add Comments to Your Astro Blog with Giscus"
+description: "Add GitHub-backed comments to any Astro site in under 10 minutes — no database, no monthly fees, no ads. Just GitHub Discussions."
+pubDate: 2026-04-01
+section: "astro"
+tags:
+  - astro
+  - giscus
+  - comments
+  - github
+  - cloudflare
+featured: false
+draft: false
+readingTime: 8
+---
+
+import Callout from '../../components/Callout.astro';
+
+When I was planning linuxcore.dev, comments were the first thing I questioned. The default answer in the WordPress world is Disqus — paste a script tag, done. But Disqus in 2026 means ads on your site unless you pay $12/month, a 300ms+ page load penalty, and a third-party tracking your readers. For a site about self-hosting and privacy, that's a hard no.
+
+The second option is building comments yourself — a database, an API, moderation tooling. That's a weekend project minimum, and it reintroduces exactly the infrastructure overhead I was trying to eliminate by switching to Astro in the first place.
+
+Giscus is the third option, and it's the right one for this stack. Comments are stored as GitHub Discussions on your repository. Readers log in with GitHub — which is exactly your audience if you're running a technical blog. Zero cost, zero ads, zero server, and you own the data because it lives in your own GitHub repo.
+
+This is how I set it up on linuxcore.dev, and how you can do the same in about ten minutes.
+
+---
+
+## How Giscus Works
+
+Giscus is a small JavaScript widget that loads in the browser and connects to the GitHub Discussions API. When someone leaves a comment on your site, Giscus creates or updates a Discussion thread in your repository, matched by page URL (or pathname, or title — your choice). The comment appears both on your site and in your GitHub repo under Discussions.
+
+The key things to understand:
+
+- **Readers need a GitHub account** to comment. For a homelab/Linux audience this is a feature, not a bug — it eliminates spam almost entirely
+- **You moderate through GitHub** — the same interface you already use
+- **The widget is a single `<script>` tag** — no npm package, no build step
+- **Reactions work too** — readers can react to posts with emoji without commenting
+
+---
+
+## Prerequisites
+
+Before starting, you need:
+
+- A public GitHub repository for your site (private repos don't support Discussions via the API)
+- Node.js and your Astro project set up locally
+- About 10 minutes
+
+---
+
+## Step 1: Enable Discussions on Your GitHub Repo
+
+Go to your repository on GitHub:
+
+1. Click **Settings**
+2. Scroll to **Features**
+3. Check **Discussions**
+
+That's it. A new **Discussions** tab will appear in your repo navigation.
+
+---
+
+## Step 2: Install the Giscus GitHub App
+
+The Giscus app needs permission to read and write Discussions on your behalf.
+
+1. Go to [github.com/apps/giscus](https://github.com/apps/giscus)
+2. Click **Install**
+3. Choose your account
+4. Select **Only select repositories** and pick your site repo
+5. Click **Install**
+
+<Callout type="info">
+Only install Giscus on the repo that contains your site, not all repositories. You can change this later in GitHub Settings → Applications.
+</Callout>
+
+---
+
+## Step 3: Get Your Repository IDs
+
+This is the only slightly technical step. Giscus needs three IDs that aren't visible in the GitHub UI — you need to fetch them via the GitHub GraphQL API.
+
+Go to [giscus.app](https://giscus.app) and:
+
+1. Type your repository name in the format `username/repo-name`
+2. Scroll to **Page ↔️ Discussions Mapping** — leave it as **pathname** (each URL gets its own thread)
+3. Under **Discussion Category**, click **Create it** if it asks, or select **General** from the dropdown
+4. Scroll to the generated script at the bottom — it will look like this:
+
+```html
+<script src="https://giscus.app/client.js"
+  data-repo="YOUR_USERNAME/YOUR_REPO"
+  data-repo-id="R_kgDOxxxxxxxx"
+  data-category="Comments"
+  data-category-id="DIC_kwDOxxxxxxxxx4"
+  data-mapping="pathname"
+  data-strict="0"
+  data-reactions-enabled="1"
+  data-emit-metadata="0"
+  data-input-position="top"
+  data-theme="dark"
+  data-lang="en"
+  crossorigin="anonymous"
+  async>
+</script>
+```
+
+Copy the three values you need:
+- `data-repo` — your `username/repo-name`
+- `data-repo-id` — starts with `R_`
+- `data-category-id` — starts with `DIC_`
+
+---
+
+## Step 4: Create the Comments Component
+
+In your Astro project, create `src/components/Comments.astro`:
+
+```astro
+---
+// src/components/Comments.astro
+// Replace the three placeholder values with your real IDs from giscus.app
+---
+
+<section class="comments-section">
+  <h2 class="comments-heading">
+    <span class="bracket">[</span>discussion<span class="bracket">]</span>
+  </h2>
+  <p class="comments-note">
+    Comments are powered by <a href="https://giscus.app" target="_blank" rel="noopener">Giscus</a>
+    — backed by GitHub Discussions. Sign in with GitHub to join the conversation.
+  </p>
+
+  <div class="giscus-wrap">
+    <script
+      src="https://giscus.app/client.js"
+      data-repo="YOUR_USERNAME/YOUR_REPO"
+      data-repo-id="YOUR_REPO_ID"
+      data-category="Comments"
+      data-category-id="YOUR_CATEGORY_ID"
+      data-mapping="pathname"
+      data-strict="0"
+      data-reactions-enabled="1"
+      data-emit-metadata="0"
+      data-input-position="top"
+      data-theme="dark"
+      data-lang="en"
+      crossorigin="anonymous"
+      async
+    ></script>
+  </div>
+</section>
+
+<style>
+  .comments-section {
+    margin-top: 3rem;
+    padding-top: 2.5rem;
+    border-top: 1px solid var(--border);
+  }
+  .comments-heading {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--amber);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.6rem;
+  }
+  .bracket { opacity: 0.4; }
+  .comments-note {
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    margin-bottom: 1.5rem;
+    line-height: 1.5;
+  }
+  .comments-note a { color: var(--amber); }
+  .giscus-wrap { min-height: 120px; }
+</style>
+```
+
+---
+
+## Step 5: Add Comments to Your Post Layout
+
+Open `src/layouts/PostLayout.astro` and import and render the Comments component after your article content:
+
+```astro
+---
+import Comments from '../components/Comments.astro';
+// ... rest of your imports
+---
+
+<!-- After your prose content slot -->
+<div class="prose-content">
+  <slot />
+</div>
+
+<!-- Add this below -->
+<Comments />
+```
+
+If your PostLayout already has a comments component wired up (as in the linuxcore.dev v2 package), just make sure the `data-repo`, `data-repo-id`, and `data-category-id` values in `Comments.astro` are replaced with your real values.
+
+---
+
+## Step 6: Test Locally and Deploy
+
+Run the dev server:
+
+```bash
+npm run dev
+```
+
+Open any article page. You'll see the Giscus widget at the bottom. It will show a "Sign in with GitHub" prompt — click it, authenticate, and leave a test comment.
+
+Check your GitHub repo's **Discussions** tab — your comment should appear there instantly.
+
+When you're happy, deploy normally:
+
+```bash
+git add .
+git commit -m "add: giscus comments"
+git push
+```
+
+Cloudflare Pages picks up the push and redeploys automatically.
+
+---
+
+## Customising the Theme
+
+The `data-theme="dark"` attribute matches a dark site. If your site switches between light and dark mode, Giscus supports dynamic theme switching via its JavaScript API:
+
+```javascript
+// Switch Giscus theme dynamically
+function setGiscusTheme(theme) {
+  const iframe = document.querySelector('iframe.giscus-frame');
+  if (!iframe) return;
+  iframe.contentWindow.postMessage(
+    { giscus: { setConfig: { theme } } },
+    'https://giscus.app'
+  );
+}
+
+// Example: switch on user preference
+const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+setGiscusTheme(prefersDark ? 'dark' : 'light');
+```
+
+Available themes include `light`, `dark`, `dark_dimmed`, `transparent_dark`, and several GitHub-specific themes. For the linuxcore.dev warm terminal palette, `dark` is the closest match.
+
+---
+
+## Moderating Comments
+
+All moderation happens directly in GitHub Discussions. You can:
+
+- **Delete comments** — click the three-dot menu on any comment in Discussions
+- **Lock a thread** — prevents new comments on a specific post
+- **Mark as answer** — useful if someone asks a question
+- **React** — GitHub reactions appear on the site automatically
+- **Get email notifications** — watch your repo's Discussions category
+
+You can also set up GitHub's built-in moderation features: blocking users, setting interaction limits, and requiring accounts of a minimum age — all from the repository settings.
+
+<Callout type="tip">
+Create a dedicated **Comments** category in your Discussions for Giscus threads rather than using General. It keeps your Discussions tab organised and makes it easy to filter site comments from other repo discussions.
+</Callout>
+
+---
+
+## What Giscus Can't Do
+
+Honest tradeoffs worth knowing:
+
+**No anonymous comments.** Readers without a GitHub account can't comment. For a technical audience this is rarely an issue, but if you're writing for a broader audience it matters.
+
+**Comments are public.** Everything lives in a public GitHub repo. There's no private commenting.
+
+**You can't export comments easily.** If you ever move away from GitHub, migrating comments requires the GitHub API. It's doable but it's work.
+
+**Giscus loads from a CDN.** Unlike a self-hosted solution, you depend on `giscus.app` being available. The project is open source and you can self-host it if that matters to you — the [Giscus repo](https://github.com/giscus/giscus) has instructions.
+
+---
+
+## The Result
+
+Once deployed, every article on your site gets its own comment thread, automatically created when the first comment is posted. No database migrations, no monthly bill, no ads injected into your pages.
+
+For linuxcore.dev the setup has been running without any maintenance since launch. The GitHub-based login keeps spam to essentially zero, and the discussion threads occasionally surface useful follow-up questions that become future article topics.
+
+---
+
+*Next in this series: [Contact Forms with Cloudflare Pages Functions](/astro/astro-cloudflare-contact-form) — send email from a static site without any backend server.*

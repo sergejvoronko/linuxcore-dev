@@ -1,0 +1,409 @@
+---
+title: "Newsletter Integration in Astro with MailerLite and Buttondown"
+description: "Add a newsletter subscription form to your static Astro site — no backend needed, no embed iframes. A clean API-driven setup that matches your site's design, with a three-email welcome sequence that actually runs."
+pubDate: 2026-04-20
+section: "astro"
+tags:
+  - astro
+  - newsletter
+  - mailerlite
+  - buttondown
+  - cloudflare
+  - email
+featured: false
+draft: false
+readingTime: 10
+---
+
+import Callout from '../../components/Callout.astro';
+
+A newsletter is one of the most valuable things you can build alongside a technical blog. Unlike SEO traffic, which can disappear overnight with an algorithm change, an email list is direct — when you publish something, subscribers see it, regardless of what Google does.
+
+The standard advice for adding a newsletter to a static site is "embed the form from your email provider." MailerLite, ConvertKit, Buttondown — they all give you an iframe or a script tag to paste in. It works, but it looks exactly like what it is: a foreign element dropped into your page, usually with styling that doesn't match, tracking pixels you didn't ask for, and behaviour you can't control.
+
+The API approach is a few more lines of code but gives you a form that looks like it belongs on your site, handles errors gracefully, and doesn't load any third-party JavaScript until the user actually submits.
+
+This is how the newsletter form on linuxcore.dev works, with instructions for both MailerLite and Buttondown.
+
+---
+
+## Choosing a Provider
+
+Both MailerLite and Buttondown work well for a technical blog. Quick comparison:
+
+| | MailerLite | Buttondown |
+|---|---|---|
+| Free tier | 1,000 subscribers, 12,000 emails/month | 100 subscribers |
+| API quality | Excellent, well documented | Simple, minimal |
+| Automations | Full sequences, segmentation | Basic automations |
+| Markdown emails | No (HTML editor) | Yes (native) |
+| Best for | Growing audience, sequences | Writers, developers |
+
+For linuxcore.dev I use MailerLite for its automation capabilities — the welcome sequence runs automatically when someone subscribes. Buttondown is a good choice if you prefer writing emails in Markdown.
+
+---
+
+## Option A: MailerLite Integration
+
+### Step 1: Get Your API Key
+
+1. Log into MailerLite
+2. Go to **Integrations** → **API** → **Generate new token**
+3. Give it a name (e.g. `linuxcore-dev`) and copy the token
+
+### Step 2: Find Your Group ID
+
+Subscribers can be added to groups (lists) in MailerLite. Get your group ID via the API:
+
+```bash
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+  https://connect.mailerlite.com/api/groups
+```
+
+Copy the `id` of the group you want subscribers added to.
+
+### Step 3: Create the Cloudflare Pages Function
+
+Create `functions/api/subscribe.ts`:
+
+```typescript
+// functions/api/subscribe.ts
+
+interface Env {
+  MAILERLITE_API_KEY: string;
+  MAILERLITE_GROUP_ID: string;
+}
+
+const CORS = {
+  'Access-Control-Allow-Origin':  '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
+
+export const onRequestOptions = () => new Response(null, { status: 204, headers: CORS });
+
+export async function onRequestPost({ request, env }: { request: Request; env: Env }) {
+  const { email } = await request.json() as { email?: string };
+
+  if (!email?.trim() || !email.includes('@')) {
+    return new Response(
+      JSON.stringify({ error: 'Valid email address required' }),
+      { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  // Add subscriber to MailerLite
+  const res = await fetch('https://connect.mailerlite.com/api/subscribers', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${env.MAILERLITE_API_KEY}`,
+      'Content-Type':  'application/json',
+      'Accept':        'application/json',
+    },
+    body: JSON.stringify({
+      email,
+      groups: [env.MAILERLITE_GROUP_ID],
+      status: 'active',
+    }),
+  });
+
+  // MailerLite returns 200 for existing subscribers, 201 for new ones
+  if (res.status === 200 || res.status === 201) {
+    return new Response(
+      JSON.stringify({ ok: true }),
+      { status: 200, headers: { ...CORS, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  // Handle duplicate gracefully
+  if (res.status === 409) {
+    return new Response(
+      JSON.stringify({ ok: true, note: 'already_subscribed' }),
+      { status: 200, headers: { ...CORS, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  const error = await res.json() as any;
+  return new Response(
+    JSON.stringify({ error: error?.message ?? 'Subscription failed' }),
+    { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } }
+  );
+}
+```
+
+Add the environment variables to Cloudflare Pages:
+- `MAILERLITE_API_KEY` — your API token
+- `MAILERLITE_GROUP_ID` — your group/list ID
+
+---
+
+## Option B: Buttondown Integration
+
+Buttondown is even simpler — no group ID needed, just an API key.
+
+```typescript
+// functions/api/subscribe.ts (Buttondown version)
+
+interface Env {
+  BUTTONDOWN_API_KEY: string;
+}
+
+const CORS = {
+  'Access-Control-Allow-Origin':  '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
+
+export const onRequestOptions = () => new Response(null, { status: 204, headers: CORS });
+
+export async function onRequestPost({ request, env }: { request: Request; env: Env }) {
+  const { email } = await request.json() as { email?: string };
+
+  if (!email?.trim() || !email.includes('@')) {
+    return new Response(
+      JSON.stringify({ error: 'Valid email address required' }),
+      { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  const res = await fetch('https://api.buttondown.email/v1/subscribers', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Token ${env.BUTTONDOWN_API_KEY}`,
+      'Content-Type':  'application/json',
+    },
+    body: JSON.stringify({ email }),
+  });
+
+  // 201 = new subscriber, 400 with certain codes = already subscribed
+  if (res.status === 201) {
+    return new Response(JSON.stringify({ ok: true }), { status: 200, headers: CORS });
+  }
+
+  const data = await res.json() as any;
+
+  // Treat "already subscribed" as success
+  if (data?.code === 'email_already_exists') {
+    return new Response(JSON.stringify({ ok: true, note: 'already_subscribed' }), { status: 200, headers: CORS });
+  }
+
+  return new Response(
+    JSON.stringify({ error: data?.detail ?? 'Subscription failed' }),
+    { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } }
+  );
+}
+```
+
+---
+
+## The Newsletter Form Component
+
+Create `src/components/NewsletterForm.astro`:
+
+```astro
+---
+// src/components/NewsletterForm.astro
+// Place anywhere on the site — homepage, end of articles, dedicated page
+
+interface Props {
+  title?:       string;
+  description?: string;
+  compact?:     boolean;  // smaller version for inline use
+}
+
+const {
+  title       = 'Stay in the loop',
+  description = 'New articles, scripts, and homelab tips. No spam, no weekly digest noise. Just an email when something useful goes up.',
+  compact     = false,
+} = Astro.props;
+---
+
+<section class:list={['nl-section', { compact }]}>
+  {!compact && (
+    <>
+      <div class="nl-label">// NEWSLETTER</div>
+      <h2 class="nl-title">{title}</h2>
+      <p class="nl-desc">{description}</p>
+    </>
+  )}
+  {compact && <p class="nl-compact-label">Get notified when new articles land:</p>}
+
+  <form class="nl-form" id="nl-form" novalidate>
+    <input
+      type="email"
+      id="nl-email"
+      name="email"
+      placeholder="your@email.com"
+      required
+      class="nl-input"
+      autocomplete="email"
+    />
+    <button type="submit" class="btn-primary nl-btn" id="nl-btn">
+      Subscribe →
+    </button>
+  </form>
+
+  <div id="nl-status" class="nl-status" role="alert" aria-live="polite"></div>
+  <p class="nl-note">No spam. Unsubscribe any time.</p>
+</section>
+
+<style>
+  .nl-section { padding: 2.5rem; background: var(--bg2); border: 1px solid var(--border); }
+  .nl-section.compact { padding: 1.5rem; background: transparent; border: none; border-top: 1px solid var(--border); }
+
+  .nl-label { font-family: var(--mono); font-size: 10px; letter-spacing: .2em; color: var(--amber); margin-bottom: 10px; }
+  .nl-label::before { content: '// '; color: var(--text-dim); }
+  .nl-title { font-family: var(--display); font-size: clamp(22px, 3vw, 30px); font-weight: 600; color: var(--text-bright); margin-bottom: 10px; }
+  .nl-desc { font-size: 16px; color: var(--text-mid); line-height: 1.7; margin-bottom: 1.5rem; max-width: 48ch; }
+  .nl-compact-label { font-size: 14px; color: var(--text-dim); margin-bottom: 1rem; font-family: var(--mono); }
+
+  .nl-form { display: flex; gap: 8px; flex-wrap: wrap; }
+  .nl-input {
+    flex: 1; min-width: 200px;
+    padding: 10px 14px;
+    background: var(--bg); border: 1px solid var(--border-mid);
+    color: var(--text); font-family: var(--mono); font-size: 13px;
+    outline: none; transition: border-color .15s;
+  }
+  .nl-input:focus { border-color: var(--amber); }
+  .nl-input::placeholder { color: var(--text-dim); }
+  .nl-btn { white-space: nowrap; }
+
+  .nl-status {
+    margin-top: 12px; font-family: var(--mono); font-size: 12px;
+    padding: 8px 12px; min-height: 36px; display: none;
+  }
+  .nl-status.success { display: block; background: rgba(78,202,139,.08); border: 1px solid rgba(78,202,139,.25); color: var(--green); }
+  .nl-status.error   { display: block; background: rgba(255,107,107,.08); border: 1px solid rgba(255,107,107,.25); color: var(--red); }
+
+  .nl-note { font-family: var(--mono); font-size: 11px; color: var(--text-dim); margin-top: 8px; }
+</style>
+
+<script>
+  const form   = document.getElementById('nl-form') as HTMLFormElement;
+  const input  = document.getElementById('nl-email') as HTMLInputElement;
+  const btn    = document.getElementById('nl-btn') as HTMLButtonElement;
+  const status = document.getElementById('nl-status') as HTMLDivElement;
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const email = input.value.trim();
+    if (!email) return;
+
+    btn.disabled      = true;
+    btn.textContent   = 'Subscribing…';
+    status.className  = 'nl-status';
+    status.textContent = '';
+
+    try {
+      const res  = await fetch('/api/subscribe', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ email }),
+      });
+      const data = await res.json() as { ok?: boolean; note?: string; error?: string };
+
+      if (data.ok) {
+        status.className  = 'nl-status success';
+        status.textContent = data.note === 'already_subscribed'
+          ? '✓ You\'re already subscribed — thanks!'
+          : '✓ You\'re subscribed. Welcome aboard.';
+        form.reset();
+      } else {
+        throw new Error(data.error ?? 'Unexpected error');
+      }
+    } catch (err: any) {
+      status.className  = 'nl-status error';
+      status.textContent = `✕ ${err.message}`;
+    } finally {
+      btn.disabled    = false;
+      btn.textContent = 'Subscribe →';
+    }
+  });
+</script>
+```
+
+---
+
+## Using the Component
+
+Drop the form anywhere:
+
+```astro
+---
+import NewsletterForm from '../components/NewsletterForm.astro';
+---
+
+<!-- Full version on homepage or dedicated /newsletter page -->
+<NewsletterForm />
+
+<!-- Compact version at the end of articles -->
+<NewsletterForm compact={true} />
+
+<!-- Custom title -->
+<NewsletterForm
+  title="Want more Linux homelab content?"
+  description="Subscribe for new guides when they land."
+/>
+```
+
+In PostLayout, add it after the comments section:
+
+```astro
+<div class="comments-outer">
+  <NewsletterForm compact={true} />
+  <Comments />
+</div>
+```
+
+---
+
+## Setting Up a Welcome Sequence (MailerLite)
+
+A welcome sequence — a short series of emails sent automatically when someone subscribes — is one of the highest-value things you can add to a newsletter. New subscribers are most engaged immediately after signing up. Three emails over a week does more than a single welcome message.
+
+The linuxcore.dev welcome sequence:
+
+**Email 1 — immediately:** Welcome + point to the most useful article for new readers
+**Email 2 — day 3:** Introduce the Ansible Homelab Bundle with a short explanation of what it covers
+**Email 3 — day 7:** Ask what topics they'd most like to see covered (reply-based, good for engagement)
+
+To set this up in MailerLite:
+
+1. Go to **Automations** → **Create new automation**
+2. Trigger: **Subscriber joins a group** → select your newsletter group
+3. Add three **Send email** steps with delays between them
+4. Write each email in MailerLite's editor
+
+The automation runs automatically for every new subscriber. You write it once and it works indefinitely.
+
+<Callout type="tip">
+Keep the welcome sequence emails short — 150 to 250 words each. Long emails get skimmed or skipped. One clear point per email, one clear link, done.
+</Callout>
+
+---
+
+## Double Opt-In Consideration
+
+By default, MailerLite adds subscribers with `status: active` — no confirmation email required. This is single opt-in.
+
+For audiences in the EU (GDPR) or California (CCPA), double opt-in — where subscribers confirm their email before being added — is better practice and reduces the legal ambiguity around consent. To enable it in MailerLite:
+
+1. Go to your group settings
+2. Enable **Double opt-in**
+3. Customise the confirmation email
+
+Your API calls stay the same — MailerLite handles sending the confirmation email automatically and only activates the subscriber after they click confirm.
+
+---
+
+## The End Result
+
+A newsletter subscription form that looks native to your site, handles edge cases (already subscribed, invalid email, API errors) gracefully, and connects to a proper email platform with automation support. No iframes, no third-party JavaScript loaded on page load, no styling that fights with your design.
+
+Combined with the welcome sequence, new subscribers immediately get useful content from you — not a month later when you happen to publish something new.
+
+---
+
+*This concludes the Astro series for now. All five features — comments, contact forms, shop, SEO, and newsletter — are running in production on this site. Questions or issues? Drop a comment below.*

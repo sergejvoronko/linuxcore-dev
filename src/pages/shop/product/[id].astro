@@ -1,0 +1,227 @@
+---
+// src/pages/shop/product/[id].astro
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { getProducts, getProduct, getBasePrice, getDefaultImage, formatPrice } from '../../../lib/printify';
+
+export async function getStaticPaths() {
+  try {
+    const products = await getProducts();
+    return products.map(p => ({ params: { id: p.id } }));
+  } catch {
+    return [];
+  }
+}
+
+const { id } = Astro.params;
+let product: any = null;
+let fetchError = '';
+
+try {
+  product = await getProduct(id!);
+} catch (e: any) {
+  fetchError = e.message;
+}
+
+const enabledVariants = product?.variants?.filter((v: any) => v.is_enabled) ?? [];
+const images = product?.images?.slice(0, 6) ?? [];
+---
+
+<BaseLayout
+  title={product?.title ?? 'Product'}
+  description={product?.description?.replace(/<[^>]+>/g, '').slice(0, 160) ?? ''}
+  heroImage={images[0]?.src}
+>
+  <main class="product-page">
+
+    {fetchError && (
+      <div class="error-state">
+        <p>Could not load product: <code>{fetchError}</code></p>
+        <a href="/shop">← Back to shop</a>
+      </div>
+    )}
+
+    {product && (
+      <div class="product-layout">
+
+        <!-- Gallery -->
+        <div class="gallery">
+          <div class="gallery-main">
+            <img id="main-img" src={images[0]?.src ?? '/images/placeholder-product.png'} alt={product.title} width="800" height="800" />
+          </div>
+          {images.length > 1 && (
+            <div class="gallery-thumbs">
+              {images.map((img: any, i: number) => (
+                <button class={`thumb ${i === 0 ? 'active' : ''}`} data-src={img.src} aria-label={`View image ${i + 1}`}>
+                  <img src={img.src} alt={`${product.title} view ${i + 1}`} width="80" height="80" loading="lazy" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <!-- Details -->
+        <div class="product-details">
+          <div class="back-link"><a href="/shop">← Shop</a></div>
+          <h1 class="product-title">{product.title}</h1>
+          <div class="product-price-display" id="price-display">
+            {formatPrice(getBasePrice(product))}
+          </div>
+
+          <!-- Variant selector -->
+          {enabledVariants.length > 0 && (
+            <div class="variants">
+              <label class="variant-label">Select option</label>
+              <select id="variant-select" class="variant-select">
+                {enabledVariants.map((v: any) => (
+                  <option
+                    value={v.id}
+                    data-price={v.price}
+                    data-title={v.title}
+                  >
+                    {v.title} — {formatPrice(v.price)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <!-- Quantity -->
+          <div class="quantity-row">
+            <label class="variant-label" for="quantity">Quantity</label>
+            <div class="qty-control">
+              <button class="qty-btn" id="qty-minus" aria-label="Decrease quantity">−</button>
+              <input type="number" id="quantity" value="1" min="1" max="10" class="qty-input" />
+              <button class="qty-btn" id="qty-plus" aria-label="Increase quantity">+</button>
+            </div>
+          </div>
+
+          <button class="btn-primary buy-btn" id="buy-btn">
+            Buy Now →
+          </button>
+          <div id="buy-status" class="buy-status" aria-live="polite"></div>
+
+          {product.description && (
+            <div class="product-desc" set:html={product.description} />
+          )}
+        </div>
+
+      </div>
+    )}
+
+  </main>
+</BaseLayout>
+
+<style>
+  .product-page { max-width: var(--wide-w); margin: 0 auto; padding: 3rem 1.5rem 5rem; }
+
+  .error-state { text-align: center; padding: 4rem; color: var(--text-mid); }
+  .error-state code { color: var(--red); }
+  .error-state a { color: var(--amber); }
+
+  .back-link { margin-bottom: 1rem; }
+  .back-link a { font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-dim); text-decoration: none; }
+  .back-link a:hover { color: var(--amber); }
+
+  .product-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: start; }
+
+  /* Gallery */
+  .gallery { display: flex; flex-direction: column; gap: 0.75rem; }
+  .gallery-main { border-radius: 10px; overflow: hidden; background: var(--bg2); border: 1px solid var(--border); }
+  .gallery-main img { width: 100%; height: auto; display: block; }
+  .gallery-thumbs { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .thumb { background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; padding: 0; cursor: pointer; width: 72px; height: 72px; transition: border-color 0.15s; }
+  .thumb.active, .thumb:hover { border-color: var(--amber); }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  /* Details */
+  .product-title { font-family: var(--font-display); font-size: 1.75rem; font-weight: 700; color: var(--text-bright); margin-bottom: 0.6rem; line-height: 1.2; }
+  .product-price-display { font-family: var(--font-mono); font-size: 1.5rem; color: var(--amber); margin-bottom: 1.5rem; }
+
+  /* Variants */
+  .variants { margin-bottom: 1.25rem; }
+  .variant-label { display: block; font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.5rem; }
+  .variant-select { width: 100%; padding: 0.65rem 1rem; background: var(--bg2); border: 1px solid var(--border-mid); border-radius: 6px; color: var(--text); font-family: var(--font-body); font-size: 0.93rem; outline: none; cursor: pointer; transition: border-color 0.15s; }
+  .variant-select:focus { border-color: var(--amber); }
+
+  /* Quantity */
+  .quantity-row { margin-bottom: 1.75rem; }
+  .qty-control { display: flex; align-items: center; gap: 0; border: 1px solid var(--border-mid); border-radius: 6px; overflow: hidden; width: fit-content; }
+  .qty-btn { width: 40px; height: 40px; background: var(--bg2); border: none; color: var(--text); font-size: 1.1rem; cursor: pointer; transition: background 0.15s; }
+  .qty-btn:hover { background: var(--amber-dim); color: var(--amber); }
+  .qty-input { width: 52px; height: 40px; background: var(--bg2); border: none; border-left: 1px solid var(--border-mid); border-right: 1px solid var(--border-mid); color: var(--text); font-family: var(--font-mono); font-size: 0.9rem; text-align: center; outline: none; }
+
+  .buy-btn { width: 100%; font-size: 0.9rem; padding: 0.85rem 1.5rem; margin-bottom: 0.75rem; }
+
+  .buy-status { font-family: var(--font-mono); font-size: 0.78rem; color: var(--red); min-height: 1.2em; }
+
+  .product-desc { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border); font-size: 0.9rem; color: var(--text-mid); line-height: 1.7; }
+  .product-desc :global(p) { margin-bottom: 0.8em; }
+
+  @media (max-width: 720px) {
+    .product-layout { grid-template-columns: 1fr; gap: 2rem; }
+  }
+</style>
+
+<script>
+  // Gallery
+  const mainImg  = document.getElementById('main-img') as HTMLImageElement;
+  const thumbs   = document.querySelectorAll<HTMLButtonElement>('.thumb');
+  thumbs.forEach(t => {
+    t.addEventListener('click', () => {
+      mainImg.src = t.dataset.src!;
+      thumbs.forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+    });
+  });
+
+  // Quantity
+  const qtyInput = document.getElementById('quantity') as HTMLInputElement;
+  document.getElementById('qty-minus')?.addEventListener('click', () => {
+    qtyInput.value = String(Math.max(1, Number(qtyInput.value) - 1));
+  });
+  document.getElementById('qty-plus')?.addEventListener('click', () => {
+    qtyInput.value = String(Math.min(10, Number(qtyInput.value) + 1));
+  });
+
+  // Variant price update
+  const variantSelect  = document.getElementById('variant-select') as HTMLSelectElement;
+  const priceDisplay   = document.getElementById('price-display');
+  variantSelect?.addEventListener('change', () => {
+    const opt = variantSelect.selectedOptions[0] as HTMLOptionElement;
+    const price = Number(opt.dataset.price ?? 0);
+    if (priceDisplay)
+      priceDisplay.textContent = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(price / 100);
+  });
+
+  // Buy button → Stripe checkout
+  document.getElementById('buy-btn')?.addEventListener('click', async () => {
+    const btn    = document.getElementById('buy-btn') as HTMLButtonElement;
+    const status = document.getElementById('buy-status') as HTMLDivElement;
+    btn.disabled = true;
+    btn.textContent = 'Creating checkout…';
+    status.textContent = '';
+
+    try {
+      const variantId  = Number(variantSelect?.value ?? 0);
+      const quantity   = Number(qtyInput?.value ?? 1);
+      const productId  = window.location.pathname.split('/').at(-1);
+
+      const res = await fetch('/api/checkout', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId, variantId, quantity }),
+      });
+
+      const data = await res.json() as { url?: string; error?: string };
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error(data.error ?? 'Checkout failed');
+      }
+    } catch (err: any) {
+      status.textContent = `Error: ${err.message}`;
+      btn.disabled = false;
+      btn.textContent = 'Buy Now →';
+    }
+  });
+</script>

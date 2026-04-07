@@ -2,106 +2,101 @@
 // src/layouts/PostLayout.astro
 import BaseLayout from './BaseLayout.astro';
 import TableOfContents from '../components/TableOfContents.astro';
+import Comments from '../components/Comments.astro';
+import type { MarkdownHeading } from 'astro';
 
 interface Props {
-  frontmatter: {
-    title: string;
-    description: string;
-    pubDate: Date;
-    updatedDate?: Date;
-    pillar: string;
-    type: string;
-    tags: string[];
-    readTime: number;
-    heroImage?: string;
-  };
-  headings?: { depth: number; slug: string; text: string; }[];
+  title:        string;
+  description:  string;
+  pubDate:      Date;
+  updatedDate?: Date;
+  heroImage?:   string;
+  heroImageAlt?:string;
+  tags?:        string[];
+  readingTime?: number;
+  section?:     'homelab' | 'astro';
+  headings:     MarkdownHeading[];
 }
 
-const { frontmatter, headings = [] } = Astro.props;
 const {
   title, description, pubDate, updatedDate,
-  pillar, type, tags, readTime, heroImage
-} = frontmatter;
-
-const pillarColors: Record<string, string> = {
-  'Infrastructure':   '#f0a500',
-  'Self-Hosted AI':   '#7eb8d4',
-  'Linux Automation': '#f0a500',
-  'Monitoring':       '#c49a6c',
-  'Security':         '#ff6b6b',
-  'AWS Hybrid':       '#f0a500',
-};
-const color = pillarColors[pillar] ?? '#f0a500';
+  heroImage, heroImageAlt, tags = [], readingTime,
+  section, headings,
+} = Astro.props;
 
 const formatDate = (d: Date) => new Date(d).toLocaleDateString('en-GB', {
-  day: '2-digit', month: 'long', year: 'numeric'
+  day: '2-digit', month: 'long', year: 'numeric',
 });
 
+const sectionLabel = section === 'homelab' ? 'Homelab'
+                   : section === 'astro'   ? 'Astro'
+                   : 'Blog';
+const sectionHref  = section === 'homelab' ? '/homelab'
+                   : section === 'astro'   ? '/astro'
+                   : '/blog';
+
 const tocHeadings = headings.filter(h => h.depth === 2 || h.depth === 3);
-const hasToc = tocHeadings.length > 2;
+const hasToc      = tocHeadings.length > 2;
+
+const sectionColor = section === 'astro' ? '#7eb8d4' : '#f0a500';
 ---
 
-<BaseLayout title={title} description={description}>
+<BaseLayout title={title} description={description} heroImage={heroImage}>
   <article class="post-wrapper">
 
-    <!-- Post Header — full width above the TOC layout -->
-    <header class="post-header" style={`--post-color: ${color}`}>
+    <header class="post-header" style={`--post-color: ${sectionColor}`}>
       <div class="post-tags">
-        <span class="tag-pill" style={`color:${color}; border-color:${color}44; background:${color}11`}>
-          {pillar}
+        <span class="tag-pill" style={`color:${sectionColor}; border-color:${sectionColor}44; background:${sectionColor}11`}>
+          {sectionLabel}
         </span>
-        <span class="tag-pill tag-type">
-          {type}
-        </span>
+        {readingTime && (
+          <span class="tag-pill tag-type">{readingTime} min read</span>
+        )}
       </div>
       <h1 class="post-title">{title}</h1>
       <p class="post-desc">{description}</p>
       <div class="post-meta">
         <span>📅 {formatDate(pubDate)}</span>
         {updatedDate && <span>↻ Updated {formatDate(updatedDate)}</span>}
-        <span>⏱ {readTime} min read</span>
+        {tags.length > 0 && <span>{tags.slice(0,4).join(' · ')}</span>}
       </div>
       <div class="post-header-rule"></div>
     </header>
 
     {heroImage && (
       <div class="post-hero">
-        <img src={heroImage} alt={title} width="1200" height="630" loading="eager" />
+        <img src={heroImage} alt={heroImageAlt ?? title} width="1200" height="630" loading="eager" />
       </div>
     )}
 
-    <!-- Two-column layout: prose + sticky TOC -->
     <div class:list={['post-body-wrap', { 'has-toc': hasToc }]}>
-
-      <!-- Main prose -->
       <div class="prose-content post-body">
         <slot />
       </div>
 
-      <!-- Sticky TOC sidebar -->
       {hasToc && (
         <aside class="toc-sidebar">
           <TableOfContents headings={headings} />
         </aside>
       )}
-
     </div>
 
-    <!-- Tags footer -->
     <footer class="post-footer">
       <div class="post-footer-tags">
         {tags.map(tag => (
-          <a href={`/guides/tag/${tag}`} class="post-tag">#{tag}</a>
+          <span class="post-tag">#{tag}</span>
         ))}
       </div>
     </footer>
 
   </article>
+
+  <div class="comments-outer">
+    <Comments />
+  </div>
 </BaseLayout>
 
 <style>
-  /* ── Outer wrapper ─────────────────────────────────────────── */
   .post-wrapper {
     max-width: 1100px;
     margin: 0 auto;
@@ -109,14 +104,12 @@ const hasToc = tocHeadings.length > 2;
   }
   @media (max-width: 600px) { .post-wrapper { padding: 28px 18px 60px; } }
 
-  /* ── Header ────────────────────────────────────────────────── */
+  /* ── Header ─── */
   .post-header { margin-bottom: 36px; }
-
   .post-tags { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
   .tag-pill {
     font-size: 10px; letter-spacing: 0.12em; font-weight: 700;
-    padding: 3px 10px; border: 1px solid;
-    font-family: var(--mono);
+    padding: 3px 10px; border: 1px solid; font-family: var(--mono);
   }
   .tag-type { color: var(--text-dim); border-color: var(--border); background: transparent; }
 
@@ -129,143 +122,82 @@ const hasToc = tocHeadings.length > 2;
     letter-spacing: -0.025em;
     margin-bottom: 14px;
   }
-
   .post-desc {
-    color: var(--text-mid);
-    font-size: 16px;
-    line-height: 1.7;
-    margin-bottom: 16px;
-    font-family: var(--sans);
-    font-weight: 300;
+    color: var(--text-mid); font-size: 16px; line-height: 1.7;
+    margin-bottom: 16px; font-family: var(--sans); font-weight: 300;
     max-width: 680px;
   }
-
   .post-meta {
     display: flex; gap: 20px;
     font-size: 11px; color: var(--text-dim);
-    flex-wrap: wrap;
-    font-family: var(--mono);
-    letter-spacing: 0.05em;
+    flex-wrap: wrap; font-family: var(--mono); letter-spacing: 0.05em;
   }
+  .post-header-rule { height: 1px; background: var(--border); margin-top: 24px; }
 
-  .post-header-rule {
-    height: 1px;
-    background: var(--border);
-    margin-top: 24px;
-  }
-
-  /* ── Hero image ────────────────────────────────────────────── */
+  /* ── Hero ─── */
   .post-hero { margin-bottom: 36px; border: 1px solid var(--border); }
   .post-hero img { width: 100%; height: auto; display: block; }
 
-  /* ── Body: prose + TOC layout ──────────────────────────────── */
-  .post-body-wrap {
-    display: block;
-  }
-
-  /* When TOC is present: two columns */
+  /* ── Body / TOC layout ─── */
+  .post-body-wrap { display: block; }
   .post-body-wrap.has-toc {
     display: grid;
     grid-template-columns: 1fr 220px;
     gap: 60px;
     align-items: start;
   }
-
-  /* ── TOC sidebar ───────────────────────────────────────────── */
-  .toc-sidebar {
-    position: sticky;
-    top: 80px;
-    max-height: calc(100vh - 100px);
-    overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: var(--border) transparent;
-  }
-  .toc-sidebar::-webkit-scrollbar { width: 3px; }
-  .toc-sidebar::-webkit-scrollbar-thumb { background: var(--border); }
-
-  /* On smaller screens, hide TOC sidebar */
   @media (max-width: 900px) {
-    .post-body-wrap.has-toc {
-      display: block;
-    }
+    .post-body-wrap.has-toc { display: block; }
     .toc-sidebar { display: none; }
   }
 
-  /* ── Prose styles ──────────────────────────────────────────── */
+  .toc-sidebar {
+    position: sticky; top: 80px;
+    max-height: calc(100vh - 100px);
+    overflow-y: auto; scrollbar-width: thin;
+  }
+
+  /* ── Prose ─── */
   .post-body {
-    color: var(--text);
-    font-family: var(--sans);
-    font-size: 16px;
-    line-height: 1.8;
-    min-width: 0; /* prevents grid blowout */
+    color: var(--text); font-family: var(--sans);
+    font-size: 17px; line-height: 1.8; min-width: 0;
   }
-
   .post-body :global(h2) {
-    font-family: var(--display);
-    font-weight: 600;
-    color: var(--text-bright);
-    font-size: clamp(20px, 2.5vw, 26px);
+    font-family: var(--display); font-weight: 600;
+    color: var(--text-bright); font-size: clamp(20px, 2.5vw, 26px);
     letter-spacing: -0.02em;
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 10px;
-    margin-top: 2.5em;
-    margin-bottom: 0.8em;
-    scroll-margin-top: 90px;
+    border-bottom: 1px solid var(--border); padding-bottom: 10px;
+    margin-top: 2.5em; margin-bottom: 0.8em; scroll-margin-top: 90px;
   }
-
   .post-body :global(h3) {
-    font-family: var(--sans);
-    font-weight: 600;
-    color: var(--amber);
-    font-size: 17px;
-    margin-top: 2em;
-    margin-bottom: 0.5em;
-    scroll-margin-top: 90px;
+    font-family: var(--sans); font-weight: 600;
+    color: var(--amber); font-size: 17px;
+    margin-top: 2em; margin-bottom: 0.5em; scroll-margin-top: 90px;
   }
-
   .post-body :global(h4) {
-    font-weight: 600;
-    color: var(--text-bright);
-    font-size: 15px;
-    margin-top: 1.5em;
-    margin-bottom: 0.4em;
+    font-weight: 600; color: var(--text-bright); font-size: 15px;
+    margin-top: 1.5em; margin-bottom: 0.4em;
   }
-
   .post-body :global(p) { margin-bottom: 1.3em; }
-
   .post-body :global(a) {
     color: var(--amber);
     border-bottom: 1px dashed var(--border-amber);
     transition: border-color 0.15s;
   }
   .post-body :global(a:hover) { border-bottom-color: var(--amber); }
-
   .post-body :global(ul),
-  .post-body :global(ol) {
-    padding-left: 1.4em;
-    margin-bottom: 1.3em;
-  }
+  .post-body :global(ol) { padding-left: 1.4em; margin-bottom: 1.3em; }
   .post-body :global(li) { margin-bottom: 0.5em; line-height: 1.7; }
   .post-body :global(li::marker) { color: var(--amber); }
-
   .post-body :global(blockquote) {
-    border-left: 3px solid var(--amber);
-    padding: 12px 20px;
-    margin: 1.5em 0;
-    background: var(--amber-glow);
-    color: var(--text-mid);
-    font-style: italic;
-    font-family: var(--display);
-    font-size: 15px;
+    border-left: 3px solid var(--amber); padding: 12px 20px;
+    margin: 1.5em 0; background: var(--amber-glow);
+    color: var(--text-mid); font-style: italic;
+    font-family: var(--display); font-size: 15px;
   }
-
   .post-body :global(strong) { color: var(--text-bright); font-weight: 600; }
-
-  .post-body :global(hr) {
-    border: none;
-    border-top: 1px solid var(--border);
-    margin: 2.5em 0;
-  }
+  .post-body :global(hr) { border: none; border-top: 1px solid var(--border); margin: 2.5em 0; }
+  .post-body :global(img) { max-width: 100%; border: 1px solid var(--border); }
 
   /* Tables */
   .post-body :global(table) {
@@ -287,124 +219,19 @@ const hasToc = tocHeadings.length > 2;
   .post-body :global(tr:last-child td) { border-bottom: none; }
   .post-body :global(tr:hover td) { background: rgba(240,165,0,0.03); }
 
-  /* ── Post footer ───────────────────────────────────────────── */
-  .post-footer {
-    margin-top: 48px; padding-top: 20px;
-    border-top: 1px solid var(--border);
-  }
-  .post-footer-tags { display: flex; gap: 8px; flex-wrap: wrap; }
-  .post-tag {
-    color: var(--text-dim); font-size: 11px; letter-spacing: 0.05em;
-    border: 1px solid var(--border); padding: 2px 8px;
-    transition: border-color 0.15s, color 0.15s;
-    text-decoration: none; font-family: var(--mono);
-  }
-  .post-tag:hover { border-color: var(--amber); color: var(--amber); }
-</style>
-    <header class="post-header" style={`--post-color: ${color}`}>
-      <div class="post-header-inner">
-        <div class="post-tags">
-          <span class="tag-pill" style={`color:${color}; border-color:${color}44; background:${color}11`}>
-            {pillar}
-          </span>
-          <span class="tag-pill" style="color:#5a7a5a; border-color:#1a2e1a">
-            {type}
-          </span>
-        </div>
-
-        <h1 class="post-title">{title}</h1>
-        <p class="post-desc">{description}</p>
-
-        <div class="post-meta">
-          <span>📅 {formatDate(pubDate)}</span>
-          {updatedDate && <span>Updated: {formatDate(updatedDate)}</span>}
-          <span>⏱ {readTime} min read</span>
-        </div>
-      </div>
-      <div class="post-header-line"></div>
-    </header>
-
-    <!-- Optional hero image -->
-    {heroImage && (
-      <div class="post-hero">
-        <img src={heroImage} alt={title} width="1200" height="630" loading="eager" />
-      </div>
-    )}
-
-    <!-- Main prose content -->
-    <div class="post-body prose prose-invert max-w-none">
-      <slot />
-    </div>
-
-    <!-- Tags footer -->
-    <footer class="post-footer">
-      <div class="post-footer-tags">
-        {tags.map(tag => (
-          <a href={`/guides/tag/${tag}`} class="post-tag">#{tag}</a>
-        ))}
-      </div>
-    </footer>
-
-  </article>
-</BaseLayout>
-
-<style>
-  .post-wrapper {
-    max-width: 760px; margin: 0 auto;
-    padding: 48px 40px 80px;
-  }
-  @media (max-width: 600px) { .post-wrapper { padding: 32px 20px 60px; } }
-
-  .post-header { margin-bottom: 40px; }
-  .post-tags { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
-  .tag-pill { font-size: 10px; letter-spacing: 0.12em; font-weight: 700; padding: 3px 10px; border: 1px solid; }
-
-  .post-title {
-    font-family: var(--sans); font-weight: 800;
-    font-size: clamp(24px, 4vw, 38px);
-    color: var(--text-bright); line-height: 1.15;
-    margin-bottom: 14px;
-  }
-  .post-desc { color: var(--text-dim); font-size: 15px; line-height: 1.7; margin-bottom: 16px; }
-  .post-meta { display: flex; gap: 20px; font-size: 11px; color: var(--text-dim); flex-wrap: wrap; }
-  .post-header-line { height: 1px; background: var(--border); margin-top: 24px; }
-
-  .post-hero { margin-bottom: 36px; border: 1px solid var(--border); }
-  .post-hero img { width: 100%; height: auto; display: block; }
-
-  .post-body { color: var(--text); }
-  /* Prose overrides for Tailwind Typography */
-  .post-body :global(h2) {
-    font-family: var(--sans); font-weight: 800;
-    color: var(--text-bright); font-size: 22px;
-    border-bottom: 1px solid var(--border); padding-bottom: 8px;
-    margin-top: 40px;
-  }
-  .post-body :global(h3) {
-    font-family: var(--sans); font-weight: 700;
-    color: var(--text-bright); font-size: 17px; margin-top: 28px;
-  }
-  .post-body :global(table) {
-    border: 1px solid var(--border); width: 100%;
-  }
-  .post-body :global(th) {
-    background: var(--bg2); color: var(--green);
-    font-size: 11px; letter-spacing: 0.1em;
-    padding: 8px 12px; text-align: left;
-    border-bottom: 1px solid var(--border);
-  }
-  .post-body :global(td) {
-    padding: 8px 12px; border-bottom: 1px solid var(--border);
-    font-size: 13px;
-  }
-
+  /* ── Post footer ─── */
   .post-footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border); }
   .post-footer-tags { display: flex; gap: 8px; flex-wrap: wrap; }
   .post-tag {
     color: var(--text-dim); font-size: 11px; letter-spacing: 0.05em;
     border: 1px solid var(--border); padding: 2px 8px;
-    transition: border-color 0.15s, color 0.15s;
-    text-decoration: none;
+    transition: border-color 0.15s, color 0.15s; font-family: var(--mono);
   }
-  .post-tag:hover { border-color: var(--green); color: var(--green); }
+  .post-tag:hover { border-color: var(--amber); color: var(--amber); }
+
+  /* ── Comments ─── */
+  .comments-outer {
+    max-width: 1100px; margin: 0 auto; padding: 0 40px 80px;
+  }
+  @media (max-width: 600px) { .comments-outer { padding: 0 18px 60px; } }
 </style>

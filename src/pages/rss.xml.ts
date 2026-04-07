@@ -4,20 +4,28 @@ import { getCollection } from 'astro:content';
 import type { APIContext } from 'astro';
 
 export async function GET(context: APIContext) {
-  const guides = await getCollection('guides', ({ data }) => !data.draft);
-  const sorted  = guides.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+  const posts = await getCollection('blog', ({ data }) => !data.draft);
+  const sorted = posts.sort(
+    (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
+  );
 
   return rss({
     title: 'linuxcore.dev',
-    description: 'Enterprise Linux & AI automation for the modern homelab.',
+    description: 'Linux homelab automation, self-hosted AI, monitoring, and security.',
     site: context.site!.toString(),
-    items: sorted.map(post => ({
-      title:       post.data.title,
-      pubDate:     post.data.pubDate,
-      description: post.data.description,
-      link:        `/guides/${post.slug}/`,
-      categories:  [post.data.pillar, ...post.data.tags],
-    })),
-    customData: `<language>en-us</language>`,
+    items: sorted.map(post => {
+      const section = post.data.section;
+      const link = section === 'homelab' ? `/homelab/${post.slug}`
+                 : section === 'astro'   ? `/astro/${post.slug}`
+                 : `/blog/${post.slug}`;
+      return {
+        title:       post.data.title,
+        description: post.data.description,
+        pubDate:     post.data.pubDate,
+        link,
+        categories:  post.data.tags,
+      };
+    }),
+    customData: '<language>en-gb</language>',
   });
 }

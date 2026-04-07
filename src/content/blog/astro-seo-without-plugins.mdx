@@ -1,0 +1,376 @@
+---
+title: "SEO in Astro Without Plugins — Sitemaps, Structured Data, and OG Images"
+description: "Everything Yoast SEO does on WordPress, you can do directly in Astro. Here's the complete setup: meta tags, JSON-LD structured data, XML sitemaps, Open Graph images, and robots.txt — no plugins required."
+pubDate: 2026-04-15
+section: "astro"
+tags:
+  - astro
+  - seo
+  - structured-data
+  - open-graph
+  - sitemap
+featured: false
+draft: false
+readingTime: 11
+---
+
+import Callout from '../../components/Callout.astro';
+
+The question I get most from people considering a switch from WordPress to Astro is some version of: "But what about SEO? Don't I need Yoast?"
+
+It's a reasonable concern. Yoast became the default answer for WordPress SEO because WordPress itself makes it genuinely difficult to control your HTML output. There's no clean way to set a custom `<title>` per page, add JSON-LD structured data, or manage canonical URLs without a plugin layer abstracting away the complexity.
+
+Astro doesn't have that problem. Your layout files are HTML templates. You control every byte that goes into the `<head>`. Everything Yoast does — meta tags, Open Graph, structured data, sitemaps — you can do directly, and the result is often cleaner than what Yoast produces.
+
+This article covers the complete SEO setup for linuxcore.dev. You write it once, it applies to every page automatically, and you never touch it again.
+
+---
+
+## Part 1: Meta Tags in Your Layout
+
+The foundation is a `BaseLayout.astro` that accepts SEO props and renders them into `<head>`. Every page on your site passes through this layout, so you set up the meta tags once and they apply everywhere.
+
+```astro
+---
+// src/layouts/BaseLayout.astro
+
+interface Props {
+  title:        string;
+  description?: string;
+  heroImage?:   string;
+  noIndex?:     boolean;
+  ogType?:      string;
+}
+
+const {
+  title,
+  description = 'Linux homelab automation, self-hosted AI, monitoring, and security.',
+  heroImage   = '/og-default.png',
+  noIndex     = false,
+  ogType      = 'website',
+} = Astro.props;
+
+const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+const ogImageURL   = new URL(heroImage, Astro.site);
+---
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Primary -->
+  <title>{title} | linuxcore.dev</title>
+  <meta name="description"  content={description} />
+  <link rel="canonical"     href={canonicalURL} />
+  {noIndex && <meta name="robots" content="noindex, nofollow" />}
+
+  <!-- Open Graph -->
+  <meta property="og:type"        content={ogType} />
+  <meta property="og:url"         content={canonicalURL} />
+  <meta property="og:title"       content={`${title} | linuxcore.dev`} />
+  <meta property="og:description" content={description} />
+  <meta property="og:image"       content={ogImageURL} />
+  <meta property="og:site_name"   content="linuxcore.dev" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card"        content="summary_large_image" />
+  <meta name="twitter:title"       content={`${title} | linuxcore.dev`} />
+  <meta name="twitter:description" content={description} />
+  <meta name="twitter:image"       content={ogImageURL} />
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+  <!-- RSS -->
+  <link rel="alternate" type="application/rss+xml" title="linuxcore.dev" href="/rss.xml" />
+
+  <!-- Per-page JSON-LD slot -->
+  <slot name="head" />
+</head>
+```
+
+The `<slot name="head" />` at the end lets individual pages inject additional structured data into the head without modifying the layout.
+
+<Callout type="tip">
+The `Astro.site` value comes from `site` in your `astro.config.mjs`. Make sure it's set to your production domain — `new URL(path, Astro.site)` will silently fail or produce wrong URLs if it's missing.
+</Callout>
+
+---
+
+## Part 2: Structured Data (JSON-LD)
+
+Structured data tells search engines what your content is — an article, a person, an organisation — in a machine-readable format. Google uses it for rich results. It's what makes articles show an author, date, and breadcrumb in search results.
+
+### Article Schema
+
+In your `PostLayout.astro`, add JSON-LD for each article:
+
+```astro
+---
+// In PostLayout.astro frontmatter
+const jsonLd = {
+  "@context":         "https://schema.org",
+  "@type":            "BlogPosting",
+  "headline":         title,
+  "description":      description,
+  "datePublished":    pubDate.toISOString(),
+  "dateModified":     (updatedDate ?? pubDate).toISOString(),
+  "url":              new URL(Astro.url.pathname, Astro.site).href,
+  "author": {
+    "@type": "Person",
+    "name":  "Sergej",
+    "url":   "https://linuxcore.dev/about",
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name":  "linuxcore.dev",
+    "logo": {
+      "@type": "ImageObject",
+      "url":   "https://linuxcore.dev/favicon.svg",
+    },
+  },
+  ...(heroImage ? { "image": new URL(heroImage, Astro.site).href } : {}),
+};
+---
+
+<!-- Inject into the head slot -->
+<BaseLayout title={title} description={description} heroImage={heroImage}>
+  <script type="application/ld+json" slot="head" set:html={JSON.stringify(jsonLd)} />
+  <!-- rest of layout -->
+</BaseLayout>
+```
+
+### Site-Wide Organisation Schema
+
+Add this to your `BaseLayout.astro` or a dedicated `SchemaOrg.astro` component that every page includes:
+
+```astro
+---
+const orgSchema = {
+  "@context":  "https://schema.org",
+  "@type":     "WebSite",
+  "name":      "linuxcore.dev",
+  "url":       "https://linuxcore.dev",
+  "description": "Linux homelab automation, self-hosted AI, monitoring, and security.",
+  "author": {
+    "@type": "Person",
+    "name":  "Sergej",
+    "url":   "https://linuxcore.dev/about",
+    "sameAs": [
+      "https://github.com/YOUR_USERNAME",
+    ],
+  },
+  "potentialAction": {
+    "@type":       "SearchAction",
+    "target":      "https://linuxcore.dev/search?q={search_term_string}",
+    "query-input": "required name=search_term_string",
+  },
+};
+---
+
+<script type="application/ld+json" set:html={JSON.stringify(orgSchema)} />
+```
+
+### Breadcrumb Schema
+
+Breadcrumbs help Google understand your site hierarchy and often appear in search results. Add to `PostLayout.astro`:
+
+```astro
+---
+const breadcrumbSchema = {
+  "@context": "https://schema.org",
+  "@type":    "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type":    "ListItem",
+      "position": 1,
+      "name":     "Home",
+      "item":     "https://linuxcore.dev",
+    },
+    {
+      "@type":    "ListItem",
+      "position": 2,
+      "name":     sectionLabel,
+      "item":     `https://linuxcore.dev${sectionHref}`,
+    },
+    {
+      "@type":    "ListItem",
+      "position": 3,
+      "name":     title,
+      "item":     new URL(Astro.url.pathname, Astro.site).href,
+    },
+  ],
+};
+---
+```
+
+---
+
+## Part 3: XML Sitemap
+
+Astro has a sitemap integration, but it crashed on Cloudflare Pages builds in versions around 3.x due to a `.reduce()` bug in the `build:done` hook. The safe approach is generating it yourself.
+
+Create `src/pages/sitemap.xml.ts`:
+
+```typescript
+// src/pages/sitemap.xml.ts
+import { getCollection } from 'astro:content';
+import type { APIContext } from 'astro';
+
+export async function GET(context: APIContext) {
+  const posts = await getCollection('blog', ({ data }) => !data.draft);
+
+  const pages = [
+    { url: '/',        priority: '1.0', changefreq: 'weekly' },
+    { url: '/homelab', priority: '0.9', changefreq: 'weekly' },
+    { url: '/astro',   priority: '0.9', changefreq: 'weekly' },
+    { url: '/scripts', priority: '0.8', changefreq: 'monthly' },
+    { url: '/shop',    priority: '0.7', changefreq: 'weekly' },
+    { url: '/about',   priority: '0.6', changefreq: 'yearly' },
+    { url: '/contact', priority: '0.5', changefreq: 'yearly' },
+  ];
+
+  const postUrls = posts.map(post => {
+    const section = post.data.section;
+    const path = section === 'homelab' ? `/homelab/${post.slug}`
+               : section === 'astro'   ? `/astro/${post.slug}`
+               : `/blog/${post.slug}`;
+    return {
+      url:        path,
+      priority:   '0.8',
+      changefreq: 'monthly',
+      lastmod:    (post.data.updatedDate ?? post.data.pubDate).toISOString().split('T')[0],
+    };
+  });
+
+  const allUrls = [...pages, ...postUrls];
+  const baseUrl = context.site?.toString().replace(/\/$/, '') ?? 'https://linuxcore.dev';
+
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${allUrls.map(p => `  <url>
+    <loc>${baseUrl}${p.url}</loc>
+    <priority>${p.priority}</priority>
+    <changefreq>${p.changefreq}</changefreq>
+    ${p.lastmod ? `<lastmod>${p.lastmod}</lastmod>` : ''}
+  </url>`).join('\n')}
+</urlset>`;
+
+  return new Response(xml, {
+    headers: { 'Content-Type': 'application/xml; charset=utf-8' },
+  });
+}
+```
+
+Reference the sitemap in `public/robots.txt`:
+
+```
+User-agent: *
+Allow: /
+Disallow: /go/
+
+Sitemap: https://linuxcore.dev/sitemap.xml
+```
+
+---
+
+## Part 4: RSS Feed
+
+RSS is both useful for readers and a signal to aggregators and search engines. Create `src/pages/rss.xml.ts`:
+
+```typescript
+import rss from '@astrojs/rss';
+import { getCollection } from 'astro:content';
+import type { APIContext } from 'astro';
+
+export async function GET(context: APIContext) {
+  const posts = await getCollection('blog', ({ data }) => !data.draft);
+  const sorted = posts.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+
+  return rss({
+    title:       'linuxcore.dev',
+    description: 'Linux homelab automation, self-hosted AI, monitoring, and security.',
+    site:        context.site!.toString(),
+    items: sorted.map(post => {
+      const section = post.data.section;
+      const link = section === 'homelab' ? `/homelab/${post.slug}`
+                 : section === 'astro'   ? `/astro/${post.slug}`
+                 : `/blog/${post.slug}`;
+      return {
+        title:       post.data.title,
+        description: post.data.description,
+        pubDate:     post.data.pubDate,
+        link,
+        categories:  post.data.tags,
+      };
+    }),
+    customData: '<language>en-gb</language>',
+  });
+}
+```
+
+---
+
+## Part 5: Open Graph Images
+
+OG images are the preview cards that appear when you share a link on social media. For maximum impact, each article should have a unique OG image with the article title on it.
+
+The simplest approach for a static site: generate a default OG image in your design tool and place it at `public/og-default.png`. Then for articles that have a hero image, use that as the OG image.
+
+For automated per-article OG image generation, Astro supports the `@vercel/og` library (despite the name, it works on Cloudflare too):
+
+```typescript
+// src/pages/og/[slug].png.ts
+import { getCollection } from 'astro:content';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('blog', ({ data }) => !data.draft);
+  return posts.map(post => ({ params: { slug: post.slug }, props: { post } }));
+}
+
+// Dynamic OG image generation requires a server endpoint
+// For a static build, the simpler approach is a consistent
+// designed default image per section stored in /public/
+```
+
+For linuxcore.dev the pragmatic approach is a well-designed default OG image (`public/og-default.png`) that includes the site name and logo. Per-article images are added manually for featured/pillar content. This gives 80% of the value for 20% of the effort.
+
+---
+
+## Part 6: Validating Your Setup
+
+After deploying, validate each piece:
+
+**Meta tags:**
+View source on any page and check the `<head>` section. Or use [metatags.io](https://metatags.io) to preview how your page looks when shared.
+
+**Structured data:**
+Paste any URL into [Google's Rich Results Test](https://search.google.com/test/rich-results). It shows which schemas were found and any errors.
+
+**Sitemap:**
+Visit `https://yourdomain.com/sitemap.xml` directly. Submit it to Google Search Console under **Indexing** → **Sitemaps**.
+
+**Open Graph:**
+Use the [Facebook Sharing Debugger](https://developers.facebook.com/tools/debug/) or [Twitter Card Validator](https://cards-dev.twitter.com/validator) to preview your OG cards.
+
+---
+
+## What You've Built
+
+With these files in place, every page on your site has:
+
+- Correct `<title>` and `<meta description>` — unique per page, pulled from frontmatter
+- Canonical URL — prevents duplicate content issues
+- Open Graph tags — proper preview cards on every platform
+- JSON-LD structured data — article schema, breadcrumbs, site-wide organisation schema
+- XML sitemap — all pages listed with priority and last modified date
+- RSS feed — updated automatically on every deploy
+- `robots.txt` — tells crawlers where to go and where not to
+
+No plugin updates, no compatibility issues, no settings panel. You wrote it once and it covers the entire site.
+
+---
+
+*Next in this series: [Newsletter Integration in Astro with MailerLite](/astro/astro-newsletter-mailerLite) — subscriber forms without a backend.*

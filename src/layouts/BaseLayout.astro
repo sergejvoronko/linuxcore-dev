@@ -1,23 +1,23 @@
 ---
 // src/layouts/BaseLayout.astro
-// Wraps every page with <head>, Nav, Footer, and global styles.
-
 import Nav from '../components/Nav.astro';
 import Footer from '../components/Footer.astro';
 import '../styles/global.css';
 
 interface Props {
-  title: string;
+  title:        string;
   description?: string;
-  image?: string;          // OG image path (relative to /public)
-  noIndex?: boolean;
+  heroImage?:   string;
+  noIndex?:     boolean;
+  ogType?:      string;
 }
 
 const {
   title,
-  description = 'Enterprise Linux & AI automation for the modern homelab. Deep-dive guides on self-hosted AI, Ansible, AWS hybrid, and monitoring.',
-  image = '/og-default.png',
-  noIndex = false,
+  description = 'Linux homelab automation, self-hosted AI, monitoring, and security — practical guides from a sysadmin who actually runs this stuff.',
+  heroImage = '/og-default.png',
+  noIndex   = false,
+  ogType    = 'website',
 } = Astro.props;
 
 const canonicalURL = new URL(Astro.url.pathname, Astro.site);
@@ -31,45 +31,42 @@ const currentPath  = Astro.url.pathname;
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="canonical" href={canonicalURL} />
 
-  <!-- Primary Meta Tags -->
+  <!-- Primary meta -->
   <title>{title} | linuxcore.dev</title>
   <meta name="description" content={description} />
   {noIndex && <meta name="robots" content="noindex, nofollow" />}
 
-  <!-- Open Graph / Social -->
-  <meta property="og:type"        content="website" />
+  <!-- Open Graph -->
+  <meta property="og:type"        content={ogType} />
   <meta property="og:url"         content={canonicalURL} />
   <meta property="og:title"       content={`${title} | linuxcore.dev`} />
   <meta property="og:description" content={description} />
-  <meta property="og:image"       content={new URL(image, Astro.site)} />
+  <meta property="og:image"       content={new URL(heroImage, Astro.site)} />
 
-  <!-- Twitter Card -->
+  <!-- Twitter card -->
   <meta name="twitter:card"        content="summary_large_image" />
   <meta name="twitter:title"       content={`${title} | linuxcore.dev`} />
   <meta name="twitter:description" content={description} />
-  <meta name="twitter:image"       content={new URL(image, Astro.site)} />
+  <meta name="twitter:image"       content={new URL(heroImage, Astro.site)} />
 
   <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 
-  <!-- RSS Feed -->
+  <!-- RSS -->
   <link rel="alternate" type="application/rss+xml" title="linuxcore.dev" href="/rss.xml" />
 </head>
-
 <body>
   <Nav currentPath={currentPath} />
-
   <main class="page-main">
-    <slot />  <!-- ← page content goes here -->
+    <slot />
   </main>
-
   <Footer />
 </body>
 </html>
 
 <style>
   .page-main {
-    padding-top: 57px;     /* offset for fixed nav height */
+    padding-top: var(--nav-height);
     min-height: 100vh;
     display: flex;
     flex-direction: column;

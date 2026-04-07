@@ -1,0 +1,437 @@
+---
+title: "Contact Forms in Astro with Cloudflare Pages Functions and MailChannels"
+description: "Send email from a fully static Astro site using Cloudflare Pages Functions and MailChannels — no backend server, no third-party form service, completely free."
+pubDate: 2026-04-05
+section: "astro"
+tags:
+  - astro
+  - cloudflare
+  - contact-form
+  - mailchannels
+  - pages-functions
+featured: false
+draft: false
+readingTime: 10
+---
+
+import Callout from '../../components/Callout.astro';
+
+The first time I needed a contact form on linuxcore.dev, the obvious solutions all had the same problem: they required something I didn't have. Formspree and Netlify Forms require a third-party account and introduce a dependency I don't control. A self-hosted mail server reintroduces exactly the infrastructure I was avoiding. SendGrid and Mailgun are free to start but add API keys, billing accounts, and rate limits to manage.
+
+Cloudflare Pages Functions combined with MailChannels is a different kind of answer. It's a serverless function that runs at the edge, built directly into your Cloudflare Pages project, using a mail delivery service that Cloudflare has a partnership with specifically for Pages users. No separate account, no API key for the mail service, completely free.
+
+This article walks through the complete setup on linuxcore.dev — from the form HTML to the function handling delivery.
+
+---
+
+## How It Works
+
+When someone submits your contact form, the browser POSTs to `/api/contact` — a URL handled by a Cloudflare Pages Function. That function formats an email and sends it to the MailChannels API, which delivers it to your inbox.
+
+The flow:
+
+```
+Browser → POST /api/contact
+       → Cloudflare Pages Function (runs at edge)
+       → MailChannels API
+       → Your inbox
+```
+
+Cloudflare's partnership with MailChannels means authenticated requests from Cloudflare Workers/Pages don't require a MailChannels account — delivery is included in the Pages free tier.
+
+<Callout type="info">
+MailChannels stopped offering free standalone accounts in 2023, but delivery from Cloudflare Pages Functions specifically remains free and doesn't require a MailChannels account. This only works when called from within a Cloudflare Pages Function.
+</Callout>
+
+---
+
+## Project Structure
+
+You'll create two files:
+
+```
+functions/
+  api/
+    contact.ts      ← Cloudflare Pages Function
+src/
+  pages/
+    contact.astro   ← The form page
+```
+
+Cloudflare Pages automatically detects the `functions/` directory and deploys everything inside it as serverless functions. The file path maps directly to the URL: `functions/api/contact.ts` becomes `/api/contact`.
+
+---
+
+## Step 1: Create the Cloudflare Pages Function
+
+Create `functions/api/contact.ts` at the root of your project (not inside `src/`):
+
+```typescript
+// functions/api/contact.ts
+
+interface Env {
+  CONTACT_TO_EMAIL: string;
+  CONTACT_FROM:     string;
+}
+
+interface ContactBody {
+  name:    string;
+  email:   string;
+  subject: string;
+  message: string;
+}
+
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin':  '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
+
+// Handle preflight OPTIONS request
+export const onRequestOptions = () =>
+  new Response(null, { status: 204, headers: CORS_HEADERS });
+
+export async function onRequestPost({ request, env }: {
+  request: Request;
+  env: Env;
+}): Promise<Response> {
+
+  // Parse the request body
+  let body: ContactBody;
+  try {
+    body = await request.json();
+  } catch {
+    return errorResponse('Invalid request body', 400);
+  }
+
+  const { name, email, subject, message } = body;
+
+  // Basic validation
+  if (!name?.trim() || !email?.trim() || !subject?.trim() || !message?.trim()) {
+    return errorResponse('All fields are required', 400);
+  }
+
+  if (!email.includes('@')) {
+    return errorResponse('Invalid email address', 400);
+  }
+
+  // Build the MailChannels payload
+  const emailPayload = {
+    personalizations: [{
+      to: [{ email: env.CONTACT_TO_EMAIL }],
+    }],
+    from: {
+      email: env.CONTACT_FROM,
+      name:  'linuxcore.dev contact form',
+    },
+    reply_to: { email, name },
+    subject: `[linuxcore.dev] ${subject}`,
+    content: [
+      {
+        type:  'text/plain',
+        value: `Name: ${name}\nEmail: ${email}\n\n${message}`,
+      },
+      {
+        type:  'text/html',
+        value: buildHtml({ name, email, subject, message }),
+      },
+    ],
+  };
+
+  // Send via MailChannels
+  const res = await fetch('https://api.mailchannels.net/tx/v1/send', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify(emailPayload),
+  });
+
+  if (!res.ok) {
+    const error = await res.text();
+    console.error('MailChannels error:', res.status, error);
+    return errorResponse('Failed to send message', 500);
+  }
+
+  return new Response(
+    JSON.stringify({ ok: true }),
+    { status: 200, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
+  );
+}
+
+function buildHtml({ name, email, subject, message }: ContactBody): string {
+  return `
+    <div style="font-family:monospace;background:#18120a;color:#e8dcc8;padding:32px;max-width:560px;margin:0 auto">
+      <div style="color:#f0a500;font-size:11px;letter-spacing:0.1em;margin-bottom:20px;text-transform:uppercase">
+        linuxcore.dev — Contact Form
+      </div>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:24px;font-size:14px">
+        <tr>
+          <td style="padding:8px 0;color:rgba(232,220,200,0.5);width:70px;vertical-align:top">From</td>
+          <td style="padding:8px 0;color:#e8dcc8">${name}</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 0;color:rgba(232,220,200,0.5);vertical-align:top">Email</td>
+          <td style="padding:8px 0"><a href="mailto:${email}" style="color:#f0a500">${email}</a></td>
+        </tr>
+        <tr>
+          <td style="padding:8px 0;color:rgba(232,220,200,0.5);vertical-align:top">Subject</td>
+          <td style="padding:8px 0;color:#e8dcc8">${subject}</td>
+        </tr>
+      </table>
+      <div style="background:#1e1710;border-left:3px solid #f0a500;padding:16px 20px">
+        <div style="font-size:10px;color:#f0a500;letter-spacing:0.1em;margin-bottom:10px">MESSAGE</div>
+        <pre style="white-space:pre-wrap;margin:0;color:#e8dcc8;font-size:14px;line-height:1.7">${message}</pre>
+      </div>
+    </div>
+  `;
+}
+
+function errorResponse(message: string, status: number): Response {
+  return new Response(
+    JSON.stringify({ error: message }),
+    { status, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
+  );
+}
+```
+
+---
+
+## Step 2: Set Environment Variables
+
+The function reads two environment variables: where to send messages, and what address to send from.
+
+**For local development**, create a `.env` file at the project root:
+
+```bash
+CONTACT_TO_EMAIL=your@email.com
+CONTACT_FROM=contact@linuxcore.dev
+```
+
+Add `.env` to `.gitignore` — never commit credentials.
+
+**For Cloudflare Pages production:**
+
+1. Go to your Cloudflare dashboard
+2. **Workers & Pages** → your project → **Settings** → **Environment Variables**
+3. Add both variables under **Production**:
+   - `CONTACT_TO_EMAIL` — your inbox address
+   - `CONTACT_FROM` — the sender address (should be `something@yourdomain.com`)
+
+<Callout type="warning">
+The `CONTACT_FROM` address needs to be on a domain you own and have configured in Cloudflare. Using a Gmail or other external address as the sender will likely cause delivery to fail or land in spam.
+</Callout>
+
+---
+
+## Step 3: Add SPF Record for MailChannels
+
+To prevent your emails from landing in spam, you need to tell the world that MailChannels is authorised to send on behalf of your domain.
+
+In Cloudflare DNS, add a TXT record:
+
+| Type | Name | Value |
+|---|---|---|
+| TXT | `@` | `v=spf1 include:relay.mailchannels.net ~all` |
+
+If you already have an SPF record, add `include:relay.mailchannels.net` to it rather than creating a second one. Multiple SPF records on the same domain break email authentication.
+
+---
+
+## Step 4: Build the Contact Form Page
+
+Create `src/pages/contact.astro`:
+
+```astro
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout
+  title="Contact"
+  description="Get in touch with linuxcore.dev"
+>
+  <main class="contact-page">
+    <div class="contact-inner">
+
+      <div class="page-header">
+        <div class="header-label">// CONTACT</div>
+        <h1 class="page-title">Get in touch</h1>
+        <p class="page-lead">
+          Questions, feedback, or content ideas. I read everything.
+          For technical questions on specific articles, the comments section is usually faster.
+        </p>
+      </div>
+
+      <form class="contact-form" id="contact-form" novalidate>
+        <div class="field">
+          <label for="name">Name</label>
+          <input type="text" id="name" name="name" required placeholder="Your name" />
+        </div>
+
+        <div class="field">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" required placeholder="your@email.com" />
+        </div>
+
+        <div class="field">
+          <label for="subject">Subject</label>
+          <input type="text" id="subject" name="subject" required placeholder="What's this about?" />
+        </div>
+
+        <div class="field">
+          <label for="message">
+            Message
+            <span id="char-count" class="char-count">0 / 2000</span>
+          </label>
+          <textarea id="message" name="message" required maxlength="2000" rows="7" placeholder="Your message..."></textarea>
+        </div>
+
+        <div id="form-status" class="form-status" role="alert" aria-live="polite"></div>
+
+        <button type="submit" id="submit-btn" class="btn-primary">
+          Send Message →
+        </button>
+      </form>
+
+    </div>
+  </main>
+</BaseLayout>
+
+<style>
+  .contact-page { max-width: 1100px; margin: 0 auto; padding: 3rem 40px 5rem; }
+  .contact-inner { max-width: 560px; }
+
+  .header-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em; color: var(--amber); margin-bottom: 10px; }
+  .header-label::before { content: '// '; color: var(--text-dim); }
+  .page-title { font-family: var(--display); font-size: clamp(28px, 4vw, 42px); font-weight: 600; color: var(--text-bright); margin-bottom: 12px; }
+  .page-lead { font-size: 16px; color: var(--text-mid); line-height: 1.7; margin-bottom: 2.5rem; }
+
+  .contact-form { display: flex; flex-direction: column; gap: 1.5rem; }
+
+  .field { display: flex; flex-direction: column; gap: 6px; }
+
+  .field label {
+    font-family: var(--mono); font-size: 10px;
+    color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.1em;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+
+  .char-count { font-size: 10px; color: var(--text-dim); font-family: var(--mono); }
+
+  .field input, .field textarea {
+    background: var(--bg2); border: 1px solid var(--border-mid);
+    color: var(--text); font-family: var(--sans); font-size: 15px;
+    padding: 10px 14px; outline: none; width: 100%;
+    transition: border-color 0.15s; resize: vertical;
+  }
+  .field input:focus, .field textarea:focus { border-color: var(--amber); }
+  .field input::placeholder, .field textarea::placeholder { color: var(--text-dim); }
+
+  .form-status {
+    font-family: var(--mono); font-size: 13px;
+    padding: 10px 14px; display: none;
+  }
+  .form-status.success { display: block; background: rgba(78,202,139,0.08); border: 1px solid rgba(78,202,139,0.25); color: var(--green); }
+  .form-status.error   { display: block; background: rgba(255,107,107,0.08); border: 1px solid rgba(255,107,107,0.25); color: var(--red); }
+</style>
+
+<script>
+  const form    = document.getElementById('contact-form') as HTMLFormElement;
+  const btn     = document.getElementById('submit-btn') as HTMLButtonElement;
+  const status  = document.getElementById('form-status') as HTMLDivElement;
+  const message = document.getElementById('message') as HTMLTextAreaElement;
+  const counter = document.getElementById('char-count') as HTMLSpanElement;
+
+  message?.addEventListener('input', () => {
+    counter.textContent = `${message.value.length} / 2000`;
+  });
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+    status.className = 'form-status';
+    status.textContent = '';
+
+    try {
+      const res = await fetch('/api/contact', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name:    (document.getElementById('name') as HTMLInputElement).value,
+          email:   (document.getElementById('email') as HTMLInputElement).value,
+          subject: (document.getElementById('subject') as HTMLInputElement).value,
+          message: message.value,
+        }),
+      });
+
+      const data = await res.json() as { ok?: boolean; error?: string };
+
+      if (data.ok) {
+        status.className = 'form-status success';
+        status.textContent = '✓ Message sent — I\'ll get back to you soon.';
+        form.reset();
+        counter.textContent = '0 / 2000';
+      } else {
+        throw new Error(data.error ?? 'Unexpected error');
+      }
+    } catch (err: any) {
+      status.className = 'form-status error';
+      status.textContent = `✕ ${err.message ?? 'Something went wrong. Try again or email directly.'}`;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Send Message →';
+    }
+  });
+</script>
+```
+
+---
+
+## Testing Locally
+
+Cloudflare Pages Functions don't run with `npm run dev` by default — the Astro dev server doesn't execute them. To test the function locally you need the Wrangler CLI:
+
+```bash
+npm install -g wrangler
+npx wrangler pages dev dist --compatibility-date=2024-01-01
+```
+
+First build the site, then serve it with Wrangler:
+
+```bash
+npm run build
+npx wrangler pages dev dist
+```
+
+Wrangler reads your `.env` file automatically and runs the functions alongside your static files.
+
+Alternatively, test in production by deploying to a preview branch first — push to a non-main branch and Cloudflare gives you a preview URL with full function support.
+
+---
+
+## Troubleshooting
+
+**Emails landing in spam:**
+Check your SPF record is correctly set. Use [MXToolbox SPF checker](https://mxtoolbox.com/spf.aspx) to validate. Also consider adding a DMARC record.
+
+**Function returns 500:**
+Check the Cloudflare Pages function logs: **Workers & Pages** → your project → **Deployments** → click latest deployment → **Functions** tab → view logs.
+
+**`CONTACT_FROM` address rejected:**
+The sender address must be on a domain you control. If `linuxcore.dev` is your domain, `contact@linuxcore.dev` will work. A Gmail address as the sender will be rejected by MailChannels.
+
+**Form submits but nothing arrives:**
+Confirm both environment variables are set in Cloudflare Pages under **Production** environment, not just **Preview**. After adding them, trigger a new deployment.
+
+---
+
+## The End Result
+
+A working contact form with no third-party form service, no monthly bill, and no additional infrastructure. The function runs in Cloudflare's edge network — the same infrastructure serving your static site — and emails arrive in your inbox within seconds of submission.
+
+The entire setup — function, form, SPF record — takes under 30 minutes and requires touching exactly three files.
+
+---
+
+*Next in this series: [Building a Shop in Astro with Printify and Stripe](/astro/astro-printify-stripe-shop) — print-on-demand merch with Cloudflare checkout.*

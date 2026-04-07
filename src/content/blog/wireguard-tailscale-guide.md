@@ -2,6 +2,7 @@
 title: "WireGuard vs Tailscale for Homelab Remote Access: Full Setup Guide (2026)"
 description: "Secure remote access to your homelab without port forwarding. Set up both WireGuard and Tailscale, understand when to use each, and lock down your Linux servers properly — from a sysadmin who runs both."
 pubDate: 2026-04-21
+section: "homelab"
 pillar: "Security"
 type: "PILLAR"
 tags: ["wireguard", "tailscale", "vpn", "security", "linux", "networking", "homelab", "ssh", "ufw"]

@@ -4,11 +4,19 @@ import mdx from '@astrojs/mdx';
 
 export default defineConfig({
   site: 'https://linuxcore.dev',
-  integrations: [tailwind(), mdx()],
+  integrations: [
+    tailwind(),
+    mdx(),
+  ],
   markdown: {
-    shikiConfig: { theme: 'github-dark', wrap: true },
+    shikiConfig: {
+      theme: 'github-dark',
+      wrap: true,
+    },
   },
   vite: {
-    optimizeDeps: { exclude: ['astro:content'] },
+    optimizeDeps: {
+      exclude: ['astro:content'],
+    },
   },
 });

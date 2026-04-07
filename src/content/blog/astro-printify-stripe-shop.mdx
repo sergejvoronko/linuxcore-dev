@@ -1,0 +1,527 @@
+---
+title: "Building a Print-on-Demand Shop in Astro with Printify and Stripe"
+description: "Add a fully functional merch shop to your Astro site — t-shirts, mugs, prints — using Printify for fulfilment and Stripe for payments. No inventory, no warehousing, ships worldwide."
+pubDate: 2026-04-10
+section: "astro"
+tags:
+  - astro
+  - printify
+  - stripe
+  - shop
+  - cloudflare
+  - ecommerce
+featured: false
+draft: false
+readingTime: 14
+---
+
+import Callout from '../../components/Callout.astro';
+
+Adding a shop to a static site sounds like the kind of thing that breaks the entire "no server" premise. You need product data, you need to handle payments, you need order management. In the WordPress world this means WooCommerce — another database, another plugin stack, another attack surface.
+
+The Astro + Printify + Stripe setup works differently. Printify handles the entire fulfilment side: you design products in their dashboard, they print and ship when orders come in. Stripe handles payments. Your Astro site fetches product data from Printify's API at build time, renders static product pages, and uses a small Cloudflare Pages Function to create Stripe checkout sessions at runtime.
+
+The result is a working merch shop — products, variant selection, checkout — with no inventory, no warehouse, no order management system to run, and no changes to your hosting costs.
+
+---
+
+## Architecture Overview
+
+```
+Printify            → Product data (fetched at build time)
+Astro               → Static product pages
+Cloudflare Function → Creates Stripe Checkout sessions at runtime
+Stripe              → Handles payment, returns order ID
+Printify            → Automatically fulfils after successful payment
+```
+
+The only dynamic piece is the checkout function — everything else is static HTML generated from Printify's API during your Cloudflare Pages build.
+
+---
+
+## Prerequisites
+
+- An Astro project deployed on Cloudflare Pages
+- A Printify account (free at [printify.com](https://printify.com))
+- A Stripe account (free at [stripe.com](https://stripe.com))
+- Products created and published in Printify
+
+---
+
+## Step 1: Set Up Printify
+
+**Create your products:**
+
+1. Log into Printify
+2. Go to **My Products** → **Add new product**
+3. Choose a print provider (Printify lists multiple — check shipping costs and times for your target audience)
+4. Upload your design and configure variants (sizes, colours)
+5. Set pricing
+6. Click **Publish** — unpublished products won't appear via the API
+
+**Get your API credentials:**
+
+1. Go to **My Account** → **Connections** → **API**
+2. Click **Generate new token**
+3. Copy the token — you'll only see it once
+
+**Get your Shop ID:**
+
+Make a quick API call to find your shop ID. Replace `YOUR_TOKEN`:
+
+```bash
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+  https://api.printify.com/v1/shops.json
+```
+
+The response gives you a numeric `id` — that's your `PRINTIFY_SHOP_ID`.
+
+---
+
+## Step 2: Set Up Stripe
+
+1. Create a Stripe account and complete the basic setup
+2. Go to **Developers** → **API Keys**
+3. Copy your **Secret key** (starts with `sk_live_` for production, `sk_test_` for testing)
+4. In Printify, go to **Sales channels** → **Add new** → link your Stripe account so orders auto-fulfil after payment
+
+<Callout type="warning">
+Start with Stripe's test mode (`sk_test_` key) until you've verified the full flow end-to-end. Test card number: `4242 4242 4242 4242`, any future expiry, any CVC.
+</Callout>
+
+---
+
+## Step 3: Add Environment Variables
+
+**Local development** — create `.env` at project root:
+
+```bash
+PRINTIFY_API_TOKEN=your_printify_token
+PRINTIFY_SHOP_ID=12345678
+STRIPE_SECRET_KEY=sk_test_...
+SITE_URL=http://localhost:4321
+```
+
+**Cloudflare Pages production** — add all four under **Settings** → **Environment Variables**.
+
+---
+
+## Step 4: Create the Printify Helper Library
+
+Create `src/lib/printify.ts`:
+
+```typescript
+// src/lib/printify.ts
+
+const BASE_URL = 'https://api.printify.com/v1';
+
+function getHeaders() {
+  const token = import.meta.env.PRINTIFY_API_TOKEN;
+  if (!token) throw new Error('PRINTIFY_API_TOKEN not set');
+  return {
+    Authorization: `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  };
+}
+
+function getShopId() {
+  const id = import.meta.env.PRINTIFY_SHOP_ID;
+  if (!id) throw new Error('PRINTIFY_SHOP_ID not set');
+  return id;
+}
+
+export async function getProducts(): Promise<any[]> {
+  const res = await fetch(
+    `${BASE_URL}/shops/${getShopId()}/products.json?limit=40`,
+    { headers: getHeaders() }
+  );
+  if (!res.ok) throw new Error(`Printify API error: ${res.status}`);
+  const data = await res.json() as { data: any[] };
+  // Only return published/visible products
+  return (data.data ?? []).filter((p: any) => p.visible);
+}
+
+export async function getProduct(id: string): Promise<any> {
+  const res = await fetch(
+    `${BASE_URL}/shops/${getShopId()}/products/${id}.json`,
+    { headers: getHeaders() }
+  );
+  if (!res.ok) throw new Error(`Product not found: ${id}`);
+  return res.json();
+}
+
+export function getDefaultImage(product: any): string {
+  return product?.images?.[0]?.src ?? '/images/placeholder.png';
+}
+
+export function getBasePrice(product: any): number {
+  const prices = (product?.variants ?? [])
+    .filter((v: any) => v.is_enabled)
+    .map((v: any) => Number(v.price ?? 0));
+  return prices.length ? Math.min(...prices) : 0;
+}
+
+export function formatPrice(cents: number, currency = 'EUR'): string {
+  return new Intl.NumberFormat('de-DE', {
+    style: 'currency',
+    currency,
+  }).format(cents / 100);
+}
+
+export function getEnabledVariants(product: any): any[] {
+  return (product?.variants ?? []).filter((v: any) => v.is_enabled);
+}
+```
+
+---
+
+## Step 5: Build the Shop Pages
+
+**Shop index** — `src/pages/shop/index.astro`:
+
+```astro
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getProducts, getDefaultImage, getBasePrice, formatPrice } from '../../lib/printify';
+
+let products: any[] = [];
+let fetchError = '';
+
+try {
+  products = await getProducts();
+} catch (e: any) {
+  fetchError = e.message;
+  console.error('Shop build error:', e.message);
+}
+---
+
+<BaseLayout title="Shop" description="linuxcore.dev merch — printed on demand, ships worldwide.">
+  <main class="shop-page">
+    <header class="shop-hero">
+      <div class="label">// SHOP</div>
+      <h1>The linuxcore<em> shop</em></h1>
+      <p>T-shirts, mugs, and prints for people who self-host everything. Printed on demand.</p>
+    </header>
+
+    {fetchError && (
+      <div class="notice">
+        Shop is unavailable: <code>{fetchError}</code>
+        <br/>Add <code>PRINTIFY_API_TOKEN</code> and <code>PRINTIFY_SHOP_ID</code> to your environment variables.
+      </div>
+    )}
+
+    {!fetchError && products.length === 0 && (
+      <div class="notice">No products published yet. Publish products in Printify to see them here.</div>
+    )}
+
+    {products.length > 0 && (
+      <div class="products-grid">
+        {products.map(p => (
+          <a href={`/shop/product/${p.id}`} class="product-card">
+            <div class="product-img">
+              <img src={getDefaultImage(p)} alt={p.title} width="600" height="600" loading="lazy" />
+            </div>
+            <div class="product-info">
+              <div class="product-name">{p.title}</div>
+              <div class="product-price">from {formatPrice(getBasePrice(p))}</div>
+            </div>
+          </a>
+        ))}
+      </div>
+    )}
+  </main>
+</BaseLayout>
+
+<style>
+  .shop-page { max-width: 1100px; margin: 0 auto; padding: 3rem 40px 5rem; }
+  .label { font-family: var(--mono); font-size: 10px; letter-spacing: .2em; color: var(--amber); margin-bottom: 10px; }
+  .label::before { content: '// '; color: var(--text-dim); }
+  .shop-hero h1 { font-family: var(--display); font-size: clamp(28px, 4vw, 48px); color: var(--text-bright); font-weight: 600; margin-bottom: 10px; }
+  .shop-hero em { font-style: italic; font-weight: 300; color: var(--amber); }
+  .shop-hero p { font-size: 17px; color: var(--text-mid); margin-bottom: 2.5rem; }
+  .notice { padding: 16px; border: 1px solid var(--border-mid); font-size: 14px; color: var(--text-dim); font-family: var(--mono); margin-bottom: 2rem; }
+  .notice code { color: var(--amber); }
+  .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1.5rem; }
+  .product-card { display: block; text-decoration: none; border: 1px solid var(--border); background: var(--bg2); transition: border-color .15s, transform .15s; }
+  .product-card:hover { border-color: var(--border-amber); transform: translateY(-2px); }
+  .product-img { aspect-ratio: 1; overflow: hidden; background: var(--bg3); }
+  .product-img img { width: 100%; height: 100%; object-fit: cover; transition: transform .3s; display: block; }
+  .product-card:hover .product-img img { transform: scale(1.04); }
+  .product-info { padding: 1rem; }
+  .product-name { font-family: var(--display); font-size: 15px; font-weight: 600; color: var(--text-bright); margin-bottom: 4px; }
+  .product-price { font-family: var(--mono); font-size: 12px; color: var(--amber); }
+</style>
+```
+
+**Product detail page** — `src/pages/shop/product/[id].astro`:
+
+```astro
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { getProducts, getProduct, getDefaultImage, getBasePrice, getEnabledVariants, formatPrice } from '../../../lib/printify';
+
+export async function getStaticPaths() {
+  try {
+    const products = await getProducts();
+    return products.map(p => ({ params: { id: p.id } }));
+  } catch {
+    return [];
+  }
+}
+
+const { id } = Astro.params;
+let product: any = null;
+
+try {
+  product = await getProduct(id!);
+} catch (e: any) {
+  console.error(e.message);
+}
+
+const variants  = product ? getEnabledVariants(product) : [];
+const images    = product?.images?.slice(0, 6) ?? [];
+const basePrice = product ? getBasePrice(product) : 0;
+---
+
+<BaseLayout title={product?.title ?? 'Product'} description={product?.description?.replace(/<[^>]+>/g, '').slice(0, 160) ?? ''}>
+  <main class="product-page">
+    {!product && (
+      <div class="error">Product not found. <a href="/shop">← Back to shop</a></div>
+    )}
+
+    {product && (
+      <div class="product-layout">
+        <!-- Gallery -->
+        <div class="gallery">
+          <div class="gallery-main">
+            <img id="main-img" src={images[0]?.src ?? '/images/placeholder.png'} alt={product.title} width="800" height="800" />
+          </div>
+          {images.length > 1 && (
+            <div class="thumbs">
+              {images.map((img: any, i: number) => (
+                <button class:list={['thumb', { active: i === 0 }]} data-src={img.src}>
+                  <img src={img.src} alt="" width="80" height="80" loading="lazy" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <!-- Details -->
+        <div class="details">
+          <a href="/shop" class="back">← Shop</a>
+          <h1 class="product-title">{product.title}</h1>
+          <div class="price" id="price-display">{formatPrice(basePrice)}</div>
+
+          {variants.length > 0 && (
+            <div class="field">
+              <label for="variant-select" class="field-label">Select option</label>
+              <select id="variant-select" class="variant-select">
+                {variants.map((v: any) => (
+                  <option value={v.id} data-price={v.price}>
+                    {v.title} — {formatPrice(v.price)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div class="field">
+            <label class="field-label">Quantity</label>
+            <div class="qty-wrap">
+              <button class="qty-btn" id="qty-minus">−</button>
+              <input type="number" id="qty" value="1" min="1" max="10" class="qty-input" />
+              <button class="qty-btn" id="qty-plus">+</button>
+            </div>
+          </div>
+
+          <button class="btn-primary buy-btn" id="buy-btn">Buy Now →</button>
+          <div id="buy-status" class="buy-status"></div>
+
+          {product.description && (
+            <div class="product-desc" set:html={product.description} />
+          )}
+        </div>
+      </div>
+    )}
+  </main>
+</BaseLayout>
+
+<style>
+  .product-page { max-width: 1100px; margin: 0 auto; padding: 3rem 40px 5rem; }
+  .error { color: var(--text-dim); font-family: var(--mono); }
+  .error a { color: var(--amber); }
+  .product-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: start; }
+  @media (max-width: 720px) { .product-layout { grid-template-columns: 1fr; gap: 2rem; } }
+
+  .gallery-main { border: 1px solid var(--border); overflow: hidden; }
+  .gallery-main img { width: 100%; height: auto; display: block; }
+  .thumbs { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .thumb { border: 1px solid var(--border); background: var(--bg2); cursor: pointer; width: 64px; height: 64px; overflow: hidden; padding: 0; transition: border-color .15s; }
+  .thumb.active, .thumb:hover { border-color: var(--amber); }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  .back { font-family: var(--mono); font-size: 11px; color: var(--text-dim); display: block; margin-bottom: 1rem; text-decoration: none; }
+  .back:hover { color: var(--amber); }
+  .product-title { font-family: var(--display); font-size: clamp(22px, 3vw, 32px); font-weight: 600; color: var(--text-bright); margin-bottom: 8px; line-height: 1.2; }
+  .price { font-family: var(--mono); font-size: 1.6rem; color: var(--amber); margin-bottom: 1.5rem; }
+
+  .field { margin-bottom: 1.25rem; }
+  .field-label { display: block; font-family: var(--mono); font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 6px; }
+  .variant-select { width: 100%; padding: 10px 14px; background: var(--bg2); border: 1px solid var(--border-mid); color: var(--text); font-family: var(--sans); font-size: 14px; outline: none; cursor: pointer; transition: border-color .15s; }
+  .variant-select:focus { border-color: var(--amber); }
+
+  .qty-wrap { display: flex; border: 1px solid var(--border-mid); width: fit-content; }
+  .qty-btn { width: 38px; height: 38px; background: var(--bg2); border: none; color: var(--text); font-size: 1.1rem; cursor: pointer; transition: background .15s; }
+  .qty-btn:hover { background: var(--amber-dim); color: var(--amber); }
+  .qty-input { width: 50px; height: 38px; background: var(--bg2); border: none; border-left: 1px solid var(--border-mid); border-right: 1px solid var(--border-mid); color: var(--text); font-family: var(--mono); font-size: 14px; text-align: center; outline: none; }
+
+  .buy-btn { width: 100%; justify-content: center; font-size: 14px; padding: 14px; margin-top: 1rem; }
+  .buy-status { font-family: var(--mono); font-size: 12px; color: var(--red); min-height: 20px; margin-top: 8px; }
+
+  .product-desc { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border); font-size: 15px; color: var(--text-mid); line-height: 1.7; }
+  .product-desc :global(p) { margin-bottom: .8em; }
+</style>
+
+<script>
+  const mainImg = document.getElementById('main-img') as HTMLImageElement;
+  document.querySelectorAll<HTMLButtonElement>('.thumb').forEach(t => {
+    t.addEventListener('click', () => {
+      mainImg.src = t.dataset.src!;
+      document.querySelectorAll('.thumb').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+    });
+  });
+
+  const qty = document.getElementById('qty') as HTMLInputElement;
+  document.getElementById('qty-minus')?.addEventListener('click', () => qty.value = String(Math.max(1, +qty.value - 1)));
+  document.getElementById('qty-plus')?.addEventListener('click',  () => qty.value = String(Math.min(10, +qty.value + 1)));
+
+  const variantSelect  = document.getElementById('variant-select') as HTMLSelectElement;
+  const priceDisplay   = document.getElementById('price-display');
+  variantSelect?.addEventListener('change', () => {
+    const price = Number(variantSelect.selectedOptions[0]?.dataset.price ?? 0);
+    if (priceDisplay) priceDisplay.textContent = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(price / 100);
+  });
+
+  document.getElementById('buy-btn')?.addEventListener('click', async () => {
+    const btn    = document.getElementById('buy-btn') as HTMLButtonElement;
+    const status = document.getElementById('buy-status') as HTMLDivElement;
+    btn.disabled = true;
+    btn.textContent = 'Creating checkout…';
+
+    try {
+      const res  = await fetch('/api/checkout', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productId: window.location.pathname.split('/').at(-1),
+          variantId: Number(variantSelect?.value ?? 0),
+          quantity:  Number(qty?.value ?? 1),
+          price:     Number(variantSelect?.selectedOptions[0]?.dataset.price ?? 0),
+        }),
+      });
+      const data = await res.json() as { url?: string; error?: string };
+      if (data.url) window.location.href = data.url;
+      else throw new Error(data.error ?? 'Checkout failed');
+    } catch (err: any) {
+      status.textContent = err.message;
+      btn.disabled = false;
+      btn.textContent = 'Buy Now →';
+    }
+  });
+</script>
+```
+
+---
+
+## Step 6: Create the Checkout Function
+
+Create `functions/api/checkout.ts`:
+
+```typescript
+// functions/api/checkout.ts
+
+interface Env {
+  STRIPE_SECRET_KEY: string;
+  SITE_URL:          string;
+}
+
+interface CheckoutBody {
+  productId: string;
+  variantId: number;
+  quantity:  number;
+  price:     number;   // in cents, passed from the frontend
+}
+
+const CORS = {
+  'Access-Control-Allow-Origin':  '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
+
+export const onRequestOptions = () => new Response(null, { status: 204, headers: CORS });
+
+export async function onRequestPost({ request, env }: { request: Request; env: Env }) {
+  const { productId, variantId, quantity, price }: CheckoutBody = await request.json();
+
+  if (!productId || !variantId || !quantity || !price) {
+    return new Response(JSON.stringify({ error: 'Missing required fields' }), { status: 400, headers: CORS });
+  }
+
+  const params = new URLSearchParams({
+    'line_items[0][price_data][currency]':                           'eur',
+    'line_items[0][price_data][product_data][name]':                 `Product ${productId}`,
+    'line_items[0][price_data][product_data][metadata][product_id]': productId,
+    'line_items[0][price_data][product_data][metadata][variant_id]': String(variantId),
+    'line_items[0][price_data][unit_amount]':                        String(price),
+    'line_items[0][quantity]':                                       String(quantity),
+    'mode':                                                          'payment',
+    'success_url':                                                   `${env.SITE_URL}/shop/success`,
+    'cancel_url':                                                     `${env.SITE_URL}/shop/product/${productId}`,
+    'metadata[product_id]':                                          productId,
+    'metadata[variant_id]':                                          String(variantId),
+  });
+
+  const stripeRes = await fetch('https://api.stripe.com/v1/checkout/sessions', {
+    method:  'POST',
+    headers: { Authorization: `Bearer ${env.STRIPE_SECRET_KEY}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+    body:    params.toString(),
+  });
+
+  if (!stripeRes.ok) {
+    const err = await stripeRes.json() as any;
+    return new Response(JSON.stringify({ error: err?.error?.message ?? 'Stripe error' }), { status: 500, headers: CORS });
+  }
+
+  const session = await stripeRes.json() as { url: string };
+  return new Response(JSON.stringify({ url: session.url }), { status: 200, headers: { ...CORS, 'Content-Type': 'application/json' } });
+}
+```
+
+---
+
+## Connecting Printify Auto-Fulfilment
+
+For orders to automatically trigger printing and shipping, Printify needs to know about successful payments. The simplest way on this stack:
+
+1. In Printify: **Sales channels** → **Custom integration** → link your Stripe account
+2. Printify watches for completed Stripe payments and auto-creates orders
+
+Alternatively, set up a Stripe webhook to call Printify's Orders API — this gives you more control but requires an additional function.
+
+---
+
+## Going Live
+
+When you're ready to switch from test to live:
+
+1. In Stripe dashboard, switch to **Live mode** and copy the live secret key
+2. Update `STRIPE_SECRET_KEY` in Cloudflare Pages environment variables
+3. Update `SITE_URL` to your production domain
+4. Deploy
+
+The product pages are static — they rebuild whenever you deploy. If you add new products in Printify, trigger a new Cloudflare Pages deployment to pick them up. You can automate this with Cloudflare's Deploy Hooks (a URL you can POST to from Printify webhooks or a cron job).
+
+---
+
+*Next in this series: [SEO in Astro Without Plugins](/astro/astro-seo-without-plugins) — sitemaps, structured data, and OG images from scratch.*

@@ -3,40 +3,33 @@
 
 /* ── CSS Custom Properties ────────────────────────────────────── */
 :root {
-  /* Warm terminal palette */
-  --amber:       #f0a500;
-  --amber-dim:   rgba(240, 165, 0, 0.15);
-  --amber-glow:  rgba(240, 165, 0, 0.08);
-  --green:       #4eca8b;
-  --red:         #ff6b6b;
-  --blue:        #7eb8d4;
-
-  /* Backgrounds — warm brown tones */
-  --bg:          #18120a;
-  --bg2:         #1e1710;
-  --bg3:         #261f14;
-  --bg-code:     #100d07;
-
-  /* Text — warm cream */
-  --text:        #e8dcc8;
-  --text-dim:    rgba(232, 220, 200, 0.4);
-  --text-mid:    rgba(232, 220, 200, 0.65);
-  --text-bright: #f5ede0;
-
-  /* Borders */
-  --border:      rgba(232, 220, 200, 0.08);
-  --border-mid:  rgba(232, 220, 200, 0.14);
+  --amber:        #f0a500;
+  --amber-dim:    rgba(240, 165, 0, 0.15);
+  --amber-glow:   rgba(240, 165, 0, 0.08);
+  --green:        #4eca8b;
+  --red:          #ff6b6b;
+  --blue:         #7eb8d4;
+  --bg:           #18120a;
+  --bg2:          #1e1710;
+  --bg3:          #261f14;
+  --bg-code:      #100d07;
+  --text:         #e8dcc8;
+  --text-dim:     rgba(232, 220, 200, 0.4);
+  --text-mid:     rgba(232, 220, 200, 0.65);
+  --text-bright:  #f5ede0;
+  --border:       rgba(232, 220, 200, 0.08);
+  --border-mid:   rgba(232, 220, 200, 0.14);
   --border-amber: rgba(240, 165, 0, 0.22);
-
-  /* Fonts */
-  --mono:        'Space Mono', 'Fira Code', monospace;
-  --sans:        'IBM Plex Sans', system-ui, sans-serif;
-  --display:     'Fraunces', Georgia, serif;
+  --mono:         'Space Mono', 'Fira Code', monospace;
+  --sans:         'IBM Plex Sans', system-ui, sans-serif;
+  --display:      'Fraunces', Georgia, serif;
+  --nav-height:   57px;
+  --content-w:    740px;
+  --wide-w:       1100px;
 }
 
-/* ── Base Reset ───────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; scroll-padding-top: calc(var(--nav-height) + 32px); }
 
 body {
   background: var(--bg);
@@ -47,12 +40,10 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* ── Scrollbar ────────────────────────────────────────────────── */
 ::-webkit-scrollbar       { width: 4px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: rgba(240,165,0,0.2); }
 
-/* ── Subtle warm grain overlay ────────────────────────────────── */
 body::before {
   content: '';
   position: fixed; inset: 0;
@@ -62,14 +53,11 @@ body::before {
   opacity: 0.4;
 }
 
-/* ── Selection ────────────────────────────────────────────────── */
 ::selection { background: rgba(240,165,0,0.2); color: var(--text-bright); }
 
-/* ── Links ────────────────────────────────────────────────────── */
 a { color: var(--amber); text-decoration: none; transition: color 0.15s; }
 a:hover { color: #ffc13d; }
 
-/* ── Code blocks ──────────────────────────────────────────────── */
 pre {
   border: 1px solid var(--border);
   border-left: 2px solid var(--border-amber);
@@ -89,27 +77,39 @@ code:not(pre code) {
   font-family: var(--mono);
 }
 
-/* ── Utility classes ──────────────────────────────────────────── */
-.badge {
+.chip {
   display: inline-block;
-  font-size: 10px; letter-spacing: 0.1em; font-weight: 700;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  background: var(--bg2);
+  border: 1px solid var(--border-mid);
   padding: 2px 8px;
-  font-family: var(--mono);
+  letter-spacing: 0.06em;
 }
 
-.section-label {
-  font-size: 10px; letter-spacing: 0.2em;
-  color: var(--amber); margin-bottom: 10px;
-  font-family: var(--mono);
+.btn-primary {
+  background: var(--amber); color: var(--bg);
+  padding: 10px 22px;
+  font-family: var(--mono); font-size: 13px; font-weight: 700;
+  letter-spacing: 0.05em; text-decoration: none;
+  display: inline-flex; align-items: center;
+  border: none; cursor: pointer; transition: background 0.15s;
 }
-.section-label::before { content: '// '; color: var(--text-dim); }
+.btn-primary:hover { background: #ffc13d; color: var(--bg); }
 
-/* ── Animations ───────────────────────────────────────────────── */
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(16px); }
-  to   { opacity: 1; transform: translateY(0); }
+.btn-outline {
+  background: transparent; color: var(--text);
+  border: 1px solid var(--border-mid);
+  padding: 10px 22px;
+  font-family: var(--mono); font-size: 13px;
+  letter-spacing: 0.05em; text-decoration: none;
+  display: inline-flex; align-items: center;
+  cursor: pointer; transition: border-color 0.15s, color 0.15s;
 }
-@keyframes blink { 50% { opacity: 0; } }
+.btn-outline:hover { border-color: var(--amber); color: var(--amber); }
 
+@keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes blink  { 50% { opacity: 0; } }
 .animate-fadeup { animation: fadeUp 0.5s ease both; }
 .cursor-blink   { animation: blink 1s step-end infinite; }

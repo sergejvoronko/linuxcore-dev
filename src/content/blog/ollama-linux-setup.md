@@ -2,6 +2,7 @@
 title: "Run Local AI on Linux: Complete Ollama + Open WebUI Setup Guide (2026)"
 description: "Step-by-step: install Ollama on Debian/Ubuntu, configure GPU passthrough, add Open WebUI with Docker, and expose it securely via Tailscale. Tested on real hardware."
 pubDate: 2026-01-06
+section: "homelab"
 pillar: "Self-Hosted AI"
 type: "PILLAR"
 tags: ["ollama", "docker", "self-hosted", "llm", "linux"]

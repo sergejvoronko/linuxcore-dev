@@ -1,0 +1,327 @@
+---
+title: "Docker & Docker Compose Explained for Homelab — What It Actually Is and How to Use It"
+description: "A practical, no-fluff guide to Docker and Docker Compose for self-hosters. Learn what containers really are, how Compose orchestrates multi-service stacks, and see real examples with Immich, Jellyfin, and more."
+pubDate: 2026-04-05
+section: "homelab"
+tags: ["docker", "docker-compose", "homelab", "self-hosted", "containers", "immich", "linux"]
+draft: false
+---
+
+import { Image } from 'astro:assets';
+
+Every self-hosted app you'll ever deploy — Immich, Jellyfin, Nextcloud, Grafana, Vaultwarden, Home Assistant — runs in Docker containers. If you're building a homelab, Docker isn't optional. It's the foundation everything sits on.
+
+But most Docker explanations start with shipping metaphors and abstract diagrams. This guide skips that. If you have a Linux server — whether it's a mini PC running Proxmox, a NAS with OpenMediaVault, or a bare-metal Debian box — this is how Docker actually works on your hardware, and why Docker Compose is the tool that makes it all manageable.
+
+## What Docker Actually Is
+
+Docker is a **container runtime**. It runs applications in isolated environments called containers. Each container has its own filesystem, its own process tree, its own network interface — but it shares the host's Linux kernel.
+
+That last part is the key difference from a virtual machine. A VM virtualizes an entire operating system: kernel, drivers, init system, everything. It boots like a separate computer. A Docker container doesn't boot anything. It's a process (or a set of processes) running directly on your existing kernel, just walled off from everything else.
+
+What this means in practice:
+
+- **Containers start in under a second.** No BIOS, no boot sequence, no kernel initialization.
+- **They use a fraction of the RAM** a VM would. A container running Redis might use 10 MB. A VM running Redis needs 512 MB minimum just for the guest OS.
+- **Performance is near-native.** There's no hypervisor translating CPU instructions. Your containerized PostgreSQL talks directly to the host kernel.
+
+### Images vs. Containers
+
+Two terms you'll see constantly:
+
+- **Image**: A read-only snapshot of a filesystem. It contains the application binary, its libraries, its config files — everything needed to run. Images are built from a `Dockerfile` and stored in registries like Docker Hub or GitHub Container Registry.
+- **Container**: A running instance of an image. When you `docker run` an image, Docker creates a thin writable layer on top of the read-only image, sets up an isolated namespace, and starts the process.
+
+Think of the image as a blueprint and the container as the running building. You can run multiple containers from the same image, each completely independent.
+
+### What Isolation Means
+
+When you run Immich in a container, it sees its own filesystem (the image), its own `/etc`, its own network stack. It can't see your host's files unless you explicitly mount them in. It can't see other containers unless they're on the same Docker network.
+
+This is why Docker is so useful for homelabs: you can run ten different applications on one machine, each with their own dependencies, and they never conflict. One app needs Python 3.9, another needs 3.12 — doesn't matter, each container carries its own.
+
+## Why Docker Compose Exists
+
+Running a single container is straightforward:
+
+```bash
+docker run -d \
+  --name redis \
+  --restart always \
+  -p 6379:6379 \
+  redis:7-alpine
+```
+
+But real self-hosted apps aren't a single container. **Immich needs five services.** Nextcloud needs three. A monitoring stack needs at least four. Each one requires flags for ports, volumes, environment variables, networks, restart policies, and dependency ordering.
+
+Managing that with individual `docker run` commands is painful and error-prone. Forget one flag and your database loses data on restart. Mistype a network name and your services can't find each other.
+
+**Docker Compose** solves this by letting you define your entire stack in a single YAML file. One file describes every service, every volume, every network, every environment variable. One command brings it all up:
+
+```bash
+docker compose up -d
+```
+
+One command tears it all down:
+
+```bash
+docker compose down
+```
+
+Compose isn't a separate technology. It's an orchestration layer on top of Docker. Under the hood, it still creates regular Docker containers, volumes, and networks — it just reads the configuration from YAML instead of command-line flags.
+
+## Anatomy of a Compose File
+
+Here's a minimal but real example — running [Immich](https://immich.app) (a self-hosted Google Photos alternative) on your homelab server:
+
+```yaml
+# compose.yml
+services:
+  immich-server:
+    image: ghcr.io/immich-app/immich-server:release
+    volumes:
+      - /srv/photos:/usr/src/app/upload
+      - /etc/localtime:/etc/localtime:ro
+    env_file: .env
+    ports:
+      - "2283:2283"
+    depends_on:
+      - redis
+      - database
+    restart: always
+
+  immich-machine-learning:
+    image: ghcr.io/immich-app/immich-machine-learning:release
+    volumes:
+      - model-cache:/cache
+    env_file: .env
+    restart: always
+
+  database:
+    image: tensorchord/pgvecto-rs:pg14-v0.2.0
+    env_file: .env
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: always
+
+  redis:
+    image: redis:6.2-alpine
+    healthcheck:
+      test: redis-cli ping || exit 1
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: always
+
+volumes:
+  pgdata:
+  model-cache:
+```
+
+With a `.env` file next to it:
+
+```env
+DB_PASSWORD=your-secure-password-here
+DB_USERNAME=postgres
+DB_DATABASE_NAME=immich
+```
+
+Let's break down every section.
+
+### Services
+
+Each entry under `services:` becomes a container. In this example, four containers will run: the Immich API server, a machine learning service for face/object recognition, a PostgreSQL database, and a Redis cache.
+
+**`image`** specifies which pre-built image to pull. `ghcr.io/immich-app/immich-server:release` means "pull the `release`-tagged image from GitHub Container Registry, published by the Immich project."
+
+**`restart: always`** tells Docker to restart the container if it crashes, and to start it automatically when the host boots. For a homelab server, you almost always want this.
+
+**`depends_on`** controls startup order. The Immich server won't start until Redis and the database are running. Note: this only waits for the container to *start*, not for the service inside to be *ready*. For true readiness checks, you'd add health checks (like the Redis example above) and use `depends_on` with `condition: service_healthy`.
+
+### Volumes
+
+Volumes handle persistent data — anything that needs to survive when a container is destroyed and recreated.
+
+There are two types in this file:
+
+**Bind mounts** map a host directory directly into the container:
+
+```yaml
+- /srv/photos:/usr/src/app/upload
+```
+
+This means `/srv/photos` on your NAS (your actual hard drives) appears as `/usr/src/app/upload` inside the container. Immich reads and writes photos directly to your NAS storage. The photos never live "inside" Docker.
+
+**Named volumes** are managed by Docker:
+
+```yaml
+volumes:
+  pgdata:
+  model-cache:
+```
+
+These are stored under `/var/lib/docker/volumes/` on the host. They're ideal for internal data like database files — you don't need to browse them directly, but they must persist across container restarts and updates.
+
+### Networking
+
+Notice that no network is explicitly defined in this file. That's because **Compose automatically creates a shared network** for all services in the same file. Every container can reach every other container by its service name.
+
+The Immich server connects to the database at `database:5432` — Docker's internal DNS resolves the service name `database` to the container's IP automatically. The database never needs to be exposed to your LAN. Only the Immich web UI is published via `ports: "2283:2283"`.
+
+This is a powerful security feature. Your database, your Redis cache, your internal services — they're only accessible within the Docker network. The outside world can only reach what you explicitly expose.
+
+### Environment Variables
+
+Sensitive configuration like database passwords belongs in a `.env` file, not hardcoded in the Compose file. The `env_file: .env` directive loads every variable from that file into the container's environment.
+
+**Important:** Add `.env` to your `.gitignore` if you version-control your Compose files. Never commit passwords to a repository.
+
+## What Happens When You Run `docker compose up`
+
+When you run `docker compose up -d` in the directory containing your `compose.yml`:
+
+1. **Compose reads the YAML** and calculates what needs to be created.
+2. **It pulls images** that aren't already cached locally — this might take a few minutes the first time.
+3. **It creates a network** (e.g., `immich_default`) for the stack.
+4. **It creates named volumes** (`pgdata`, `model-cache`) if they don't exist.
+5. **It starts containers in dependency order** — Redis and the database first, then the Immich server.
+6. **The `-d` flag** detaches, so containers run in the background.
+
+After that, Immich is live at `http://your-server-ip:2283`. Done.
+
+## Real-World Patterns
+
+### Running Multiple Stacks
+
+On a typical homelab server, you'll have several Compose files — one per application:
+
+```
+/opt/stacks/
+├── immich/
+│   ├── compose.yml
+│   └── .env
+├── jellyfin/
+│   └── compose.yml
+├── monitoring/
+│   ├── compose.yml
+│   └── prometheus.yml
+└── vaultwarden/
+    └── compose.yml
+```
+
+Each stack gets its own isolated network. Jellyfin can't talk to Immich's database. Vaultwarden can't see Grafana's internals. They only share what you explicitly wire together.
+
+### Updating Services
+
+Updating a containerized app is clean:
+
+```bash
+cd /opt/stacks/immich
+docker compose pull        # download the latest images
+docker compose up -d       # recreate only the changed containers
+```
+
+Your database volume is untouched. Your photo library is untouched. Only the application containers are replaced with the new version. If something breaks, you can roll back by specifying the previous image tag.
+
+### Checking Logs
+
+```bash
+# All services
+docker compose logs -f
+
+# Specific service
+docker compose logs -f immich-server
+
+# Last 100 lines
+docker compose logs --tail 100 database
+```
+
+### Common Useful Commands
+
+```bash
+# See running containers and their status
+docker compose ps
+
+# Restart a single service
+docker compose restart immich-server
+
+# Stop everything without removing volumes
+docker compose down
+
+# Stop everything AND delete volumes (destructive!)
+docker compose down -v
+
+# Rebuild a service after changing its Dockerfile
+docker compose up -d --build
+```
+
+## How Databases Work in Containers
+
+This trips up a lot of beginners: **the database runs in a container, but its data doesn't.**
+
+In the Immich example, PostgreSQL runs as the `database` service. Its data files — the actual tables, indexes, WAL logs — are stored in the `pgdata` named volume, which lives on the host filesystem under `/var/lib/docker/volumes/`. If you destroy the container and recreate it, the volume remains and PostgreSQL picks up right where it left off.
+
+Different apps use different databases based on their needs:
+
+- **PostgreSQL**: Immich (with vector extension for AI search), Nextcloud, Gitea
+- **MariaDB/MySQL**: WordPress, Bookstack, many PHP apps
+- **SQLite**: Vaultwarden, Mealie, Miniflux — no separate container needed, the database is just a file
+
+The database container communicates with the application container over Docker's internal network. It never needs to be exposed to your LAN unless you want to connect a management tool like pgAdmin.
+
+## Volumes: Where Your Data Actually Lives
+
+Understanding volumes is critical. Here's the mental model:
+
+**Containers are disposable.** You should be able to destroy and recreate any container at any time without data loss. This is the whole point.
+
+**Volumes are persistent.** They hold everything that matters: your photos, your database, your configuration files.
+
+For a homelab NAS setup, bind mounts are especially important. Your existing NAS shares — the folders with your media, documents, backups — don't move into Docker. You mount them *into* the containers that need them:
+
+```yaml
+services:
+  jellyfin:
+    image: jellyfin/jellyfin
+    volumes:
+      - /srv/media/movies:/data/movies:ro    # read-only access
+      - /srv/media/tv:/data/tv:ro
+      - jellyfin-config:/config              # writable config volume
+    ports:
+      - "8096:8096"
+    restart: always
+
+volumes:
+  jellyfin-config:
+```
+
+Jellyfin can read your media library but can't modify it (`:ro`). Its internal configuration gets its own named volume. Clean separation.
+
+## Putting It All Together
+
+Here's how a typical homelab Docker workflow looks in practice:
+
+1. **Find an app you want** — say Immich, Jellyfin, Paperless-ngx, or Vaultwarden.
+2. **Grab the official Compose file** from the project's documentation.
+3. **Customize it** — set your volume paths to match your NAS layout, configure your `.env` with passwords, adjust ports if needed.
+4. **Deploy:** `docker compose up -d`
+5. **Access the web UI** at `http://your-server-ip:port` and complete the setup wizard.
+6. **Manage it going forward** — update with `docker compose pull && docker compose up -d`, check logs with `docker compose logs`.
+
+Each app is self-contained. Each stack is isolated. Your NAS storage stays where it is. And everything is defined in version-controllable YAML files, so you can rebuild your entire homelab from scratch on new hardware in minutes.
+
+That's the real power of Docker in a homelab: **your infrastructure becomes portable, reproducible, and disposable — while your data stays permanent.**
+
+## What's Next
+
+If you're ready to go deeper, here are some natural next steps:
+
+- **[Docker Compose Mega-Stack](/homelab/docker-compose-mega-stack)** — a complete multi-service homelab stack you can deploy in one go
+- **[Self-Hosted Google Photos with Immich](/homelab/immich-self-hosted-google-photos)** — full Immich deployment guide with GPU acceleration and backup strategies
+- **[Monitoring with Grafana & Prometheus](/homelab/grafana-prometheus-monitoring-stack)** — observe everything running on your server
+- **[Linux Security Hardening](/homelab/linux-security-hardening)** — lock down the host your containers run on
+- **[Automate Everything with Ansible](/homelab/ansible-homelab-automation)** — deploy Docker and your entire stack configuration automatically
+
+---
+
+*Running Docker on a homelab NAS or mini PC? Have questions about a specific setup? Drop a comment below — I read every one.*

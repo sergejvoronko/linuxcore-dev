@@ -1,0 +1,83 @@
+---
+// src/pages/shop/index.astro
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getProducts, getBasePrice, getDefaultImage, formatPrice } from '../../lib/printify';
+
+let products: any[] = [];
+let fetchError = '';
+
+try {
+  products = await getProducts();
+} catch (e: any) {
+  fetchError = e.message;
+}
+---
+
+<BaseLayout
+  title="Shop"
+  description="linuxcore.dev merch — t-shirts, mugs, and prints for the homelab community. Printed on demand, ships worldwide."
+>
+  <main class="shop-page">
+
+    <section class="shop-hero">
+      <div class="hero-label"><span class="tb">[</span>shop<span class="tb">]</span></div>
+      <h1 class="hero-title">The linuxcore<em class="title-accent"> shop</em></h1>
+      <p class="hero-lead">T-shirts, mugs, and prints for people who self-host everything. Printed on demand — ships worldwide.</p>
+    </section>
+
+    {fetchError && (
+      <div class="shop-notice">
+        <strong>Setup required:</strong> Add <code>PRINTIFY_API_TOKEN</code> and <code>PRINTIFY_SHOP_ID</code>
+        to your Cloudflare Pages environment variables. <a href="/about">More info</a>.
+      </div>
+    )}
+
+    {!fetchError && products.length === 0 && (
+      <div class="shop-notice">No products published yet — add products in Printify and mark them as visible.</div>
+    )}
+
+    {products.length > 0 && (
+      <div class="products-grid">
+        {products.map(product => (
+          <a href={`/shop/product/${product.id}`} class="product-card">
+            <div class="product-img-wrap">
+              <img src={getDefaultImage(product)} alt={product.title} width="600" height="600" loading="lazy" />
+            </div>
+            <div class="product-info">
+              <div class="product-name">{product.title}</div>
+              <div class="product-price">from {formatPrice(getBasePrice(product))}</div>
+            </div>
+          </a>
+        ))}
+      </div>
+    )}
+
+  </main>
+</BaseLayout>
+
+<style>
+  .shop-page { max-width: var(--wide-w); margin: 0 auto; padding: 3rem 1.5rem 5rem; }
+
+  .shop-hero { margin-bottom: 3rem; }
+  .hero-label { font-family: var(--font-mono); font-size: 0.78rem; color: var(--amber); margin-bottom: 0.75rem; }
+  .tb { opacity: 0.35; }
+  .hero-title { font-family: var(--font-display); font-size: clamp(2rem, 5vw, 3rem); font-weight: 700; color: var(--text-bright); margin-bottom: 0.75rem; line-height: 1.1; }
+  .title-accent { font-style: italic; font-weight: 300; color: var(--amber); }
+  .hero-lead { font-size: 1.05rem; color: var(--text-mid); max-width: 48ch; line-height: 1.7; }
+
+  .shop-notice { padding: 1rem 1.25rem; background: var(--bg2); border: 1px solid var(--border-mid); border-radius: 6px; font-size: 0.88rem; color: var(--text-mid); margin-bottom: 2rem; }
+  .shop-notice code { color: var(--amber); background: var(--bg-code); padding: 0.1em 0.4em; border-radius: 3px; font-family: var(--font-mono); font-size: 0.85em; }
+
+  .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1.5rem; }
+
+  .product-card { display: block; text-decoration: none; border-radius: 8px; overflow: hidden; background: var(--bg2); border: 1px solid var(--border); transition: border-color 0.15s, transform 0.15s; }
+  .product-card:hover { border-color: var(--amber-border); transform: translateY(-2px); }
+
+  .product-img-wrap { aspect-ratio: 1; overflow: hidden; background: var(--bg3); }
+  .product-img-wrap img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s; }
+  .product-card:hover .product-img-wrap img { transform: scale(1.04); }
+
+  .product-info { padding: 1rem 1.1rem; }
+  .product-name { font-family: var(--font-display); font-size: 1rem; font-weight: 600; color: var(--text-bright); margin-bottom: 0.3rem; }
+  .product-price { font-family: var(--font-mono); font-size: 0.78rem; color: var(--amber); }
+</style>

@@ -5,324 +5,176 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
 <BaseLayout
   title="Contact"
-  description="Get in touch with questions about Linux, homelab setup, consulting, or just to say hello."
+  description="Get in touch with linuxcore.dev — questions, feedback, or content suggestions."
 >
-  <div class="contact-page">
-
+  <main class="contact-page">
     <div class="contact-inner">
 
-      <!-- Left: info -->
-      <div class="contact-info">
-        <div class="contact-label">// GET IN TOUCH</div>
-        <h1 class="contact-title">Let's talk<br><span class="accent">infrastructure.</span></h1>
+      <div class="contact-header">
+        <div class="header-label"><span class="tb">[</span>contact<span class="tb">]</span></div>
+        <h1 class="contact-title">Get in touch</h1>
         <p class="contact-lead">
-          Questions about a guide, consulting enquiries, or just want to
-          compare homelab setups — all welcome.
+          Questions, feedback, or content ideas. For technical questions on specific
+          articles, the comments section under each post is usually faster.
         </p>
-
-        <div class="contact-cards">
-          <div class="contact-card">
-            <div class="cc-icon">⏱</div>
-            <div>
-              <div class="cc-title">Response time</div>
-              <div class="cc-body">Usually within 24–48 hours on weekdays.</div>
-            </div>
-          </div>
-          <div class="contact-card">
-            <div class="cc-icon">🔧</div>
-            <div>
-              <div class="cc-title">Consulting</div>
-              <div class="cc-body">Linux infrastructure, SAP Basis, AWS hybrid setups. Mention it in your message.</div>
-            </div>
-          </div>
-          <div class="contact-card">
-            <div class="cc-icon">🐛</div>
-            <div>
-              <div class="cc-title">Found an error?</div>
-              <div class="cc-body">If something in a guide is wrong or broken, please tell me. I fix things fast.</div>
-            </div>
-          </div>
-        </div>
       </div>
 
-      <!-- Right: form -->
-      <div class="contact-form-wrap">
-        <div class="form-header">
-          <span class="form-dot red"></span>
-          <span class="form-dot yellow"></span>
-          <span class="form-dot green"></span>
-          <span class="form-title">contact@linuxcore.dev</span>
+      <form class="contact-form" id="contact-form" novalidate>
+        <div class="field">
+          <label for="name" class="field-label">Name</label>
+          <input type="text" id="name" name="name" required placeholder="Your name" class="field-input" />
         </div>
 
-        <form id="contact-form" class="contact-form" novalidate>
-          <div class="field-row">
-            <div class="field">
-              <label for="name" class="field-label">NAME <span class="required">*</span></label>
-              <input
-                type="text" id="name" name="name"
-                class="field-input" placeholder="Your name"
-                autocomplete="name" required
-              />
-            </div>
-            <div class="field">
-              <label for="email" class="field-label">EMAIL <span class="required">*</span></label>
-              <input
-                type="email" id="email" name="email"
-                class="field-input" placeholder="you@example.com"
-                autocomplete="email" required
-              />
-            </div>
-          </div>
+        <div class="field">
+          <label for="email" class="field-label">Email</label>
+          <input type="email" id="email" name="email" required placeholder="your@email.com" class="field-input" />
+        </div>
 
-          <div class="field">
-            <label for="subject" class="field-label">SUBJECT</label>
-            <input
-              type="text" id="subject" name="subject"
-              class="field-input" placeholder="Guide feedback / Consulting / Other"
-            />
-          </div>
+        <div class="field">
+          <label for="subject" class="field-label">Subject</label>
+          <input type="text" id="subject" name="subject" required placeholder="What's it about?" class="field-input" />
+        </div>
 
-          <div class="field">
-            <label for="message" class="field-label">MESSAGE <span class="required">*</span></label>
-            <textarea
-              id="message" name="message"
-              class="field-input field-textarea"
-              placeholder="What's on your mind?"
-              rows="7" required
-            ></textarea>
-            <div class="char-count"><span id="char-count">0</span> / 5000</div>
-          </div>
+        <div class="field">
+          <label for="message" class="field-label">
+            Message
+            <span class="char-count" id="char-count">0 / 2000</span>
+          </label>
+          <textarea
+            id="message"
+            name="message"
+            required
+            maxlength="2000"
+            rows="7"
+            placeholder="Your message..."
+            class="field-input"
+          ></textarea>
+        </div>
 
-          <div id="form-error" class="form-message form-error" hidden></div>
-          <div id="form-success" class="form-message form-success" hidden>
-            ✓ Message sent — I'll get back to you within 48 hours.
-          </div>
+        <div id="form-status" class="form-status" aria-live="polite"></div>
 
-          <button type="submit" class="submit-btn" id="submit-btn">
-            <span class="btn-text">SEND MESSAGE →</span>
-            <span class="btn-loading" hidden>SENDING...</span>
-          </button>
-        </form>
-      </div>
+        <button type="submit" class="btn-primary" id="submit-btn">
+          Send Message →
+        </button>
+      </form>
 
     </div>
-  </div>
+  </main>
 </BaseLayout>
 
-<script>
-  const form     = document.getElementById('contact-form') as HTMLFormElement;
-  const submitBtn = document.getElementById('submit-btn') as HTMLButtonElement;
-  const btnText  = submitBtn.querySelector('.btn-text') as HTMLElement;
-  const btnLoad  = submitBtn.querySelector('.btn-loading') as HTMLElement;
-  const errBox   = document.getElementById('form-error') as HTMLElement;
-  const okBox    = document.getElementById('form-success') as HTMLElement;
-  const textarea = document.getElementById('message') as HTMLTextAreaElement;
-  const counter  = document.getElementById('char-count') as HTMLElement;
+<style>
+  .contact-page { max-width: var(--wide-w); margin: 0 auto; padding: 3rem 1.5rem 5rem; }
+  .contact-inner { max-width: 560px; }
 
-  // Live character count
-  textarea.addEventListener('input', () => {
-    counter.textContent = String(textarea.value.length);
-    counter.style.color = textarea.value.length > 4500 ? '#ff6b6b' : '';
+  .contact-header { margin-bottom: 2.5rem; }
+  .header-label { font-family: var(--font-mono); font-size: 0.78rem; color: var(--amber); margin-bottom: 0.75rem; }
+  .tb { opacity: 0.35; }
+  .contact-title { font-family: var(--font-display); font-size: clamp(1.75rem, 4vw, 2.5rem); font-weight: 700; color: var(--text-bright); margin-bottom: 0.75rem; line-height: 1.15; }
+  .contact-lead { font-size: 1rem; color: var(--text-mid); line-height: 1.7; }
+
+  /* Form */
+  .contact-form { display: flex; flex-direction: column; gap: 1.5rem; }
+
+  .field { display: flex; flex-direction: column; gap: 0.4rem; }
+
+  .field-label {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .char-count {
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+  }
+
+  .field-input {
+    background: var(--bg2);
+    border: 1px solid var(--border-mid);
+    border-radius: 6px;
+    padding: 0.7rem 1rem;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    outline: none;
+    width: 100%;
+    transition: border-color 0.15s;
+    resize: vertical;
+  }
+  .field-input:focus { border-color: var(--amber); }
+  .field-input::placeholder { color: var(--text-dim); }
+
+  .form-status {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    display: none;
+  }
+  .form-status.success {
+    display: block;
+    background: rgba(78,202,139,0.08);
+    border: 1px solid rgba(78,202,139,0.25);
+    color: var(--green);
+  }
+  .form-status.error {
+    display: block;
+    background: rgba(255,107,107,0.08);
+    border: 1px solid rgba(255,107,107,0.25);
+    color: var(--red);
+  }
+</style>
+
+<script>
+  const form   = document.getElementById('contact-form') as HTMLFormElement;
+  const btn    = document.getElementById('submit-btn') as HTMLButtonElement;
+  const status = document.getElementById('form-status') as HTMLDivElement;
+  const msg    = document.getElementById('message') as HTMLTextAreaElement;
+  const count  = document.getElementById('char-count') as HTMLSpanElement;
+
+  msg?.addEventListener('input', () => {
+    count.textContent = `${msg.value.length} / 2000`;
   });
 
-  form.addEventListener('submit', async (e) => {
+  form?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    errBox.hidden = true;
-    okBox.hidden  = true;
-
-    // Loading state
-    btnText.hidden = true;
-    btnLoad.hidden = false;
-    submitBtn.disabled = true;
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+    status.className = 'form-status';
+    status.textContent = '';
 
     try {
-      const res = await fetch('/contact', {
-        method: 'POST',
-        body: new FormData(form),
+      const res = await fetch('/api/contact', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name:    (document.getElementById('name') as HTMLInputElement).value,
+          email:   (document.getElementById('email') as HTMLInputElement).value,
+          subject: (document.getElementById('subject') as HTMLInputElement).value,
+          message: msg.value,
+        }),
       });
 
-      const data = await res.json();
-
-      if (data.ok) {
+      if (res.ok) {
+        status.className = 'form-status success';
+        status.textContent = '✓ Message sent — I\'ll get back to you soon.';
         form.reset();
-        counter.textContent = '0';
-        okBox.hidden = false;
-        okBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        count.textContent = '0 / 2000';
       } else {
-        errBox.textContent = data.error ?? 'Something went wrong. Please try again.';
-        errBox.hidden = false;
+        throw new Error(await res.text());
       }
     } catch {
-      errBox.textContent = 'Could not send message — please email contact@linuxcore.dev directly.';
-      errBox.hidden = false;
+      status.className = 'form-status error';
+      status.textContent = '✕ Something went wrong — try emailing directly.';
     } finally {
-      btnText.hidden = false;
-      btnLoad.hidden = true;
-      submitBtn.disabled = false;
+      btn.disabled = false;
+      btn.textContent = 'Send Message →';
     }
   });
 </script>
-
-<style>
-  .contact-page {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 52px 48px 80px;
-  }
-  @media (max-width: 600px) { .contact-page { padding: 32px 18px 60px; } }
-
-  /* ── Two-column layout ───────────────────────────────────── */
-  .contact-inner {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 72px;
-    align-items: start;
-  }
-  @media (max-width: 860px) {
-    .contact-inner { grid-template-columns: 1fr; gap: 44px; }
-  }
-
-  /* ── Left info column ────────────────────────────────────── */
-  .contact-label {
-    font-family: var(--mono);
-    font-size: 10px; letter-spacing: 0.2em;
-    color: var(--amber); margin-bottom: 16px;
-  }
-
-  .contact-title {
-    font-family: var(--display);
-    font-weight: 600;
-    font-size: clamp(32px, 4vw, 50px);
-    line-height: 1.1;
-    letter-spacing: -0.03em;
-    color: var(--text-bright);
-    margin-bottom: 20px;
-  }
-  .accent { color: var(--amber); font-style: italic; }
-
-  .contact-lead {
-    font-size: 18px;
-    line-height: 1.7;
-    color: var(--text-dim);
-    font-weight: 300;
-    margin-bottom: 36px;
-  }
-
-  .contact-cards { display: flex; flex-direction: column; gap: 16px; }
-  .contact-card {
-    display: flex; gap: 16px; align-items: flex-start;
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    padding: 18px 20px;
-    transition: border-color 0.2s;
-  }
-  .contact-card:hover { border-color: var(--border-amber); }
-  .cc-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
-  .cc-title {
-    font-family: var(--mono);
-    font-size: 11px; font-weight: 700;
-    letter-spacing: 0.08em;
-    color: var(--amber); margin-bottom: 4px;
-  }
-  .cc-body { font-size: 14px; color: var(--text-dim); line-height: 1.6; }
-
-  /* ── Form panel ──────────────────────────────────────────── */
-  .contact-form-wrap {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    overflow: hidden;
-  }
-
-  .form-header {
-    background: var(--bg3);
-    border-bottom: 1px solid var(--border);
-    padding: 10px 16px;
-    display: flex; align-items: center; gap: 6px;
-  }
-  .form-dot {
-    width: 10px; height: 10px; border-radius: 50%;
-  }
-  .form-dot.red    { background: #ff5f56; }
-  .form-dot.yellow { background: #ffbd2e; }
-  .form-dot.green  { background: #27c93f; }
-  .form-title {
-    font-family: var(--mono);
-    font-size: 11px; color: var(--text-dim);
-    letter-spacing: 0.05em; margin-left: 6px;
-  }
-
-  .contact-form { padding: 28px; display: flex; flex-direction: column; gap: 20px; }
-
-  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  @media (max-width: 480px) { .field-row { grid-template-columns: 1fr; } }
-
-  .field { display: flex; flex-direction: column; gap: 6px; }
-
-  .field-label {
-    font-family: var(--mono);
-    font-size: 10px; font-weight: 700;
-    letter-spacing: 0.15em;
-    color: var(--text-dim);
-  }
-  .required { color: var(--amber); }
-
-  .field-input {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    color: var(--text);
-    font-family: var(--sans);
-    font-size: 15px;
-    padding: 10px 14px;
-    outline: none;
-    transition: border-color 0.15s;
-    width: 100%;
-    resize: none;
-  }
-  .field-input::placeholder { color: var(--text-muted, rgba(232,220,200,0.25)); }
-  .field-input:focus { border-color: var(--amber); }
-
-  .field-textarea { min-height: 160px; }
-
-  .char-count {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--text-dim);
-    text-align: right;
-    margin-top: 4px;
-  }
-
-  /* ── Messages ────────────────────────────────────────────── */
-  .form-message {
-    padding: 12px 16px;
-    font-family: var(--mono);
-    font-size: 13px;
-    letter-spacing: 0.02em;
-  }
-  .form-error {
-    background: rgba(255,107,107,0.08);
-    border: 1px solid rgba(255,107,107,0.2);
-    color: #ff6b6b;
-  }
-  .form-success {
-    background: rgba(78,202,139,0.08);
-    border: 1px solid rgba(78,202,139,0.2);
-    color: var(--green);
-  }
-
-  /* ── Submit button ───────────────────────────────────────── */
-  .submit-btn {
-    background: var(--amber);
-    color: var(--bg);
-    border: none;
-    padding: 14px 28px;
-    font-family: var(--mono);
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    cursor: pointer;
-    transition: background 0.15s, opacity 0.15s;
-    align-self: flex-start;
-  }
-  .submit-btn:hover { background: #ffc13d; }
-  .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-</style>

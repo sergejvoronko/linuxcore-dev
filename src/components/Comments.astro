@@ -1,0 +1,69 @@
+---
+// src/components/Comments.astro
+// GitHub Discussions-based comments via Giscus.
+//
+// SETUP (5 min, one-time):
+//  1. Enable Discussions on your GitHub repo (Settings → Features)
+//  2. Install Giscus app: github.com/apps/giscus → select your repo
+//  3. Go to giscus.app, paste your repo URL
+//  4. Replace the three placeholder values below with what giscus.app gives you
+---
+
+<section class="comments-section">
+  <h2 class="comments-heading">
+    <span class="bracket">[</span>discussion<span class="bracket">]</span>
+  </h2>
+  <p class="comments-note">
+    Comments are powered by <a href="https://giscus.app" target="_blank" rel="noopener">Giscus</a>
+    — backed by GitHub Discussions. Sign in with GitHub to join the conversation.
+  </p>
+
+  <div class="giscus-wrap">
+    <script
+      src="https://giscus.app/client.js"
+      data-repo="linuxcore-dev/linuxcore-dev"
+      data-repo-id="YOUR_REPO_ID"
+      data-category="Comments"
+      data-category-id="YOUR_CATEGORY_ID"
+      data-mapping="pathname"
+      data-strict="0"
+      data-reactions-enabled="1"
+      data-emit-metadata="0"
+      data-input-position="top"
+      data-theme="dark"
+      data-lang="en"
+      crossorigin="anonymous"
+      async
+    ></script>
+  </div>
+</section>
+
+<style>
+  .comments-section {
+    margin-top: 3rem;
+    padding-top: 2.5rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .comments-heading {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--amber);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.6rem;
+  }
+  .bracket { opacity: 0.4; }
+
+  .comments-note {
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    margin-bottom: 1.5rem;
+    line-height: 1.5;
+  }
+  .comments-note a { color: var(--amber); }
+
+  .giscus-wrap {
+    min-height: 120px;
+  }
+</style>

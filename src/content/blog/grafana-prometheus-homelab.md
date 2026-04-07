@@ -2,6 +2,7 @@
 title: "Grafana + Prometheus Homelab Monitoring: Full Stack Setup in 30 Minutes"
 description: "Set up a complete homelab monitoring stack with Prometheus, Grafana, Node Exporter, cAdvisor, and Alertmanager using Docker Compose. Real dashboards, real alerts, zero cloud dependency."
 pubDate: 2026-04-07
+section: "homelab"
 pillar: "Monitoring"
 type: "PILLAR"
 tags: ["grafana", "prometheus", "monitoring", "docker", "homelab", "linux", "alertmanager", "cadvisor", "node-exporter"]

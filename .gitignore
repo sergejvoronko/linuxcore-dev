@@ -1,21 +1,8 @@
-# Build output
-dist/
-.output/
 
-# Dependencies
+# Playwright
 node_modules/
-
-# Logs
-npm-debug.log*
-
-# Environment variables
-.env
-.env.local
-.env.production
-
-# Astro cache
-.astro/
-
-# OS files
-.DS_Store
-Thumbs.db
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/

@@ -1,0 +1,141 @@
+---
+// src/pages/astro/index.astro
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ArticleCard from '../../components/ArticleCard.astro';
+
+const allPosts = await getCollection('blog', ({ data }) =>
+  data.section === 'astro' && !data.draft
+);
+const posts = allPosts.sort(
+  (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
+);
+
+const comingSoon = [
+  {
+    title:       'Adding Comments to Your Astro Blog with Giscus',
+    description: 'GitHub-backed comments with zero external dependencies, no database, no fees.',
+  },
+  {
+    title:       'Contact Forms with Cloudflare Pages Functions',
+    description: 'Send email from a static site using Cloudflare Workers and MailChannels.',
+  },
+  {
+    title:       'Building a Shop in Astro with Printify and Stripe',
+    description: 'Print-on-demand merch store with Cloudflare Functions handling checkout.',
+  },
+  {
+    title:       'SEO in Astro Without Plugins',
+    description: 'Sitemaps, structured data, Open Graph images, and canonicals from scratch.',
+  },
+  {
+    title:       'Newsletter Integration in Astro with MailerLite',
+    description: 'Connect a static Astro site to MailerLite without a backend.',
+  },
+];
+---
+
+<BaseLayout
+  title="Build with Astro"
+  description="Practical guides on building fast, cheap, low-maintenance websites with Astro, GitHub, and Cloudflare Pages. Written by a sysadmin who uses this stack in production."
+>
+  <main class="section-page">
+
+    <section class="section-hero">
+      <div class="tag-label"><span class="tb">[</span>astro<span class="tb">]</span></div>
+      <h1 class="section-title">Build with Astro</h1>
+      <p class="section-lead">
+        Practical guides on building fast, low-maintenance websites with Astro,
+        GitHub, and Cloudflare Pages. This entire site runs on this stack.
+      </p>
+      <div class="hero-stats">
+        <div class="stat"><span class="stat-n">~€12</span><span class="stat-l">per year</span></div>
+        <div class="stat-div">/</div>
+        <div class="stat"><span class="stat-n">100</span><span class="stat-l">Lighthouse</span></div>
+        <div class="stat-div">/</div>
+        <div class="stat"><span class="stat-n">0</span><span class="stat-l">servers to patch</span></div>
+      </div>
+    </section>
+
+    {posts.length > 0 && (
+      <section class="articles-section">
+        <h2 class="sub-heading"><span class="sh-pre">$</span> Published</h2>
+        <ul class="article-grid" role="list">
+          {posts.map(post => (
+            <li>
+              <ArticleCard
+                title={post.data.title}
+                description={post.data.description}
+                href={`/astro/${post.slug}`}
+                pubDate={post.data.pubDate}
+                tags={post.data.tags}
+                featured={post.data.featured}
+              />
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
+
+    <section class="articles-section">
+      <h2 class="sub-heading"><span class="sh-pre">$</span> Coming Soon</h2>
+      <ul class="coming-list" role="list">
+        {comingSoon.map(item => (
+          <li class="coming-item">
+            <div class="coming-badge">Coming soon</div>
+            <h3 class="coming-title">{item.title}</h3>
+            <p class="coming-desc">{item.description}</p>
+          </li>
+        ))}
+      </ul>
+    </section>
+
+    <section class="nl-cta">
+      <p class="nl-eyebrow"><span class="tb">[</span>newsletter<span class="tb">]</span></p>
+      <h2 class="nl-title">Get notified when new articles land</h2>
+      <p class="nl-body">No spam. Just an email when something new and useful goes up.</p>
+      <a href="/#newsletter" class="btn-primary">Subscribe →</a>
+    </section>
+
+  </main>
+</BaseLayout>
+
+<style>
+  .section-page { max-width: 56rem; margin: 0 auto; padding: 3rem 1.5rem 5rem; }
+
+  .section-hero { margin-bottom: 3.5rem; }
+  .tag-label { font-family: var(--font-mono); font-size: 0.78rem; color: var(--amber); margin-bottom: 0.75rem; }
+  .tb { opacity: 0.35; }
+  .section-title { font-family: var(--font-display); font-size: clamp(2rem, 5vw, 3rem); font-weight: 700; color: var(--text-bright); margin-bottom: 0.75rem; line-height: 1.1; }
+  .section-lead { font-size: 1.05rem; color: var(--text-mid); max-width: 52ch; line-height: 1.7; margin-bottom: 1.75rem; }
+
+  .hero-stats { display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; }
+  .stat { display: flex; flex-direction: column; align-items: center; }
+  .stat-n { font-family: var(--font-mono); font-size: 1.7rem; color: var(--amber); line-height: 1; }
+  .stat-l { font-family: var(--font-mono); font-size: 0.65rem; color: var(--text-dim); margin-top: 0.2rem; text-transform: uppercase; letter-spacing: 0.06em; }
+  .stat-div { font-family: var(--font-mono); color: var(--amber-border); font-size: 1.4rem; }
+
+  .articles-section { margin-bottom: 3.5rem; }
+  .sub-heading { font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; }
+  .sh-pre { color: var(--amber); }
+
+  .article-grid { list-style: none; margin: 0; padding: 0; display: grid; gap: 1.25rem; }
+
+  .coming-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.85rem; }
+  .coming-item {
+    padding: 1.25rem 1.5rem;
+    background: var(--amber-dim);
+    border: 1px solid var(--amber-border);
+    border-left: 3px solid rgba(240,165,0,0.3);
+    border-radius: 6px;
+    opacity: 0.75;
+  }
+  .coming-badge { font-family: var(--font-mono); font-size: 0.62rem; color: var(--amber); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.4rem; }
+  .coming-title { font-family: var(--font-sans); font-size: 0.95rem; font-weight: 600; color: var(--text-bright); margin-bottom: 0.3rem; }
+  .coming-desc { font-size: 0.82rem; color: var(--text-mid); line-height: 1.5; margin: 0; }
+
+  .nl-cta { margin-top: 3.5rem; padding: 2.5rem; background: var(--bg2); border: 1px solid var(--amber-border); border-radius: 10px; text-align: center; }
+  .nl-eyebrow { font-family: var(--font-mono); font-size: 0.72rem; color: var(--amber); margin-bottom: 0.6rem; }
+  .nl-title { font-family: var(--font-display); font-size: 1.5rem; color: var(--text-bright); margin-bottom: 0.5rem; }
+  .nl-body { font-size: 0.88rem; color: var(--text-mid); line-height: 1.6; margin-bottom: 1.25rem; }
+</style>

@@ -1,0 +1,143 @@
+---
+// src/pages/homelab/index.astro
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ArticleCard from '../../components/ArticleCard.astro';
+
+const allPosts = await getCollection('blog', ({ data }) =>
+  data.section === 'homelab' && !data.draft
+);
+const posts = allPosts.sort(
+  (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
+);
+
+const categories = [
+  { label: 'All',          tags: [] },
+  { label: 'Automation',   tags: ['ansible', 'n8n', 'automation'] },
+  { label: 'Containers',   tags: ['docker', 'proxmox'] },
+  { label: 'AI',           tags: ['ollama', 'open-webui', 'ai'] },
+  { label: 'Monitoring',   tags: ['grafana', 'prometheus', 'monitoring'] },
+  { label: 'Networking',   tags: ['wireguard', 'tailscale', 'traefik', 'vpn'] },
+  { label: 'Security',     tags: ['security', 'hardening', 'crowdsec', 'authelia'] },
+  { label: 'Backup',       tags: ['restic', 'backup', 'aws', 's3'] },
+  { label: 'Hardware',     tags: ['mini-pc', 'nas', 'hardware'] },
+];
+---
+
+<BaseLayout
+  title="Homelab Guides"
+  description="Linux homelab automation guides — Ansible, Docker, Proxmox, self-hosted AI, Grafana monitoring, WireGuard, and more. Written by a Linux infrastructure engineer."
+>
+  <main class="section-page">
+
+    <section class="section-hero">
+      <div class="tag-label"><span class="tb">[</span>homelab<span class="tb">]</span></div>
+      <h1 class="section-title">Linux Homelab</h1>
+      <p class="section-lead">
+        Practical infrastructure guides — Ansible, Docker, Proxmox, self-hosted AI,
+        monitoring, security, and backup. Everything tested on real hardware.
+      </p>
+    </section>
+
+    <!-- Category filter -->
+    <nav class="cat-nav" aria-label="Filter by category">
+      {categories.map((cat, i) => (
+        <button
+          class={`cat-pill ${i === 0 ? 'active' : ''}`}
+          data-tags={cat.tags.join(',')}
+        >
+          {cat.label}
+        </button>
+      ))}
+    </nav>
+
+    <!-- Articles -->
+    <section class="articles">
+      {posts.length === 0 ? (
+        <p class="empty">Articles publishing soon — subscribe to be notified.</p>
+      ) : (
+        <ul class="article-grid" id="article-grid" role="list">
+          {posts.map(post => (
+            <li data-tags={post.data.tags.join(',')}>
+              <ArticleCard
+                title={post.data.title}
+                description={post.data.description}
+                href={`/homelab/${post.slug}`}
+                pubDate={post.data.pubDate}
+                tags={post.data.tags}
+                featured={post.data.featured}
+              />
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+
+    <!-- Ansible bundle CTA -->
+    <section class="product-cta">
+      <p class="cta-eyebrow"><span class="tb">[</span>digital product<span class="tb">]</span></p>
+      <h2 class="cta-title">Ansible Homelab Bundle</h2>
+      <p class="cta-body">
+        25 production-ready Ansible files — base hardening, Docker CE, SSH security with
+        CrowdSec, Prometheus/Grafana monitoring, and Ollama with automatic GPU detection.
+        Skip the setup hours.
+      </p>
+      <a href="/go/ansible-bundle" class="btn-primary" target="_blank" rel="noopener">Get the Bundle — €29 →</a>
+    </section>
+
+  </main>
+</BaseLayout>
+
+<style>
+  .section-page { max-width: var(--wide-w); margin: 0 auto; padding: 3rem 1.5rem 5rem; }
+
+  /* Hero */
+  .section-hero { margin-bottom: 2.5rem; }
+  .tag-label { font-family: var(--font-mono); font-size: 0.78rem; color: var(--amber); margin-bottom: 0.75rem; }
+  .tb { opacity: 0.35; }
+  .section-title { font-family: var(--font-display); font-size: clamp(2rem, 5vw, 3rem); font-weight: 700; color: var(--text-bright); margin-bottom: 0.75rem; line-height: 1.1; }
+  .section-lead { font-size: 1.05rem; color: var(--text-mid); max-width: 52ch; line-height: 1.7; }
+
+  /* Category pills */
+  .cat-nav { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 2.5rem; }
+  .cat-pill {
+    padding: 0.35rem 0.85rem;
+    font-family: var(--font-mono); font-size: 0.7rem;
+    color: var(--text-dim); background: none;
+    border: 1px solid var(--border-mid); border-radius: 100px;
+    cursor: pointer; transition: all 0.15s; white-space: nowrap;
+  }
+  .cat-pill:hover { color: var(--amber); border-color: var(--amber-border); }
+  .cat-pill.active { color: #18120a; background: var(--amber); border-color: var(--amber); }
+
+  /* Grid */
+  .articles { margin-bottom: 4rem; }
+  .article-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.25rem; }
+  .article-grid li[hidden] { display: none; }
+  .empty { color: var(--text-dim); font-size: 0.9rem; }
+
+  /* CTA */
+  .product-cta { padding: 2.5rem; background: var(--bg2); border: 1px solid var(--amber-border); border-radius: 10px; }
+  .cta-eyebrow { font-family: var(--font-mono); font-size: 0.72rem; color: var(--amber); margin-bottom: 0.5rem; }
+  .cta-title { font-family: var(--font-display); font-size: 1.6rem; font-weight: 700; color: var(--text-bright); margin-bottom: 0.75rem; }
+  .cta-body { font-size: 0.93rem; color: var(--text-mid); line-height: 1.7; margin-bottom: 1.5rem; max-width: 54ch; }
+</style>
+
+<script>
+  const pills = document.querySelectorAll<HTMLButtonElement>('.cat-pill');
+  const items = document.querySelectorAll<HTMLLIElement>('#article-grid li');
+
+  pills.forEach(pill => {
+    pill.addEventListener('click', () => {
+      pills.forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      const filter = pill.dataset.tags ?? '';
+      items.forEach(item => {
+        if (!filter) { item.hidden = false; return; }
+        const filterTags = filter.split(',');
+        const postTags   = (item.dataset.tags ?? '').split(',');
+        item.hidden = !filterTags.some(f => postTags.includes(f));
+      });
+    });
+  });
+</script>

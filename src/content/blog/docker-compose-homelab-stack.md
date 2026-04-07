@@ -2,6 +2,7 @@
 title: "Docker Compose Homelab Mega-Stack: 20 Self-Hosted Services, One File"
 description: "A production-ready Docker Compose stack covering AI, monitoring, security, media, productivity, and networking — every service configured, every port documented, ready to deploy on any Linux machine."
 pubDate: 2026-05-12
+section: "homelab"
 pillar: "Infrastructure"
 type: "UNIQUE"
 tags: ["docker", "docker-compose", "self-hosted", "homelab", "linux", "containers", "ollama", "grafana", "nextcloud"]

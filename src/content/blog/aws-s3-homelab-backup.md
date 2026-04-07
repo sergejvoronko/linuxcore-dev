@@ -2,6 +2,7 @@
 title: "AWS S3 Backups for Your Homelab: Automated, Encrypted, Under €5/Month"
 description: "Use AWS S3 and Glacier to back up your homelab data offsite — Proxmox VMs, Docker volumes, Nextcloud, and config files — with restic, automated scheduling, and real cost numbers from a running setup."
 pubDate: 2026-05-26
+section: "homelab"
 pillar: "AWS Hybrid"
 type: "PILLAR"
 tags: ["aws", "s3", "backup", "restic", "homelab", "linux", "glacier", "proxmox", "automation", "rclone"]

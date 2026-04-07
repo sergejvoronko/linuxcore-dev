@@ -1,27 +1,26 @@
 import { defineCollection, z } from 'astro:content';
 
-/**
- * Content Collections
- * Each collection maps to a folder inside src/content/
- * The schema validates your markdown frontmatter at build time.
- */
-
-const guides = defineCollection({
+const blog = defineCollection({
   type: 'content',
   schema: z.object({
     title:       z.string(),
     description: z.string(),
     pubDate:     z.coerce.date(),
     updatedDate: z.coerce.date().optional(),
-    author:      z.string().default('linuxcore.dev'),
-    pillar:      z.enum(['Infrastructure', 'Self-Hosted AI', 'Linux Automation', 'Monitoring', 'Security', 'AWS Hybrid']),
-    type:        z.enum(['PILLAR', 'CLUSTER', 'UNIQUE']).default('CLUSTER'),
+    heroImage:   z.string().optional(),
+    heroImageAlt:z.string().optional(),
+
+    // 'homelab' → appears at /homelab/slug
+    // 'astro'   → appears at /astro/slug
+    // omit      → appears at /blog/slug only
+    section: z.enum(['homelab', 'astro']).optional(),
+
     tags:        z.array(z.string()).default([]),
-    readTime:    z.number(),              // minutes
-    draft:       z.boolean().default(false),
     featured:    z.boolean().default(false),
-    heroImage:   z.string().optional(),  // path to image in /public/images/
+    draft:       z.boolean().default(false),
+    affiliate:   z.boolean().default(false),
+    readingTime: z.number().optional(),
   }),
 });
 
-export const collections = { guides };
+export const collections = { blog };

@@ -2,6 +2,7 @@
 title: "Linux Homelab Security Hardening: Complete Checklist (2026)"
 description: "Harden any Ubuntu or Debian server from first boot to production-ready in under an hour. SSH lockdown, UFW firewall, fail2ban, automatic updates, CrowdSec, and audit tools — every command tested, every reason explained."
 pubDate: 2026-05-19
+section: "homelab"
 pillar: "Security"
 type: "PILLAR"
 tags: ["security", "linux", "ssh", "ufw", "fail2ban", "crowdsec", "hardening", "ubuntu", "debian", "homelab"]

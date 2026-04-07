@@ -1,0 +1,53 @@
+---
+// src/pages/shop/success.astro
+import BaseLayout from '../../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Order Confirmed" noIndex={true}>
+  <main class="success-page">
+    <div class="success-inner">
+      <div class="success-icon">✓</div>
+      <p class="success-label"><span class="tb">[</span>order confirmed<span class="tb">]</span></p>
+      <h1 class="success-title">You're all set.</h1>
+      <p class="success-body">
+        Your order has been placed and sent to Printify for fulfilment.
+        You'll get an email confirmation and shipping notification
+        when it's on its way.
+      </p>
+      <div class="success-actions">
+        <a href="/shop" class="btn-primary">Back to Shop →</a>
+        <a href="/" class="btn-outline">Home</a>
+      </div>
+    </div>
+  </main>
+</BaseLayout>
+
+<style>
+  .success-page {
+    min-height: calc(100vh - var(--nav-height));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 1.5rem;
+  }
+  .success-inner { max-width: 440px; text-align: center; }
+
+  .success-icon {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    background: rgba(78,202,139,0.12);
+    border: 1px solid rgba(78,202,139,0.3);
+    color: var(--green);
+    font-size: 1.6rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.25rem;
+  }
+
+  .success-label { font-family: var(--font-mono); font-size: 0.72rem; color: var(--green); margin-bottom: 0.6rem; }
+  .tb { opacity: 0.4; }
+  .success-title { font-family: var(--font-display); font-size: 2rem; font-weight: 700; color: var(--text-bright); margin-bottom: 0.75rem; }
+  .success-body { font-size: 0.97rem; color: var(--text-mid); line-height: 1.7; margin-bottom: 2rem; }
+  .success-actions { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
+</style>
