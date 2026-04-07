@@ -54,7 +54,7 @@ What makes it exceptional for homelab use:
 
 ## What You Need
 
-- Ollama running with at least one model pulled (see the [Ollama guide](/guides/ollama-linux-setup))
+- Ollama running with at least one model pulled (see the [Ollama guide](/homelab/ollama-linux-setup))
 - Docker and Docker Compose installed
 - A Telegram account for notifications (free)
 - 1 GB free RAM for n8n

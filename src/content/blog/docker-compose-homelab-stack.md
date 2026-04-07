@@ -23,7 +23,7 @@ every environment variable documented, every volume explained, every port
 listed. Deploy the whole stack with one command, or pick out the services
 you need and ignore the rest.
 
-The stack is designed to run on a single machine. A Beelink EQ14 with
+The stack is designed to run on a single machine. A [Beelink EQ14](/go/beelink-mini-s12) with
 16GB RAM handles the full set comfortably. On 8GB you'll want to pick
 your top 10 and leave the rest for later.
 
@@ -160,7 +160,7 @@ services:
       - ollama
 
   # ── n8n ────────────────────────────────────────────────────
-  # Workflow automation. See: /guides/n8n-ollama-automation
+  # Workflow automation. See: /homelab/n8n-ollama-automation
   n8n:
     image: docker.n8n.io/n8nio/n8n:latest
     container_name: n8n
@@ -205,7 +205,7 @@ services:
       - homelab
 
   # ── Grafana ────────────────────────────────────────────────
-  # Dashboards. See: /guides/grafana-prometheus-homelab
+  # Dashboards. See: /homelab/grafana-prometheus-homelab
   # First login: admin / changeme → change immediately
   grafana:
     image: grafana/grafana:latest
@@ -677,14 +677,14 @@ Proxy Manager or Tailscale Funnel):
 - [ ] Enable UFW: `sudo ufw allow from 192.168.1.0/24 to any port 3000` etc
 - [ ] Watchtower runs weekly at minimum — keep containers patched
 
-The [WireGuard + Tailscale guide](/guides/wireguard-tailscale-guide)
+The [WireGuard + Tailscale guide](/homelab/wireguard-tailscale-guide)
 covers the network security layer that sits in front of all of this.
 
 ---
 
 ## Automating the Entire Deploy with Ansible
 
-This stack pairs perfectly with the [Ansible guide](/guides/ansible-homelab-guide).
+This stack pairs perfectly with the [Ansible guide](/homelab/ansible-homelab-guide).
 Add a `docker-compose` role that:
 
 1. Copies `docker-compose.yml` to the target machine

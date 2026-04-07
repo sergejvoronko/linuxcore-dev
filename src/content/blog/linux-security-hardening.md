@@ -641,7 +641,7 @@ OPTIONAL
 ## Automating All of This with Ansible
 
 Running through this checklist manually on every new machine takes an
-hour. The [Ansible guide](/guides/ansible-homelab-guide) shows you how
+hour. The [Ansible guide](/homelab/ansible-homelab-guide) shows you how
 to build roles — here's the skeleton of a security role that runs every
 step above:
 
@@ -718,10 +718,10 @@ data if a drive is removed.
 
 **Network segmentation** — VLANs in Proxmox or on your router separate
 untrusted services (IoT, guest Wi-Fi) from your homelab. The
-[Proxmox guide](/guides/proxmox-homelab-setup) covers this.
+[Proxmox guide](/homelab/proxmox-homelab-setup) covers this.
 
 **Secrets management** — Ansible Vault and Vaultwarden from the
-[Docker Compose stack](/guides/docker-compose-homelab-stack) handle
+[Docker Compose stack](/homelab/docker-compose-homelab-stack) handle
 secret storage. Never put passwords in plain-text files or environment
 variables committed to Git.
 

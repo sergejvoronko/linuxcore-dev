@@ -72,7 +72,7 @@ N355 rather than the N100 itself — the N150 is the refreshed successor
 shipping in current stock. Think of it as "N100 plus a little": the same
 core count and architecture with a 6–10% performance bump.
 
-**Beelink EQ12 / EQ14** (~€150–180)
+**[Beelink EQ12 / EQ14](/go/beelink-mini-s12)** (~€150–180)
 
 The Beelink EQ12 with dual 2.5GbE NICs is popular for pfSense/OPNsense
 firewalls and general homelabbing. N100-based models are the best value
@@ -287,11 +287,11 @@ Over three years that's a €740 difference. The mini PC pays for itself.
 
 | Guide | N100 | N305 | Ryzen 7 | MS-01 |
 |:------|:----:|:----:|:-------:|:-----:|
-| [Ollama + Open WebUI](/guides/ollama-linux-setup) — 3b model | ✅ | ✅ | ✅ | ✅ |
-| [Ollama](/guides/ollama-linux-setup) — 7b model (CPU) | 🐢 slow | ✅ | ✅ | ✅ |
-| [Grafana + Prometheus](/guides/grafana-prometheus-homelab) | ✅ | ✅ | ✅ | ✅ |
-| [n8n + Ollama workflows](/guides/n8n-ollama-automation) | ✅ | ✅ | ✅ | ✅ |
-| [Ansible](/guides/ansible-homelab-guide) (control node) | ✅ | ✅ | ✅ | ✅ |
+| [Ollama + Open WebUI](/homelab/ollama-linux-setup) — 3b model | ✅ | ✅ | ✅ | ✅ |
+| [Ollama](/homelab/ollama-linux-setup) — 7b model (CPU) | 🐢 slow | ✅ | ✅ | ✅ |
+| [Grafana + Prometheus](/homelab/grafana-prometheus-homelab) | ✅ | ✅ | ✅ | ✅ |
+| [n8n + Ollama workflows](/homelab/n8n-ollama-automation) | ✅ | ✅ | ✅ | ✅ |
+| [Ansible](/homelab/ansible-homelab-guide) (control node) | ✅ | ✅ | ✅ | ✅ |
 | Proxmox — 3 VMs | ✅ | ✅ | ✅ | ✅ |
 | Proxmox — 6+ VMs | ❌ | ✅ | ✅ | ✅ |
 | Jellyfin hardware transcode | ✅ | ✅ | ✅ | ✅ |

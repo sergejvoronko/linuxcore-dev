@@ -64,7 +64,7 @@ Grafana is the eyes — it reads from Prometheus and shows you what's happening.
 ## What You Need
 
 - Ubuntu 22.04+ or Debian 12+ on the monitoring host
-- Docker and Docker Compose installed (see the [Docker setup guide](/guides/ansible-homelab-guide) or install with `curl -fsSL https://get.docker.com | sh`)
+- Docker and Docker Compose installed (see the [Docker setup guide](/homelab/ansible-homelab-guide) or install with `curl -fsSL https://get.docker.com | sh`)
 - 2 GB RAM free on the monitoring host (Grafana + Prometheus are not heavy)
 - Port access to your other machines for scraping
 
@@ -530,7 +530,7 @@ sudo systemctl enable --now node_exporter
 curl http://localhost:9100/metrics | head -20
 ```
 
-If you followed the [Ansible guide](/guides/ansible-homelab-guide), you can
+If you followed the [Ansible guide](/homelab/ansible-homelab-guide), you can
 add a Node Exporter role and deploy this to every machine in one command.
 That's the better long-term approach.
 
@@ -705,14 +705,14 @@ and container health across every machine — in real time and historically.
 
 The natural next steps from here:
 
-- **Automate the install with Ansible** — the [Ansible guide](/guides/ansible-homelab-guide)
+- **Automate the install with Ansible** — the [Ansible guide](/homelab/ansible-homelab-guide)
   shows you how to deploy Node Exporter to every machine with one command
 - **Add Loki for log aggregation** — Prometheus handles metrics, Loki handles
   logs. Together they give you the full Grafana observability stack
 - **Set up Uptime Kuma** — a simple, beautiful status page that monitors
   your services and sends alerts when they go down. Pairs perfectly with
   this stack for external endpoint monitoring
-- **Connect Ollama metrics** — if you followed the [Ollama guide](/guides/ollama-linux-setup),
+- **Connect Ollama metrics** — if you followed the [Ollama guide](/homelab/ollama-linux-setup),
   Prometheus can scrape model inference stats — requests per second, token
   generation speed, queue depth
 
