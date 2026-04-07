@@ -1,244 +1,391 @@
 ---
 // src/pages/scripts.astro
+// Free scripts + paid Ansible bundle product page
+
 import BaseLayout from '../layouts/BaseLayout.astro';
 
 const freeScripts = [
   {
-    name:        'server-hardening.sh',
-    description: 'Baseline Linux server hardening: SSH config, firewall rules, fail2ban, unattended upgrades, and sysctl tweaks. Tested on Ubuntu 22.04/24.04.',
-    tags:        ['bash', 'security', 'ubuntu'],
-    githubSlug:  'server-hardening',
+    title: 'Docker Health Check',
+    desc: 'Scans all running containers, reports unhealthy ones, and sends a Telegram alert. Drop it in cron or a systemd timer.',
+    file: 'docker-health-check.sh',
+    tags: ['bash', 'docker', 'monitoring'],
+    lines: 48,
+    color: '#00e5ff',
   },
   {
-    name:        'docker-install.sh',
-    description: 'Idempotent Docker CE + Compose plugin installer for Debian/Ubuntu. Adds the official repo, verifies GPG key, and starts the daemon.',
-    tags:        ['bash', 'docker', 'ubuntu'],
-    githubSlug:  'docker-install',
+    title: 'Restic Backup Wrapper',
+    desc: 'Full restic backup script with logging, retention policy, integrity check, and Telegram notification on failure.',
+    file: 'restic-backup.sh',
+    tags: ['bash', 'backup', 'restic', 'aws'],
+    lines: 95,
+    color: '#ffb300',
   },
   {
-    name:        'restic-backup.sh',
-    description: 'Restic backup to S3-compatible storage (AWS, Backblaze B2, Hetzner). Handles init, backup, forget/prune, and health-check notification.',
-    tags:        ['bash', 'backup', 'restic', 'aws'],
-    githubSlug:  'restic-backup',
+    title: 'Proxmox Container Provisioner',
+    desc: 'One-liner CLI to spin up a new LXC container with sane defaults — hostname, RAM, IP, SSH key — no GUI needed.',
+    file: 'pct-create.sh',
+    tags: ['bash', 'proxmox', 'lxc'],
+    lines: 62,
+    color: '#00ff88',
   },
   {
-    name:        'prometheus-node-exporter.sh',
-    description: 'Installs and configures Node Exporter as a systemd service. Ready to scrape from any Prometheus instance.',
-    tags:        ['bash', 'monitoring', 'prometheus'],
-    githubSlug:  'prometheus-node-exporter',
+    title: 'UFW Homelab Ruleset',
+    desc: 'Idempotent UFW setup script. Applies the full homelab firewall baseline from the security hardening guide.',
+    file: 'ufw-homelab.sh',
+    tags: ['bash', 'security', 'ufw'],
+    lines: 55,
+    color: '#ff4466',
   },
   {
-    name:        'ollama-install.sh',
-    description: 'Installs Ollama with automatic GPU detection (NVIDIA/AMD/CPU fallback). Pulls a default model and sets up as a systemd service.',
-    tags:        ['bash', 'ai', 'ollama', 'gpu'],
-    githubSlug:  'ollama-install',
+    title: 'Ollama Model Manager',
+    desc: 'Pull, list, benchmark, and prune Ollama models. Includes a size report so you know what is eating your disk.',
+    file: 'ollama-manager.sh',
+    tags: ['bash', 'ollama', 'ai'],
+    lines: 71,
+    color: '#00e5ff',
   },
   {
-    name:        'tailscale-setup.sh',
-    description: 'Installs Tailscale, authenticates, enables exit node and subnet routing, and configures auto-update.',
-    tags:        ['bash', 'vpn', 'tailscale', 'networking'],
-    githubSlug:  'tailscale-setup',
+    title: 'Docker Volume Backup',
+    desc: 'Backs up all named Docker volumes to a tar archive. Supports exclusions, compression, and rotation.',
+    file: 'docker-volume-backup.sh',
+    tags: ['bash', 'docker', 'backup'],
+    lines: 83,
+    color: '#b388ff',
   },
+];
+
+const bundleFeatures = [
+  { icon: '🐧', title: '5 Ansible roles', desc: 'base, docker, monitoring, security, ollama — production-tested, idempotent' },
+  { icon: '📋', title: 'Full inventory template', desc: 'Multi-group inventory with variables for homelab, NAS, VPS, and monitoring nodes' },
+  { icon: '🔐', title: 'Vault secrets template', desc: 'Pre-structured group_vars/secrets.yml with every common secret placeholder' },
+  { icon: '🚀', title: 'One-command deploy', desc: 'Single site.yml that provisions a fresh Ubuntu box to full homelab stack in 8 minutes' },
+  { icon: '📦', title: '12 ready-made playbooks', desc: 'Update all nodes, deploy stack, rotate secrets, backup configs, harden SSH' },
+  { icon: '📖', title: 'Role README files', desc: 'Each role documented with variables, dependencies, and example usage' },
 ];
 ---
 
 <BaseLayout
-  title="Scripts"
-  description="Free production-ready Bash scripts for Linux hardening, Docker, backups, monitoring, and more. Plus the Ansible Homelab Bundle for full automation."
+  title="Scripts & Ansible Playbooks"
+  description="Free bash scripts and a complete Ansible homelab automation bundle — provision your entire Linux stack from one command."
 >
-  <main class="scripts-page">
 
-    <!-- Hero -->
-    <section class="page-hero">
-      <div class="hero-label"><span class="tb">[</span>scripts<span class="tb">]</span></div>
-      <h1 class="hero-title">Scripts &amp; Tools</h1>
-      <p class="hero-lead">
-        Production-ready Bash scripts for Linux infrastructure. Free to use, free to modify.
-        Everything is on GitHub — no email required.
+  <!-- ── HERO ──────────────────────────────────────────────── -->
+  <section class="scripts-hero">
+    <div class="hero-grid"></div>
+    <div class="hero-inner">
+      <div class="hero-label">
+        <span class="live-dot"></span>
+        SCRIPTS & AUTOMATION
+      </div>
+      <h1 class="hero-title">
+        Stop running commands<br>
+        <span class="accent">from memory.</span>
+      </h1>
+      <p class="hero-sub">
+        Free bash scripts for everyday homelab tasks. Plus a complete
+        Ansible bundle that provisions your entire stack from one command.
       </p>
-    </section>
+    </div>
+  </section>
 
-    <!-- Free scripts -->
-    <section class="scripts-section">
-      <h2 class="section-label"><span class="sl-pre">$</span> Free Scripts</h2>
-      <p class="section-note">
-        All scripts are in the
-        <a href="https://github.com/linuxcore-dev/linuxcore-scripts" target="_blank" rel="noopener">linuxcore-scripts</a>
-        GitHub repo. Click any script to view or download.
+  <!-- ── FREE SCRIPTS ───────────────────────────────────────── -->
+  <section class="section">
+    <div class="section-inner">
+      <div class="section-label">FREE SCRIPTS</div>
+      <h2 class="section-title">Download and use. <span>No sign-up.</span></h2>
+      <p class="section-desc">
+        Every script is self-contained, commented, and tested on Ubuntu 22.04+
+        and Debian 12. Copy the raw file or clone the
+        <a href="https://github.com/linuxcore-dev/homelab-scripts" target="_blank" rel="noopener">
+          GitHub repo
+        </a>.
       </p>
+
       <div class="scripts-grid">
-        {freeScripts.map(s => (
-          <div class="script-card">
+        {freeScripts.map(script => (
+          <div class="script-card" style={`--sc:${script.color}`}>
             <div class="script-header">
-              <code class="script-name">{s.name}</code>
+              <code class="script-file">{script.file}</code>
+              <span class="script-lines">{script.lines} lines</span>
+            </div>
+            <h3 class="script-title">{script.title}</h3>
+            <p class="script-desc">{script.desc}</p>
+            <div class="script-footer">
+              <div class="script-tags">
+                {script.tags.map(tag => (
+                  <span class="tag">#{tag}</span>
+                ))}
+              </div>
               <a
-                href={`https://github.com/linuxcore-dev/linuxcore-scripts/blob/main/${s.githubSlug}.sh`}
+                href={`https://raw.githubusercontent.com/linuxcore-dev/homelab-scripts/main/${script.file}`}
                 target="_blank"
                 rel="noopener"
-                class="script-gh-link"
-                aria-label={`View ${s.name} on GitHub`}
+                class="script-dl"
               >
-                ↗ GitHub
+                ↓ RAW
               </a>
-            </div>
-            <p class="script-desc">{s.description}</p>
-            <div class="script-tags">
-              {s.tags.map(t => <span class="chip">{t}</span>)}
             </div>
           </div>
         ))}
       </div>
-    </section>
 
-    <!-- Ansible bundle -->
-    <section class="bundle-section" id="ansible-bundle">
-      <div class="bundle-card">
-        <div class="bundle-badge">Premium</div>
-        <div class="bundle-body">
-          <p class="bundle-eyebrow"><span class="tb">[</span>ansible<span class="tb">]</span></p>
-          <h2 class="bundle-title">Ansible Homelab Bundle</h2>
+      <div class="repo-cta">
+        <p>All scripts live in the public GitHub repo — star it to get notified when new ones are added.</p>
+        <a
+          href="https://github.com/linuxcore-dev/homelab-scripts"
+          target="_blank"
+          rel="noopener"
+          class="btn-secondary"
+        >
+          ⭐ View GitHub Repo →
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── ANSIBLE BUNDLE ─────────────────────────────────────── -->
+  <section class="section bundle-section" id="ansible-bundle">
+    <div class="section-inner">
+
+      <div class="bundle-badge">DIGITAL PRODUCT</div>
+
+      <div class="bundle-layout">
+
+        <!-- Left — pitch -->
+        <div class="bundle-pitch">
+          <div class="section-label">ANSIBLE HOMELAB BUNDLE</div>
+          <h2 class="bundle-title">
+            Provision your entire homelab<br>
+            <span>in 8 minutes.</span>
+          </h2>
+
           <p class="bundle-desc">
-            25 production-ready Ansible files that turn a fresh Linux machine into a fully
-            configured homelab node — hardened, monitored, and ready to run AI workloads.
+            Everything you need to go from a fresh Ubuntu install to a fully
+            running homelab stack — Ollama, Docker, Prometheus, Grafana,
+            security hardening — with one command.
+          </p>
+          <p class="bundle-desc">
+            Built from the same Ansible patterns in the
+            <a href="/guides/ansible-homelab-guide">Ansible guide</a>,
+            but production-ready: variables extracted, secrets vaulted,
+            handlers wired up, and tested on real hardware.
           </p>
 
-          <div class="bundle-includes">
-            <div class="includes-col">
-              <div class="includes-label">5 Roles</div>
-              <ul class="includes-list">
-                <li>Base server hardening</li>
-                <li>Docker CE + Compose</li>
-                <li>SSH &amp; kernel security + CrowdSec</li>
-                <li>Prometheus + Grafana monitoring</li>
-                <li>Ollama + Open WebUI (auto GPU)</li>
-              </ul>
-            </div>
-            <div class="includes-col">
-              <div class="includes-label">5 Playbooks</div>
-              <ul class="includes-list">
-                <li>Fleet package updates</li>
-                <li>Restic S3 backup</li>
-                <li>SSH hardening</li>
-                <li>Ollama model pulling</li>
-                <li>Health check summary</li>
-              </ul>
-            </div>
-            <div class="includes-col">
-              <div class="includes-label">Also included</div>
-              <ul class="includes-list">
-                <li>Inventory templates</li>
-                <li>Group vars structure</li>
-                <li>Vault secrets example</li>
-                <li>Full README + usage docs</li>
-                <li>Lifetime updates</li>
-              </ul>
-            </div>
-          </div>
-
-          <div class="bundle-footer">
-            <div class="bundle-price">
-              <span class="price-amount">€29</span>
-              <span class="price-note">one-time · instant download</span>
-            </div>
-            <a
-              href="/go/ansible-bundle"
-              class="btn-primary"
-              target="_blank"
-              rel="noopener"
-            >
-              Get the Bundle →
-            </a>
+          <div class="bundle-features">
+            {bundleFeatures.map(f => (
+              <div class="bundle-feature">
+                <span class="feature-icon">{f.icon}</span>
+                <div>
+                  <div class="feature-title">{f.title}</div>
+                  <div class="feature-desc">{f.desc}</div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
-      </div>
-    </section>
 
-  </main>
+        <!-- Right — pricing card -->
+        <div class="bundle-card">
+          <div class="bundle-price-label">ONE-TIME PURCHASE</div>
+          <div class="bundle-price">€29</div>
+          <div class="bundle-price-sub">Instant download · Lifetime updates</div>
+
+          <ul class="bundle-list">
+            <li>✓ 5 production Ansible roles</li>
+            <li>✓ 12 ready-made playbooks</li>
+            <li>✓ Inventory + vars templates</li>
+            <li>✓ Vault secrets structure</li>
+            <li>✓ Role documentation</li>
+            <li>✓ Free updates forever</li>
+          </ul>
+
+          <!-- Gumroad buy button — replace PRODUCT_ID -->
+          <a
+            href="https://linuxcore-dev.gumroad.com/l/ansible-homelab-bundle"
+            target="_blank"
+            rel="noopener"
+            class="buy-btn"
+            data-gumroad-overlay="true"
+          >
+            BUY NOW →
+          </a>
+
+          <p class="bundle-guarantee">
+            30-day money-back guarantee. If it doesn't work on your setup,
+            full refund — no questions.
+          </p>
+
+          <div class="bundle-meta">
+            <span>📦 ZIP download</span>
+            <span>~180KB</span>
+            <span>MIT licence</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Preview of what's inside -->
+      <div class="bundle-preview">
+        <div class="preview-label">WHAT'S INSIDE</div>
+        <pre class="file-tree">ansible-homelab-bundle/
+├── site.yml                    ← run this to deploy everything
+├── inventory.ini               ← add your machines here
+├── group_vars/
+│   ├── all.yml                 ← shared variables
+│   └── secrets.yml.example     ← vault template
+├── roles/
+│   ├── base/                   ← system hardening, UFW, fail2ban
+│   ├── docker/                 ← Docker CE + Compose plugin
+│   ├── monitoring/             ← Prometheus + Grafana + Node Exporter
+│   ├── security/               ← SSH hardening, CrowdSec, sysctl
+│   └── ollama/                 ← Ollama + Open WebUI + GPU detection
+└── playbooks/
+    ├── update-all.yml          ← apt upgrade across all nodes
+    ├── deploy-stack.yml        ← full stack deploy
+    ├── backup-configs.yml      ← back up all configs to S3
+    ├── rotate-secrets.yml      ← regenerate credentials
+    ├── harden-ssh.yml          ← SSH hardening only
+    └── ... 7 more playbooks</pre>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ── NEWSLETTER CTA ─────────────────────────────────────── -->
+  <section class="section">
+    <div class="section-inner">
+      <div class="nl-strip">
+        <div>
+          <div class="nl-title">New scripts every month.</div>
+          <div class="nl-sub">
+            Subscribe to the newsletter — new tools, scripts, and configs
+            delivered every Monday.
+          </div>
+        </div>
+        <a href="/#newsletter" class="btn-primary">SUBSCRIBE →</a>
+      </div>
+    </div>
+  </section>
+
 </BaseLayout>
 
+<!-- Gumroad overlay script -->
+<script src="https://gumroad.com/js/gumroad.js"></script>
+
 <style>
-  .scripts-page { max-width: var(--wide-w); margin: 0 auto; padding: 3rem 1.5rem 5rem; }
-
   /* Hero */
-  .page-hero { margin-bottom: 3.5rem; }
-  .hero-label { font-family: var(--font-mono); font-size: 0.78rem; color: var(--amber); margin-bottom: 0.75rem; }
-  .tb { opacity: 0.35; }
-  .hero-title { font-family: var(--font-display); font-size: clamp(2rem, 5vw, 3rem); font-weight: 700; color: var(--text-bright); margin-bottom: 0.75rem; line-height: 1.1; }
-  .hero-lead { font-size: 1.05rem; color: var(--text-mid); max-width: 52ch; line-height: 1.7; }
-
-  /* Free scripts */
-  .scripts-section { margin-bottom: 4rem; }
-  .section-label { font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.1em; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem; }
-  .sl-pre { color: var(--amber); }
-  .section-note { font-size: 0.87rem; color: var(--text-dim); margin-bottom: 1.75rem; }
-  .section-note a { color: var(--amber); }
-
-  .scripts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.25rem; }
-
-  .script-card {
-    padding: 1.4rem;
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    transition: border-color 0.15s;
+  .scripts-hero {
+    min-height: 40vh; display: flex; align-items: center;
+    padding: 80px 40px 48px; position: relative; overflow: hidden;
   }
-  .script-card:hover { border-color: var(--amber-border); }
+  .hero-grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(0,255,136,.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,136,.04) 1px, transparent 1px);
+    background-size: 60px 60px;
+    mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black, transparent);
+  }
+  .hero-inner { max-width: 600px; z-index: 1; }
+  .hero-label { font-size: 10px; letter-spacing: .2em; color: var(--green); display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+  .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:.5} 50%{opacity:1} }
+  .hero-title { font-family: var(--sans); font-weight: 800; font-size: clamp(30px, 5vw, 56px); line-height: 1.05; color: var(--text-bright); margin-bottom: 12px; }
+  .accent { color: var(--green); display: block; }
+  .hero-sub { font-size: 14px; color: var(--text-dim); line-height: 1.8; max-width: 480px; }
 
-  .script-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; gap: 0.5rem; }
-  .script-name { font-family: var(--font-mono); font-size: 0.82rem; color: var(--amber); background: var(--bg-code); padding: 0.25em 0.6em; border-radius: 3px; }
-  .script-gh-link { font-family: var(--font-mono); font-size: 0.68rem; color: var(--text-dim); text-decoration: none; white-space: nowrap; transition: color 0.15s; }
-  .script-gh-link:hover { color: var(--amber); }
-  .script-desc { font-size: 0.87rem; color: var(--text-mid); line-height: 1.6; margin-bottom: 0.85rem; }
-  .script-tags { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+  /* Sections */
+  .section { padding: 64px 40px; }
+  .section:nth-child(even) { background: var(--bg2); }
+  .section-inner { max-width: 1100px; margin: 0 auto; }
+  .section-label { font-size: 10px; letter-spacing: .2em; color: var(--green); margin-bottom: 8px; }
+  .section-label::before { content: '// '; color: var(--text-dim); }
+  .section-title { font-family: var(--sans); font-weight: 800; font-size: clamp(22px, 3vw, 36px); color: var(--text-bright); line-height: 1.15; margin-bottom: 10px; }
+  .section-title span { color: var(--green); }
+  .section-desc { color: var(--text-dim); font-size: 13px; line-height: 1.7; margin-bottom: 32px; }
+  .section-desc a { color: var(--green); }
+
+  /* Scripts grid */
+  .scripts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 16px; margin-bottom: 32px; }
+  .script-card {
+    border: 1px solid var(--border); background: var(--bg2); padding: 20px;
+    transition: border-color .15s, background .15s;
+  }
+  .script-card:hover { border-color: var(--sc); background: var(--bg3); }
+  .script-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .script-file { font-size: 11px; color: var(--sc); font-family: var(--mono); }
+  .script-lines { font-size: 10px; color: var(--text-dim); font-family: var(--mono); }
+  .script-title { font-family: var(--sans); font-weight: 700; font-size: 14px; color: var(--text-bright); margin-bottom: 8px; }
+  .script-desc { font-size: 12px; color: var(--text-dim); line-height: 1.65; margin-bottom: 14px; }
+  .script-footer { display: flex; justify-content: space-between; align-items: center; }
+  .script-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tag { font-size: 10px; color: var(--text-dim); font-family: var(--mono); }
+  .script-dl { font-size: 11px; font-family: var(--mono); color: var(--sc); text-decoration: none; letter-spacing: .05em; transition: opacity .15s; }
+  .script-dl:hover { opacity: .7; }
+
+  .repo-cta { border: 1px solid var(--border); padding: 20px 24px; display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+  .repo-cta p { color: var(--text-dim); font-size: 13px; }
+
+  /* Buttons */
+  .btn-primary { background: var(--green); color: var(--bg); border: none; padding: 11px 24px; font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; transition: background .15s; cursor: pointer; }
+  .btn-primary:hover { background: #00ffaa; color: var(--bg); }
+  .btn-secondary { background: transparent; color: var(--text); border: 1px solid var(--border); padding: 11px 24px; font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; transition: all .15s; }
+  .btn-secondary:hover { border-color: var(--green); color: var(--green); }
 
   /* Bundle */
-  .bundle-section { margin-bottom: 2rem; }
+  .bundle-section { background: var(--bg2); }
+  .bundle-badge { display: inline-block; background: rgba(0,255,136,.1); border: 1px solid rgba(0,255,136,.3); color: var(--green); font-size: 10px; letter-spacing: .2em; padding: 3px 12px; font-family: var(--mono); margin-bottom: 20px; }
+  .bundle-layout { display: grid; grid-template-columns: 1fr 320px; gap: 56px; align-items: start; margin-bottom: 48px; }
+  @media(max-width:900px){ .bundle-layout { grid-template-columns: 1fr; gap: 32px; } }
 
+  .bundle-title { font-family: var(--sans); font-weight: 800; font-size: clamp(24px, 3.5vw, 40px); color: var(--text-bright); line-height: 1.1; margin-bottom: 16px; }
+  .bundle-title span { color: var(--green); }
+  .bundle-desc { font-size: 13px; color: var(--text-dim); line-height: 1.75; margin-bottom: 12px; }
+  .bundle-desc a { color: var(--green); }
+
+  .bundle-features { display: flex; flex-direction: column; gap: 14px; margin-top: 24px; }
+  .bundle-feature { display: flex; gap: 14px; align-items: flex-start; }
+  .feature-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+  .feature-title { font-size: 13px; font-weight: 600; color: var(--text-bright); margin-bottom: 2px; font-family: var(--sans); }
+  .feature-desc { font-size: 12px; color: var(--text-dim); line-height: 1.6; }
+
+  /* Pricing card */
   .bundle-card {
-    position: relative;
-    background: var(--bg2);
-    border: 1px solid var(--amber-border);
-    border-radius: 10px;
-    overflow: hidden;
+    border: 1px solid rgba(0,255,136,.4);
+    background: var(--bg3);
+    padding: 28px 24px;
+    position: sticky; top: 80px;
   }
+  .bundle-price-label { font-size: 10px; letter-spacing: .2em; color: var(--text-dim); margin-bottom: 8px; font-family: var(--mono); }
+  .bundle-price { font-family: var(--sans); font-size: 52px; font-weight: 800; color: var(--green); line-height: 1; margin-bottom: 4px; }
+  .bundle-price-sub { font-size: 12px; color: var(--text-dim); margin-bottom: 20px; }
+  .bundle-list { list-style: none; padding: 0; margin: 0 0 24px; display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--border); padding-top: 16px; }
+  .bundle-list li { font-size: 13px; color: var(--text); }
 
-  .bundle-badge {
-    position: absolute;
-    top: 1.25rem; right: 1.25rem;
-    font-family: var(--font-mono);
-    font-size: 0.62rem;
-    color: #18120a;
-    background: var(--amber);
-    padding: 0.2em 0.7em;
-    border-radius: 3px;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
+  .buy-btn {
+    display: block; text-align: center; background: var(--green); color: var(--bg);
+    padding: 14px; font-family: var(--mono); font-size: 13px; font-weight: 700;
+    letter-spacing: .1em; text-decoration: none; transition: background .15s;
+    margin-bottom: 12px;
   }
+  .buy-btn:hover { background: #00ffaa; color: var(--bg); }
 
-  .bundle-body { padding: 2.5rem; }
+  .bundle-guarantee { font-size: 11px; color: var(--text-dim); line-height: 1.6; text-align: center; margin-bottom: 16px; }
+  .bundle-meta { display: flex; gap: 12px; justify-content: center; font-size: 10px; color: var(--text-dim); font-family: var(--mono); padding-top: 12px; border-top: 1px solid var(--border); }
 
-  .bundle-eyebrow { font-family: var(--font-mono); font-size: 0.72rem; color: var(--amber); margin-bottom: 0.5rem; }
-  .bundle-title { font-family: var(--font-display); font-size: 1.8rem; font-weight: 700; color: var(--text-bright); margin-bottom: 0.75rem; }
-  .bundle-desc { font-size: 0.97rem; color: var(--text-mid); line-height: 1.7; margin-bottom: 2rem; max-width: 58ch; }
+  /* File tree preview */
+  .bundle-preview { border: 1px solid var(--border); background: var(--bg); }
+  .preview-label { font-size: 10px; letter-spacing: .2em; color: var(--text-dim); padding: 10px 16px; border-bottom: 1px solid var(--border); font-family: var(--mono); }
+  .file-tree { font-family: var(--mono); font-size: 12px; line-height: 1.9; color: var(--text-dim); padding: 16px; margin: 0; overflow-x: auto; }
+  .file-tree::selection { background: rgba(0,255,136,.2); }
 
-  .bundle-includes { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 2rem; margin-bottom: 2.5rem; }
+  /* Newsletter strip */
+  .nl-strip { border: 1px solid var(--border); padding: 24px 28px; display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+  .nl-title { font-family: var(--sans); font-weight: 700; font-size: 18px; color: var(--text-bright); margin-bottom: 4px; }
+  .nl-sub { color: var(--text-dim); font-size: 13px; }
 
-  .includes-label {
-    font-family: var(--font-mono);
-    font-size: 0.68rem;
-    color: var(--amber);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    margin-bottom: 0.6rem;
+  @media(max-width:600px) {
+    .scripts-hero, .section { padding-left: 20px; padding-right: 20px; }
   }
-
-  .includes-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.35rem; }
-  .includes-list li { font-size: 0.87rem; color: var(--text-mid); padding-left: 1em; position: relative; }
-  .includes-list li::before { content: '→'; position: absolute; left: 0; color: var(--amber); opacity: 0.6; font-family: var(--font-mono); font-size: 0.75rem; }
-
-  .bundle-footer { display: flex; align-items: center; gap: 2rem; padding-top: 1.75rem; border-top: 1px solid var(--border); flex-wrap: wrap; }
-
-  .bundle-price { display: flex; flex-direction: column; }
-  .price-amount { font-family: var(--font-mono); font-size: 2rem; color: var(--amber); line-height: 1; }
-  .price-note { font-family: var(--font-mono); font-size: 0.68rem; color: var(--text-dim); margin-top: 0.2rem; }
 </style>
