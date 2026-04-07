@@ -2,6 +2,7 @@
 title: "Ansible for Homelabbers: Automate Everything from One Playbook"
 description: "Learn how to provision your entire homelab stack — Docker, Proxmox, monitoring, security — from a single Ansible playbook. Includes real working roles."
 pubDate: 2026-01-13
+heroImage: "/images/ansible-homelab.webp"
 section: "homelab"
 pillar: "Linux Automation"
 type: "CLUSTER"

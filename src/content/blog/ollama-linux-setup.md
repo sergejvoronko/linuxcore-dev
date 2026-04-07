@@ -8,7 +8,7 @@ type: "PILLAR"
 tags: ["ollama", "docker", "self-hosted", "llm", "linux"]
 readTime: 18
 featured: true
-heroImage: "/images/ollama-setup.png"
+heroImage: "/images/ollama-linux-setup.webp"
 ---
 
 ## Why Run AI Locally?

@@ -2,6 +2,7 @@
 title: "n8n + Ollama: Build an AI Automation Agent on Your Own Server"
 description: "Connect your local LLMs to real workflows: auto-summarise RSS feeds, analyse Linux logs with AI, send Telegram alerts, and build a personal AI assistant — all self-hosted, all free, all private."
 pubDate: 2026-04-14
+heroImage: "/images/n8n-ollama-automation.webp"
 section: "homelab"
 pillar: "Self-Hosted AI"
 type: "UNIQUE"
