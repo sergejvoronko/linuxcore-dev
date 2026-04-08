@@ -138,7 +138,14 @@ const sectionColor = section === 'astro' ? '#7eb8d4' : '#f0a500';
   .post-hero { margin-bottom: 36px; border: 1px solid var(--border); }
   .post-hero img { width: 100%; height: auto; display: block; }
   @media (max-width: 600px) {
-    .post-hero { margin-left: -18px; margin-right: -18px; border-left: none; border-right: none; }
+    .post-hero {
+      width: 100vw;
+      position: relative;
+      left: 50%;
+      transform: translateX(-50%);
+      border-left: none;
+      border-right: none;
+    }
   }
 
   /* ── Body / TOC layout ─── */
