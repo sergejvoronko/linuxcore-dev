@@ -38,6 +38,7 @@ body {
   font-size: 18px;
   line-height: 1.8;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 
 ::-webkit-scrollbar       { width: 4px; }
