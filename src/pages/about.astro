@@ -31,7 +31,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         <div class="bio-identity">
           <!-- Avatar placeholder — replace src with your photo -->
           <div class="avatar-wrap">
-            <div class="avatar-placeholder" aria-hidden="true">S</div>
+            <img src="/images/avatar.webp" alt="Sergej Voronko" class="avatar-img" />
             <div class="avatar-online">
               <span class="live-dot"></span>
               ONLINE
@@ -358,21 +358,12 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   .bio-identity { display: flex; flex-direction: column; gap: 20px; }
 
   .avatar-wrap { position: relative; display: inline-block; }
-  .avatar-placeholder {
+  .avatar-img {
     width: 100px; height: 100px;
-    background: var(--bg3);
+    object-fit: cover;
     border: 2px solid var(--border-amber);
-    display: flex; align-items: center; justify-content: center;
-    font-family: var(--display);
-    font-size: 42px;
-    font-weight: 600;
-    color: var(--amber);
-    letter-spacing: -0.02em;
+    display: block;
   }
-  /* Replace avatar-placeholder with an img tag once you have a photo:
-     <img src="/photo.jpg" alt="Sergej" class="avatar-img" />
-     .avatar-img { width: 100px; height: 100px; object-fit: cover; border: 2px solid var(--border-amber); }
-  */
   .avatar-online {
     position: absolute;
     bottom: -8px; left: 0;
