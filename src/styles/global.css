@@ -64,6 +64,7 @@ pre {
   border-radius: 0;
   padding: 1.25rem 1.5rem !important;
   overflow-x: auto;
+  max-width: 100%;
   font-size: 13px !important;
   line-height: 1.75 !important;
   background: var(--bg-code) !important;
