@@ -76,6 +76,8 @@ code:not(pre code) {
   padding: 1px 6px;
   font-size: 0.85em;
   font-family: var(--mono);
+  word-break: break-all;
+  overflow-wrap: break-word;
 }
 
 .chip {
