@@ -5,13 +5,13 @@
 const BASE = 'https://api.printify.com/v1';
 
 function headers() {
-  const token = import.meta.env.PRINTIFY_API_TOKEN;
+  const token = import.meta.env.PRINTIFY_API_TOKEN ?? process.env.PRINTIFY_API_TOKEN;
   if (!token) throw new Error('PRINTIFY_API_TOKEN is not set');
   return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 }
 
 function shopId() {
-  const id = import.meta.env.PRINTIFY_SHOP_ID;
+  const id = import.meta.env.PRINTIFY_SHOP_ID ?? process.env.PRINTIFY_SHOP_ID;
   if (!id) throw new Error('PRINTIFY_SHOP_ID is not set');
   return id;
 }
