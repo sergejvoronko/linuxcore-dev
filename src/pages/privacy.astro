@@ -1,0 +1,140 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout
+  title="Privacy Policy & Cookies"
+  description="Privacy policy and cookie information for linuxcore.dev."
+>
+  <main class="legal-page">
+    <div class="legal-inner">
+
+      <div class="legal-label">// LEGAL</div>
+      <h1 class="legal-title">Privacy Policy & Cookies</h1>
+      <p class="legal-lead">
+        This policy explains what data linuxcore.dev collects, why, and how it is used.
+        This site is operated by Sergej Voronko, Hlavna 60, 04457 Haniska, Slovakia.
+      </p>
+
+      <section class="legal-section">
+        <h2>Data Controller</h2>
+        <p>
+          Sergej Voronko<br />
+          Hlavna 60, 04457 Haniska, Slovakia<br />
+          <a href="mailto:contact@linuxcore.dev">contact@linuxcore.dev</a>
+        </p>
+      </section>
+
+      <section class="legal-section">
+        <h2>What Data We Collect</h2>
+        <p><strong>Contact form</strong> — when you submit the contact form, we collect your name, email address, subject, and message. This data is used solely to respond to your enquiry and is not stored beyond what your email client retains.</p>
+        <p><strong>Newsletter</strong> — if you subscribe to the newsletter, your email address is stored by MailerLite (our email provider). You can unsubscribe at any time via the link in any email.</p>
+        <p><strong>Shop orders</strong> — if you purchase a product, your name, address, and payment details are processed by Stripe (payment) and Printify (fulfilment). We do not store your payment card details.</p>
+        <p><strong>Comments</strong> — comments are powered by Giscus, which uses your GitHub account. Data is stored by GitHub. See <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub's privacy policy</a>.</p>
+      </section>
+
+      <section class="legal-section">
+        <h2>Cookies</h2>
+        <p>This site uses minimal cookies. Here is what may be set:</p>
+        <div class="cookie-table">
+          <div class="ct-row ct-header">
+            <span>Cookie / Service</span>
+            <span>Purpose</span>
+            <span>Type</span>
+          </div>
+          <div class="ct-row">
+            <span>Giscus (GitHub)</span>
+            <span>Comments authentication</span>
+            <span class="ct-type optional">Optional</span>
+          </div>
+          <div class="ct-row">
+            <span>MailerLite</span>
+            <span>Newsletter subscription</span>
+            <span class="ct-type optional">Optional</span>
+          </div>
+          <div class="ct-row">
+            <span>Stripe</span>
+            <span>Payment processing (shop only)</span>
+            <span class="ct-type optional">Optional</span>
+          </div>
+          <div class="ct-row">
+            <span>Cloudflare</span>
+            <span>Security, DDoS protection</span>
+            <span class="ct-type essential">Essential</span>
+          </div>
+        </div>
+        <p>
+          This site does not use Google Analytics, Facebook Pixel, or any other
+          behavioural tracking or advertising cookies.
+        </p>
+      </section>
+
+      <section class="legal-section">
+        <h2>Your Rights (GDPR)</h2>
+        <p>If you are in the EU/EEA, you have the right to:</p>
+        <ul>
+          <li>Access the personal data we hold about you</li>
+          <li>Request correction or deletion of your data</li>
+          <li>Object to or restrict processing</li>
+          <li>Data portability</li>
+          <li>Lodge a complaint with your national data protection authority</li>
+        </ul>
+        <p>To exercise any of these rights, contact <a href="mailto:contact@linuxcore.dev">contact@linuxcore.dev</a>.</p>
+      </section>
+
+      <section class="legal-section">
+        <h2>Third-Party Services</h2>
+        <p>This site uses the following third-party services, each with their own privacy policies:</p>
+        <ul>
+          <li><a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener">Cloudflare</a> — hosting and security</li>
+          <li><a href="https://stripe.com/privacy" target="_blank" rel="noopener">Stripe</a> — payment processing</li>
+          <li><a href="https://printify.com/privacy-policy/" target="_blank" rel="noopener">Printify</a> — print-on-demand fulfilment</li>
+          <li><a href="https://www.mailerlite.com/legal/privacy-policy" target="_blank" rel="noopener">MailerLite</a> — newsletter</li>
+          <li><a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub / Giscus</a> — comments</li>
+        </ul>
+      </section>
+
+      <section class="legal-section">
+        <h2>Affiliate Links</h2>
+        <p>
+          This site contains affiliate links (primarily Amazon). Clicking these links
+          and making a purchase may result in a commission at no extra cost to you.
+          Affiliate links are always clearly marked or routed through <code>/go/</code> URLs.
+        </p>
+      </section>
+
+      <p class="legal-updated">Last updated: April 2026</p>
+
+    </div>
+  </main>
+</BaseLayout>
+
+<style>
+  .legal-page { max-width: var(--wide-w); margin: 0 auto; padding: 3rem 1.5rem 5rem; }
+  .legal-inner { max-width: 720px; }
+
+  .legal-label { font-family: var(--font-mono); font-size: 0.72rem; color: var(--amber); letter-spacing: 0.15em; margin-bottom: 0.75rem; }
+  .legal-title { font-family: var(--font-display); font-size: clamp(1.75rem, 4vw, 2.5rem); font-weight: 700; color: var(--text-bright); margin-bottom: 0.75rem; line-height: 1.15; }
+  .legal-lead { font-size: 1rem; color: var(--text-mid); line-height: 1.7; margin-bottom: 2.5rem; }
+
+  .legal-section { margin-bottom: 2.5rem; padding-bottom: 2.5rem; border-bottom: 1px solid var(--border); }
+  .legal-section:last-of-type { border-bottom: none; }
+  .legal-section h2 { font-family: var(--font-mono); font-size: 0.8rem; color: var(--amber); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.75rem; }
+  .legal-section p { font-size: 0.95rem; color: var(--text-mid); line-height: 1.75; margin-bottom: 1rem; }
+  .legal-section a { color: var(--amber); }
+  .legal-section ul { padding-left: 1.25rem; display: flex; flex-direction: column; gap: 0.4rem; }
+  .legal-section ul li { font-size: 0.95rem; color: var(--text-mid); line-height: 1.7; }
+  .legal-section ul li a { color: var(--amber); }
+  .legal-section strong { color: var(--text); }
+  .legal-section code { font-family: var(--font-mono); font-size: 0.85em; color: var(--amber); background: rgba(240,165,0,0.1); padding: 1px 5px; }
+
+  .cookie-table { border: 1px solid var(--border); margin: 1rem 0; }
+  .ct-row { display: grid; grid-template-columns: 1.5fr 2fr 1fr; gap: 1rem; padding: 0.65rem 1rem; border-bottom: 1px solid var(--border); font-size: 0.85rem; color: var(--text-mid); }
+  .ct-row:last-child { border-bottom: none; }
+  .ct-header { font-family: var(--font-mono); font-size: 0.7rem; color: var(--amber); text-transform: uppercase; letter-spacing: 0.08em; background: var(--bg2); }
+  .ct-type { font-family: var(--font-mono); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; }
+  .ct-type.essential { color: var(--green); }
+  .ct-type.optional { color: var(--text-dim); }
+
+  .legal-updated { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-dim); margin-top: 2rem; }
+</style>

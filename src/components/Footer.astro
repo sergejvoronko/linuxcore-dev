@@ -21,6 +21,10 @@ const year = new Date().getFullYear();
       <a href="/rss.xml">RSS</a>
     </nav>
 
+    <div class="footer-legal">
+      <a href="/privacy">Privacy & Cookies</a>
+      <a href="/gpsr">Product Safety (GPSR)</a>
+    </div>
     <p class="footer-copy">
       © {year} linuxcore.dev · Built with Astro · Hosted on Cloudflare
     </p>
@@ -49,6 +53,9 @@ const year = new Date().getFullYear();
   .footer-links { display: flex; gap: 20px; flex-wrap: wrap; }
   .footer-links a { color: var(--text-dim); font-size: 11px; text-decoration: none; letter-spacing: 0.05em; transition: color 0.15s; font-family: var(--mono); }
   .footer-links a:hover { color: var(--amber); }
+  .footer-legal { display: flex; gap: 16px; flex-wrap: wrap; }
+  .footer-legal a { color: var(--text-dim); font-size: 10px; text-decoration: none; letter-spacing: 0.05em; font-family: var(--mono); transition: color 0.15s; }
+  .footer-legal a:hover { color: var(--amber); }
   .footer-copy { color: var(--text-dim); font-size: 10px; letter-spacing: 0.05em; font-family: var(--mono); }
   @media (max-width: 600px) { .footer-inner { padding: 20px; } }
 </style>

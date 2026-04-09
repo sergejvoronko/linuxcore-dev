@@ -1,0 +1,109 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout
+  title="Product Safety & GPSR"
+  description="General Product Safety Regulation (GPSR) compliance information for products sold on linuxcore.dev."
+  noIndex={false}
+>
+  <main class="legal-page">
+    <div class="legal-inner">
+
+      <div class="legal-label">// COMPLIANCE</div>
+      <h1 class="legal-title">Product Safety (GPSR)</h1>
+      <p class="legal-lead">
+        In accordance with the EU General Product Safety Regulation (GPSR)
+        effective December 13, 2024, the following information is provided
+        for all physical products sold on linuxcore.dev.
+      </p>
+
+      <section class="legal-section">
+        <h2>Responsible Person in the EU</h2>
+        <p>
+          For all products sold through this website, the responsible person
+          within the European Union is:
+        </p>
+        <div class="info-block">
+          <div class="info-row"><span class="info-label">Name</span><span>Sergej Voronko</span></div>
+          <div class="info-row"><span class="info-label">Address</span><span>Hlavna 60, 04457 Haniska, Slovakia</span></div>
+          <div class="info-row"><span class="info-label">Country</span><span>Slovak Republic (EU)</span></div>
+          <div class="info-row"><span class="info-label">Email</span><span><a href="mailto:contact@linuxcore.dev">contact@linuxcore.dev</a></span></div>
+        </div>
+      </section>
+
+      <section class="legal-section">
+        <h2>Products Sold</h2>
+        <p>
+          linuxcore.dev sells print-on-demand merchandise (clothing, accessories)
+          produced and fulfilled by <a href="https://printify.com" target="_blank" rel="noopener">Printify</a>
+          and their network of certified print providers. All products comply with
+          applicable EU product safety standards.
+        </p>
+      </section>
+
+      <section class="legal-section">
+        <h2>How to Report a Safety Issue</h2>
+        <p>
+          If you believe a product purchased from linuxcore.dev presents a safety
+          risk or does not conform to the product description, please contact us
+          immediately:
+        </p>
+        <div class="info-block">
+          <div class="info-row"><span class="info-label">Email</span><span><a href="mailto:contact@linuxcore.dev">contact@linuxcore.dev</a></span></div>
+          <div class="info-row"><span class="info-label">Response time</span><span>Within 48 hours on business days</span></div>
+        </div>
+        <p>
+          You may also report unsafe products to the relevant national market
+          surveillance authority in your country or via the
+          <a href="https://ec.europa.eu/safety-gate" target="_blank" rel="noopener">EU Safety Gate portal</a>.
+        </p>
+      </section>
+
+      <section class="legal-section">
+        <h2>Returns & Remedies</h2>
+        <p>
+          If a product is found to be unsafe or defective, you are entitled to
+          a full refund or replacement. Contact us at
+          <a href="mailto:contact@linuxcore.dev">contact@linuxcore.dev</a> with
+          your order details and a description of the issue.
+        </p>
+      </section>
+
+      <section class="legal-section">
+        <h2>Digital Products</h2>
+        <p>
+          Digital products (such as the Ansible Homelab Bundle) are software downloads
+          and are not subject to GPSR. They are covered separately under the terms
+          stated at the point of purchase.
+        </p>
+      </section>
+
+      <p class="legal-updated">Last updated: April 2026</p>
+
+    </div>
+  </main>
+</BaseLayout>
+
+<style>
+  .legal-page { max-width: var(--wide-w); margin: 0 auto; padding: 3rem 1.5rem 5rem; }
+  .legal-inner { max-width: 720px; }
+
+  .legal-label { font-family: var(--font-mono); font-size: 0.72rem; color: var(--amber); letter-spacing: 0.15em; margin-bottom: 0.75rem; }
+  .legal-title { font-family: var(--font-display); font-size: clamp(1.75rem, 4vw, 2.5rem); font-weight: 700; color: var(--text-bright); margin-bottom: 0.75rem; line-height: 1.15; }
+  .legal-lead { font-size: 1rem; color: var(--text-mid); line-height: 1.7; margin-bottom: 2.5rem; }
+
+  .legal-section { margin-bottom: 2.5rem; padding-bottom: 2.5rem; border-bottom: 1px solid var(--border); }
+  .legal-section:last-of-type { border-bottom: none; }
+  .legal-section h2 { font-family: var(--font-mono); font-size: 0.8rem; color: var(--amber); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.75rem; }
+  .legal-section p { font-size: 0.95rem; color: var(--text-mid); line-height: 1.75; margin-bottom: 1rem; }
+  .legal-section a { color: var(--amber); }
+
+  .info-block { background: var(--bg2); border: 1px solid var(--border); padding: 1.25rem 1.5rem; margin: 1rem 0; display: flex; flex-direction: column; gap: 0.6rem; }
+  .info-row { display: flex; gap: 1.5rem; font-size: 0.9rem; }
+  .info-label { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; min-width: 100px; padding-top: 2px; }
+  .info-row span:last-child { color: var(--text); }
+  .info-row a { color: var(--amber); }
+
+  .legal-updated { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-dim); margin-top: 2rem; }
+</style>
