@@ -191,7 +191,19 @@ const recent = allPosts
     padding: 5rem 1.5rem 4rem;
     position: relative;
     overflow: hidden;
+    background-image: url('/images/hero-bg.webp');
+    background-size: cover;
+    background-position: center;
   }
+  .hero::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(24, 18, 10, 0.82);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .hero > * { position: relative; z-index: 1; }
   /* ── Terminal widget ── */
    .terminal {
     position: absolute; right: 40px; top: 50%; transform: translateY(-50%);
