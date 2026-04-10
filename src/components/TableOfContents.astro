@@ -145,13 +145,23 @@ const toc = headings.filter(h => h.depth === 2 || h.depth === 3);
       document.querySelectorAll<HTMLHeadingElement>('.prose-content h2, .prose-content h3')
     );
 
+    const tocEl = document.getElementById('toc');
+
     const setActive = (slug: string) => {
       links.forEach(l => l.classList.remove('active'));
       const activeLink = linkMap.get(slug);
       if (activeLink) {
         activeLink.classList.add('active');
-        // Scroll TOC to keep active link visible
-        activeLink.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        // Scroll only the TOC container, not the page
+        if (tocEl) {
+          const linkTop    = activeLink.offsetTop;
+          const linkBottom = linkTop + activeLink.offsetHeight;
+          const tocTop     = tocEl.scrollTop;
+          const tocBottom  = tocTop + tocEl.clientHeight;
+          if (linkTop < tocTop || linkBottom > tocBottom) {
+            tocEl.scrollTo({ top: linkTop - tocEl.clientHeight / 2, behavior: 'smooth' });
+          }
+        }
       }
     };
 
