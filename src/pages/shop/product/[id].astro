@@ -1,23 +1,17 @@
 ---
 // src/pages/shop/product/[id].astro
+export const prerender = false;
+
 import BaseLayout from '../../../layouts/BaseLayout.astro';
-import { getProducts, getProduct, getBasePrice, getDefaultImage, formatPrice } from '../../../lib/printify';
+import { getProduct, getBasePrice, getDefaultImage, formatPrice } from '../../../lib/printify';
 
-export async function getStaticPaths() {
-  try {
-    const products = await getProducts();
-    return products.map(p => ({ params: { id: p.id } }));
-  } catch {
-    return [];
-  }
-}
-
+const env = (Astro.locals as any).runtime?.env;
 const { id } = Astro.params;
 let product: any = null;
 let fetchError = '';
 
 try {
-  product = await getProduct(id!);
+  product = await getProduct(id!, env);
 } catch (e: any) {
   fetchError = e.message;
 }

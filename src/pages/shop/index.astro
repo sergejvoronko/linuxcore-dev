@@ -1,13 +1,16 @@
 ---
 // src/pages/shop/index.astro
+export const prerender = false;
+
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getProducts, getBasePrice, getDefaultImage, formatPrice } from '../../lib/printify';
 
+const env = (Astro.locals as any).runtime?.env;
 let products: any[] = [];
 let fetchError = '';
 
 try {
-  products = await getProducts();
+  products = await getProducts(env);
 } catch (e: any) {
   fetchError = e.message;
 }
