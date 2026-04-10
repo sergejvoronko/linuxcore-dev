@@ -156,13 +156,14 @@ const navItems = [
   .dropdown {
     display: none;
     position: absolute;
-    top: calc(100% + 12px);
+    top: 100%;
     left: 50%;
     transform: translateX(-50%);
     min-width: 170px;
     background: var(--bg2);
     border: 1px solid var(--border-amber);
     padding: 6px 0;
+    padding-top: 18px;
     list-style: none;
     box-shadow: 0 8px 24px rgba(0,0,0,0.5);
     z-index: 200;
@@ -235,24 +236,43 @@ const navItems = [
 </style>
 
 <script>
-  // Dropdown toggle
+  // Dropdown — hover on desktop, click on mobile
+  const items = document.querySelectorAll<HTMLElement>('.has-dropdown');
   const triggers = document.querySelectorAll<HTMLButtonElement>('.nav-trigger');
+  const isMobile = () => window.innerWidth <= 820;
+
+  items.forEach(item => {
+    let closeTimer: ReturnType<typeof setTimeout>;
+
+    item.addEventListener('mouseenter', () => {
+      if (isMobile()) return;
+      clearTimeout(closeTimer);
+      const dd = item.querySelector<HTMLElement>('.dropdown');
+      if (dd) dd.style.display = 'block';
+    });
+
+    item.addEventListener('mouseleave', () => {
+      if (isMobile()) return;
+      closeTimer = setTimeout(() => {
+        const dd = item.querySelector<HTMLElement>('.dropdown');
+        if (dd) dd.style.display = '';
+      }, 200);
+    });
+  });
+
+  // Mobile: click to toggle
   triggers.forEach(t => {
     t.addEventListener('click', () => {
-      const open = t.getAttribute('aria-expanded') === 'true';
-      triggers.forEach(x => x.setAttribute('aria-expanded', 'false'));
-      t.setAttribute('aria-expanded', open ? 'false' : 'true');
-      // mobile: also toggle the dropdown visibility
+      if (!isMobile()) return;
       const dd = t.nextElementSibling as HTMLElement;
+      const open = dd?.style.display === 'block';
+      items.forEach(i => { const d = i.querySelector<HTMLElement>('.dropdown'); if (d) d.style.display = ''; });
       if (dd) dd.style.display = open ? '' : 'block';
     });
   });
-  document.addEventListener('click', e => {
-    if (!(e.target as Element).closest('.has-dropdown'))
-      triggers.forEach(t => { t.setAttribute('aria-expanded', 'false'); });
-  });
+
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') triggers.forEach(t => t.setAttribute('aria-expanded', 'false'));
+    if (e.key === 'Escape') items.forEach(i => { const d = i.querySelector<HTMLElement>('.dropdown'); if (d) d.style.display = ''; });
   });
 
   // Mobile hamburger
