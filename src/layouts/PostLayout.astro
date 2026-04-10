@@ -96,6 +96,15 @@ const sectionColor = section === 'astro' ? '#7eb8d4' : '#f0a500';
           <span class="post-tag">#{tag}</span>
         ))}
       </div>
+
+      <div class="author-card">
+        <img src="/images/avatar.webp" alt="Sergej Voronko" class="author-avatar" width="56" height="56" loading="lazy" />
+        <div class="author-info">
+          <div class="author-name">Sergej Voronko</div>
+          <div class="author-role">SAP Basis · Senior Operations Manager · Linux infrastructure engineer</div>
+          <a href="/about" class="author-link">About the author →</a>
+        </div>
+      </div>
     </footer>
 
   </article>
@@ -254,6 +263,20 @@ const sectionColor = section === 'astro' ? '#7eb8d4' : '#f0a500';
     transition: border-color 0.15s, color 0.15s; font-family: var(--mono);
   }
   .post-tag:hover { border-color: var(--amber); color: var(--amber); }
+
+  /* ── Author card ─── */
+  .author-card {
+    display: flex; align-items: center; gap: 1rem;
+    margin-top: 2rem; padding: 1.25rem;
+    background: var(--bg2); border: 1px solid var(--border);
+  }
+  .author-avatar {
+    width: 56px; height: 56px; border-radius: 50%; object-fit: cover; flex-shrink: 0;
+  }
+  .author-name { font-weight: 700; font-size: 0.95rem; color: var(--text-bright); margin-bottom: 0.2rem; }
+  .author-role { font-family: var(--mono); font-size: 0.72rem; color: var(--text-dim); margin-bottom: 0.4rem; line-height: 1.5; }
+  .author-link { font-family: var(--mono); font-size: 0.72rem; color: var(--amber); text-decoration: none; }
+  .author-link:hover { text-decoration: underline; }
 
   /* ── Comments ─── */
   .comments-outer {
