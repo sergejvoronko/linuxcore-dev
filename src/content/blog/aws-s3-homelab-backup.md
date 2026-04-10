@@ -10,6 +10,7 @@ tags: ["aws", "s3", "backup", "restic", "homelab", "linux", "glacier", "proxmox"
 readTime: 22
 featured: false
 draft: false
+affiliate: true
 ---
 
 Your homelab has a single point of failure that no amount of RAID,

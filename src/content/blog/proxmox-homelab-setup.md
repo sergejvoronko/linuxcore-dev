@@ -10,6 +10,7 @@ tags: ["proxmox", "virtualization", "lxc", "vm", "homelab", "linux", "gpu-passth
 readTime: 26
 featured: false
 draft: false
+affiliate: true
 ---
 
 If you run one machine in your homelab, Proxmox VE is the single best

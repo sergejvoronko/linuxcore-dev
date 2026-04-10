@@ -10,6 +10,7 @@ tags: ["docker", "docker-compose", "self-hosted", "homelab", "linux", "container
 readTime: 23
 featured: false
 draft: false
+affiliate: true
 ---
 
 Every homelab eventually becomes a collection of half-remembered Docker

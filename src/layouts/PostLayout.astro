@@ -16,12 +16,13 @@ interface Props {
   readingTime?: number;
   section?:     'homelab' | 'astro';
   headings:     MarkdownHeading[];
+  affiliate?:   boolean;
 }
 
 const {
   title, description, pubDate, updatedDate,
   heroImage, heroImageAlt, tags = [], readingTime,
-  section, headings,
+  section, headings, affiliate = false,
 } = Astro.props;
 
 const formatDate = (d: Date) => new Date(d).toLocaleDateString('en-GB', {
@@ -69,6 +70,14 @@ const sectionColor = section === 'astro' ? '#7eb8d4' : '#f0a500';
       </div>
     )}
 
+    {affiliate && (
+      <div class="affiliate-notice">
+        <strong>Affiliate disclosure:</strong> This article contains affiliate links.
+        If you buy through them, I earn a small commission at no extra cost to you.
+        I only link to hardware and services I actually use or have tested.
+      </div>
+    )}
+
     <div class:list={['post-body-wrap', { 'has-toc': hasToc }]}>
       <div class="prose-content post-body">
         <slot />
@@ -104,6 +113,17 @@ const sectionColor = section === 'astro' ? '#7eb8d4' : '#f0a500';
     padding: 48px 40px 80px;
     overflow-x: hidden;
   }
+  .affiliate-notice {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    background: var(--bg2);
+    border-left: 3px solid var(--amber);
+    padding: 0.75rem 1rem;
+    margin-bottom: 2rem;
+    line-height: 1.6;
+  }
+  .affiliate-notice strong { color: var(--amber); }
   @media (max-width: 600px) { .post-wrapper { padding: 28px 18px 60px; } }
 
   /* ── Header ─── */

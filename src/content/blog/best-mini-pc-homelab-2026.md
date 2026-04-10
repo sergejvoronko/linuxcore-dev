@@ -10,6 +10,7 @@ tags: ["hardware", "mini-pc", "proxmox", "homelab", "n100", "beelink", "minisfor
 readTime: 19
 featured: false
 draft: false
+affiliate: true
 ---
 
 The era of rack servers in the spare bedroom is over — at least for most
