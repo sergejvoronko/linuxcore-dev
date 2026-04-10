@@ -1,0 +1,105 @@
+---
+// src/pages/aws/index.astro
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ArticleCard from '../../components/ArticleCard.astro';
+
+const allPosts = await getCollection('blog', ({ data }) =>
+  data.section === 'aws' && !data.draft
+);
+const posts = allPosts.sort(
+  (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
+);
+
+const categories = [
+  { label: 'All',       tags: [] },
+  { label: 'Cost',      tags: ['cost-analysis', 'savings', 'spot', 'budget'] },
+  { label: 'Compute',   tags: ['ec2', 'gpu', 'spot', 'ollama'] },
+  { label: 'Storage',   tags: ['s3', 'backup', 'glacier', 'restic'] },
+  { label: 'IaC',       tags: ['terraform', 'ansible', 'iac'] },
+  { label: 'Hybrid',    tags: ['wireguard', 'vpn', 'hybrid'] },
+  { label: 'DevOps',    tags: ['github-actions', 'ci-cd', 'docker', 'ecs'] },
+  { label: 'Monitoring',tags: ['prometheus', 'grafana', 'monitoring', 'cloudwatch'] },
+];
+---
+
+<BaseLayout
+  title="AWS Guides"
+  description="Cloud infrastructure guides for homelab operators — cost-conscious AWS setups, hybrid cloud, EC2, S3, Terraform, and more. Written by a Linux infrastructure engineer."
+>
+  <main class="section-page">
+
+    <section class="section-hero">
+      <div class="tag-label"><span class="tb">[</span>aws<span class="tb">]</span></div>
+      <h1 class="section-title">AWS Guides</h1>
+      <p class="section-lead">
+        Cloud infrastructure for people who built their homelab first —
+        cost-conscious setups, hybrid architectures, and practical AWS
+        workflows without the enterprise overhead.
+      </p>
+    </section>
+
+    <div class="filter-bar" id="filter-bar">
+      {categories.map((cat, i) => (
+        <button
+          class={`filter-btn ${i === 0 ? 'active' : ''}`}
+          data-tags={cat.tags.join(',')}
+        >{cat.label}</button>
+      ))}
+    </div>
+
+    <div class="articles-grid" id="articles-grid">
+      {posts.map(post => (
+        <div class="card-wrap" data-tags={post.data.tags.join(',')}>
+          <ArticleCard
+            title={post.data.title}
+            description={post.data.description}
+            href={`/aws/${post.slug}`}
+            pubDate={post.data.pubDate}
+            tags={post.data.tags}
+            heroImage={post.data.heroImage}
+          />
+        </div>
+      ))}
+    </div>
+
+  </main>
+</BaseLayout>
+
+<script>
+  const btns  = document.querySelectorAll<HTMLButtonElement>('.filter-btn');
+  const cards = document.querySelectorAll<HTMLDivElement>('.card-wrap');
+
+  btns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      btns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const tags = btn.dataset.tags?.split(',').filter(Boolean) ?? [];
+      cards.forEach(card => {
+        const cardTags = card.dataset.tags?.split(',') ?? [];
+        card.hidden = tags.length > 0 && !tags.some(t => cardTags.includes(t));
+      });
+    });
+  });
+</script>
+
+<style>
+  .section-page { max-width: var(--wide-w); margin: 0 auto; padding: 3rem 1.5rem 5rem; }
+
+  .section-hero { margin-bottom: 2.5rem; }
+  .tag-label { font-family: var(--font-mono); font-size: 0.78rem; color: var(--amber); margin-bottom: 0.75rem; }
+  .tb { opacity: 0.35; }
+  .section-title { font-family: var(--font-display); font-size: clamp(2rem, 5vw, 3rem); font-weight: 700; color: var(--text-bright); margin-bottom: 0.75rem; line-height: 1.1; }
+  .section-lead { font-size: 1.05rem; color: var(--text-mid); max-width: 52ch; line-height: 1.7; }
+
+  .filter-bar { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 2rem; }
+  .filter-btn {
+    font-family: var(--font-mono); font-size: 0.72rem; font-weight: 700;
+    letter-spacing: 0.08em; padding: 0.35rem 0.9rem;
+    background: transparent; border: 1px solid var(--border-mid);
+    color: var(--text-dim); cursor: pointer; transition: all 0.15s;
+  }
+  .filter-btn:hover, .filter-btn.active { border-color: var(--amber); color: var(--amber); background: var(--amber-dim); }
+
+  .articles-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; }
+</style>

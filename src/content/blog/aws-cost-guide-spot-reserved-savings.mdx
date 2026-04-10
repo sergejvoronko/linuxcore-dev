@@ -1,0 +1,280 @@
+---
+title: "Spot Instances, Reserved Instances, and Savings Plans: A Practical Cost Guide"
+description: "AWS pricing is confusing by design. This guide breaks down the three main discount models in plain language, with real examples and a decision framework for solo operators and small teams."
+pubDate: 2026-04-28
+section: "aws"
+tags: ["aws", "cost-optimization", "spot-instances", "reserved-instances", "savings-plans", "infrastructure"]
+draft: false
+---
+
+import { Image } from 'astro:assets';
+
+AWS pricing is a maze on purpose. The more complicated the options, the more likely you are to give up and pay on-demand rates — which is exactly what Amazon wants.
+
+But if you understand three pricing models — spot, reserved, and Savings Plans — you can cut your AWS bill by 40–72% without changing what you run. This guide explains all three in plain terms, with real numbers and a clear framework for deciding which to use.
+
+No enterprise budgets assumed. This is for solo operators and small teams spending €10–200/month on AWS.
+
+## The baseline: on-demand pricing
+
+On-demand is the default. You pay per hour (or per second for Linux instances), no commitment. It's the most expensive option, but it's the simplest: use it, stop it, pay for what you used.
+
+For reference, a `t3.small` in `eu-central-1`:
+
+```
+On-demand: €0.0232/hour = €16.94/month (730 hours)
+```
+
+Every discount model below is measured against this on-demand baseline.
+
+## Spot instances: up to 90% off, but interruptible
+
+### How they work
+
+Spot instances use AWS's spare capacity. When demand is low, prices are cheap. When demand spikes, AWS can reclaim your instance with 2 minutes notice.
+
+Think of it like standby flights. You get the same seat for a fraction of the price, but the airline can bump you if the flight fills up.
+
+### Pricing
+
+Spot prices fluctuate by instance type, region, and availability zone. Typical discounts:
+
+| Instance | On-demand | Spot (typical) | Savings |
+|----------|-----------|----------------|---------|
+| t3.small | €0.0232/hr | €0.0070/hr | 70% |
+| t3.medium | €0.0464/hr | €0.0139/hr | 70% |
+| m5.large | €0.107/hr | €0.040/hr | 63% |
+| g5.xlarge | €1.21/hr | €0.36/hr | 70% |
+| c5.xlarge | €0.192/hr | €0.062/hr | 68% |
+
+### When to use spot
+
+- **Batch processing** — jobs that can be interrupted and resumed (data processing, CI/CD builds, video transcoding)
+- **Burst GPU compute** — AI inference sessions where you launch, work, and terminate (see the [Ollama spot instance guide](/aws/ollama-aws-gpu-spot-instance))
+- **Dev/test environments** — if it goes down for 10 minutes, nobody cares
+- **Stateless web servers** behind a load balancer — traffic shifts to other instances during interruption
+
+### When to avoid spot
+
+- **Databases** — losing your database server for even 2 minutes causes data consistency issues
+- **Single-server setups** — if you only have one instance and it gets reclaimed, your service is down
+- **Long-running, non-resumable jobs** — if 4 hours of work is lost when the instance terminates, the savings aren't worth it
+
+### Interruption rates
+
+AWS publishes spot interruption frequency ranges. In `eu-central-1`:
+
+- `t3` family: under 5% (very stable — these are rarely reclaimed)
+- `m5` family: 5–10%
+- `g5` family: under 5% (GPU instances are less contested in EU)
+- `p3` family: 10–15% (older GPU instances, more competitive)
+
+For most homelab-adjacent workloads, interruptions are rare enough that spot is practically as reliable as on-demand.
+
+### Best practices for spot
+
+```bash
+# Always check current spot pricing before launching
+aws ec2 describe-spot-price-history \
+  --instance-types t3.small t3.medium \
+  --product-descriptions "Linux/UNIX" \
+  --start-time "$(date -u +%Y-%m-%dT%H:%M:%S)" \
+  --query 'SpotPriceHistory[*].{Type:InstanceType,AZ:AvailabilityZone,Price:SpotPrice}' \
+  --output table
+```
+
+- **Be flexible on AZ** — prices vary significantly between `eu-central-1a`, `1b`, and `1c`
+- **Be flexible on instance type** — `m5.large` and `m5a.large` are functionally identical but priced independently
+- **Use spot instance interruption notices** — the 2-minute warning is enough to gracefully save state
+- **Don't set a max price** — just use the current spot price; setting a cap often means your request sits unfilled
+
+## Reserved Instances: up to 72% off, with commitment
+
+### How they work
+
+You commit to using a specific instance type in a specific region for 1 or 3 years. In exchange, AWS gives you a significant discount. You pay whether you use the instance or not.
+
+Think of it like signing a lease. Cheaper monthly rate, but you're locked in.
+
+### Pricing tiers
+
+For a `t3.small` in `eu-central-1`:
+
+| Payment option | 1-year term | 3-year term | Savings vs. on-demand |
+|---------------|-------------|-------------|----------------------|
+| No upfront | €12.26/month | €8.47/month | 28–50% |
+| Partial upfront | €11.54/month | €7.96/month | 32–53% |
+| All upfront | €11.10/month | €7.59/month | 34–55% |
+
+For larger instances the savings percentages are similar, but the absolute numbers get more meaningful. A `m5.large` reserved for 3 years all-upfront drops from €78/month on-demand to about €35/month.
+
+### Standard vs. Convertible
+
+- **Standard Reserved Instances** — locked to a specific instance type (e.g., `t3.small`). Cheapest option. Can be sold on the Reserved Instance Marketplace if you no longer need it.
+- **Convertible Reserved Instances** — can be exchanged for a different instance type, family, or OS during the term. Slightly more expensive (about 5–10% less discount) but more flexible.
+
+For a homelab operator running a single small instance long-term, Standard is usually the right choice. You know what you need and it's not going to change dramatically.
+
+### When to use reserved instances
+
+- **Always-on workloads** you've been running for 3+ months and expect to continue — if it's been on-demand for a quarter and you haven't turned it off, commit and save
+- **Predictable baseline compute** — your VPS that runs Caddy, Uptime Kuma, and a few services 24/7
+- **Databases** — RDS reserved instances follow the same model and offer similar savings
+
+### When to avoid reserved instances
+
+- **New workloads you're still sizing** — don't commit to a `t3.medium` before you've confirmed a `t3.small` isn't enough
+- **Instances you stop regularly** — reserved pricing applies whether the instance runs or not
+- **Short-term projects** — if the workload will end in 6 months, reserved doesn't save enough to justify the inflexibility
+
+## Savings Plans: the modern alternative
+
+### How they work
+
+Savings Plans are AWS's newer, more flexible answer to reserved instances. Instead of committing to a specific instance type, you commit to a dollar amount of compute per hour. AWS applies the discount automatically to whatever instances you run.
+
+Think of it like a prepaid phone plan. You commit to spending €X/hour, and AWS gives you the best rate available for whatever compute you're actually using.
+
+### Two flavors
+
+**Compute Savings Plans:**
+- Discount applies across all instance families, regions, and even Fargate/Lambda
+- Most flexible option
+- Slightly lower discount than instance-specific (typically 5–8% less)
+
+**EC2 Instance Savings Plans:**
+- Locked to an instance family (e.g., `t3`) in a specific region
+- Still flexible across sizes within the family (`t3.micro` → `t3.large`)
+- Highest discount, comparable to Standard Reserved Instances
+
+### Pricing example
+
+Committing to €0.010/hour (roughly equivalent to a `t3.small` worth of compute):
+
+| Plan type | 1-year | 3-year | Effective hourly rate |
+|-----------|--------|--------|-----------------------|
+| Compute Savings Plan | ~32% off | ~50% off | €0.016 → €0.012 |
+| EC2 Instance Savings Plan | ~36% off | ~55% off | €0.015 → €0.011 |
+
+Any usage above your committed amount is billed at on-demand rates.
+
+### When Savings Plans beat Reserved Instances
+
+- **Multiple instance types** — if you run a `t3.small` and a `t3.micro`, a Savings Plan covers both with one commitment
+- **Likely to change instance types** — upgrading from `t3.small` to `t3.medium` mid-year? A Savings Plan adjusts automatically
+- **Using Lambda or Fargate** — Compute Savings Plans cover serverless too
+- **Simpler mental model** — "I'll spend at least €X/hour on compute" is easier to reason about than "I need this exact instance type for 3 years"
+
+## The decision framework
+
+Here's how to choose for a typical small AWS setup:
+
+### Step 1: Categorize your workloads
+
+```
+Your AWS workloads
+├── Always-on (24/7)
+│   ├── VPS / Docker host → Reserved or Savings Plan
+│   ├── Database → Reserved Instance
+│   └── DNS / monitoring → Free tier or minimal cost (not worth committing)
+│
+├── Predictable schedule
+│   ├── Dev environment (weekdays 9–5) → Spot + auto-scaling schedule
+│   └── Nightly batch jobs → Spot
+│
+└── Burst / occasional
+    ├── GPU compute → Spot
+    ├── CI/CD → Spot
+    └── One-off experiments → On-demand (simplicity wins)
+```
+
+### Step 2: Apply the right pricing model
+
+| Workload pattern | Best pricing | Typical savings |
+|-----------------|-------------|-----------------|
+| 24/7 for 1+ years, known instance type | Reserved Instance (Standard) | 40–55% |
+| 24/7 for 1+ years, might change size/type | Savings Plan (EC2 Instance) | 35–55% |
+| 24/7 across mixed workloads | Savings Plan (Compute) | 30–50% |
+| Interruptible, flexible timing | Spot Instance | 60–90% |
+| Short-term or experimental | On-demand | 0% (but no commitment) |
+
+### Step 3: Start small
+
+If you're spending less than €20/month total, the savings from committing are small in absolute terms. A 50% discount on €20 saves you €10/month — real money, but not worth agonizing over.
+
+**My recommendation for a typical homelab-to-cloud setup:**
+
+1. Run on-demand for the first 2–3 months while you figure out what you actually use
+2. Look at your billing dashboard — identify which instances run 24/7
+3. Buy a 1-year EC2 Instance Savings Plan covering your baseline always-on compute
+4. Use spot for everything burst-oriented (GPU, CI/CD, batch processing)
+5. Leave everything else on-demand
+
+Don't start with 3-year commitments. A 1-year plan captures most of the savings with a fraction of the risk.
+
+## Monitoring your costs
+
+AWS can surprise you with charges. Set up a billing alarm on day one:
+
+```bash
+# Enable billing alerts (must be done in us-east-1)
+aws cloudwatch put-metric-alarm \
+  --region us-east-1 \
+  --alarm-name "monthly-billing-alarm" \
+  --metric-name EstimatedCharges \
+  --namespace AWS/Billing \
+  --statistic Maximum \
+  --period 21600 \
+  --threshold 15 \
+  --comparison-operator GreaterThanThreshold \
+  --evaluation-periods 1 \
+  --dimensions "Name=Currency,Value=EUR" \
+  --alarm-actions "arn:aws:sns:us-east-1:YOUR_ACCOUNT_ID:billing-alerts"
+```
+
+Also check the **AWS Cost Explorer** monthly. It shows:
+- Which services cost the most
+- Usage trends over time
+- Savings Plan recommendations based on your actual usage (after 30+ days of data)
+
+```bash
+# Quick CLI cost check for the current month
+aws ce get-cost-and-usage \
+  --time-period "Start=$(date +%Y-%m-01),End=$(date +%Y-%m-%d)" \
+  --granularity MONTHLY \
+  --metrics "BlendedCost" \
+  --group-by Type=DIMENSION,Key=SERVICE \
+  --query 'ResultsByTime[0].Groups[*].{Service:Keys[0],Cost:Metrics.BlendedCost.Amount}' \
+  --output table
+```
+
+## Common mistakes
+
+**Buying reserved instances too early.** Don't commit until you've run the workload on-demand for at least a month. You might discover you don't need it, or you need a different size.
+
+**Ignoring data transfer costs.** EC2 compute is often not the biggest line item. Data transfer out of AWS (€0.09/GB after the first 100GB/month) adds up fast if you're serving files or streaming.
+
+**Reserving instances you stop at night.** A reserved instance costs the same whether it's running or not. If you stop your dev server every evening, you're paying for 16 hours of unused capacity daily. Use spot or on-demand with a schedule instead.
+
+**Forgetting about Elastic IPs.** A detached Elastic IP costs €3.65/month. If you terminate an instance, release the IP too.
+
+**Not setting billing alerts.** A misconfigured auto-scaling group or a forgotten GPU instance can generate hundreds in charges before you notice.
+
+## Quick reference
+
+| Model | Commitment | Flexibility | Savings | Best for |
+|-------|-----------|-------------|---------|----------|
+| On-demand | None | Total | 0% | Experiments, variable workloads |
+| Spot | None | Must tolerate interruption | 60–90% | Batch, CI/CD, GPU bursts |
+| Reserved (Standard) | 1 or 3 year | Locked to instance type | 40–55% | Known, stable workloads |
+| Reserved (Convertible) | 1 or 3 year | Can change instance type | 35–50% | Stable but evolving needs |
+| Savings Plan (EC2) | 1 or 3 year | Flexible within family | 35–55% | Baseline compute, may resize |
+| Savings Plan (Compute) | 1 or 3 year | Any instance, any region | 30–50% | Mixed workloads, multi-service |
+
+## Next in the series
+
+- [The €10/Month AWS Stack](/aws/ten-euro-month-aws-stack) — the baseline setup these savings apply to
+- [Running Ollama on GPU Spot Instances](/aws/ollama-aws-gpu-spot-instance) — spot pricing in action for AI workloads
+- [Terraform for Homelab Users](/aws/terraform-for-homelab-users) — codify your infrastructure so you can reproduce it after any pricing change
+
+Understanding AWS pricing isn't glamorous, but it's the difference between a €10/month cloud extension and a surprise €80 bill. Spend an hour with the Cost Explorer after your first month and you'll know exactly where to optimize.

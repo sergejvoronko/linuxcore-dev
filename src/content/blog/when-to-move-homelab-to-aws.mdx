@@ -1,0 +1,178 @@
+---
+title: "When to Move Your Homelab Workload to AWS (And When Not To)"
+description: "A practical cost and capability comparison between running workloads on local homelab hardware vs. AWS. Real numbers, real trade-offs, and a decision framework for solo operators."
+pubDate: 2026-04-14
+section: "aws"
+tags: ["aws", "homelab", "cloud", "cost-analysis", "infrastructure"]
+draft: false
+---
+
+import { Image } from 'astro:assets';
+
+You built your homelab because you wanted control. Your own hardware, your own network, your own rules. But at some point a question creeps in: should some of this run in the cloud instead?
+
+Maybe your ISP went down and took your self-hosted services with it. Maybe you need a GPU for a weekend AI experiment but don't want to buy a €600 card that sits idle. Maybe you're tired of being your own on-call engineer at 2 AM when a drive fails.
+
+This isn't a "cloud is better" article. I've run both for years — enterprise SAP infrastructure on AWS by day, a full homelab stack at home. The answer is almost never "move everything." It's about knowing which workloads belong where, and having the numbers to back that decision up.
+
+## The real cost of your homelab
+
+Before comparing anything to AWS pricing, you need to know what your homelab actually costs. Most people dramatically underestimate this.
+
+### Hardware amortization
+
+That mini PC you bought for €350 doesn't last forever. Assume a 4-year useful life for compute hardware and 5 years for storage:
+
+```
+Mini PC (N100, 16GB, 500GB NVMe):  €350 / 48 months = €7.30/month
+NAS (4-bay, diskless):              €400 / 60 months = €6.67/month
+4x 4TB drives:                      €400 / 60 months = €6.67/month
+UPS:                                 €120 / 60 months = €2.00/month
+Switch + cabling:                    €80 / 60 months  = €1.33/month
+─────────────────────────────────────────────────────────────────
+Total hardware amortization:                           ~€24/month
+```
+
+### Electricity
+
+A typical homelab draws 40–80W idle. At European electricity rates (roughly €0.30/kWh):
+
+```
+60W average × 24h × 30 days = 43.2 kWh/month
+43.2 kWh × €0.30 = €12.96/month
+```
+
+Under load — running AI models, transcoding media, compiling — expect 100–150W peaks that push this to €15–20/month.
+
+### Your total real cost
+
+| Item | Monthly cost |
+|------|-------------|
+| Hardware amortization | ~€24 |
+| Electricity | ~€13–20 |
+| Internet (portion) | ~€5–10 |
+| Replacement parts / upgrades | ~€5 |
+| **Total** | **€47–59/month** |
+
+That's the number to beat. If an AWS setup costs less than this for equivalent capability, the cloud wins on price alone. Spoiler: for always-on general workloads, it rarely does. But for burst compute, it absolutely can.
+
+## What AWS actually costs for small-scale use
+
+Let's price out equivalent setups. All prices are EU (Frankfurt, `eu-central-1`) region, on-demand unless noted.
+
+### Always-on compute
+
+A `t3.small` (2 vCPU, 2GB RAM) — the minimum for running a few Docker containers:
+
+```
+t3.small on-demand:      €0.023/hr × 730 hrs = €16.79/month
+30GB gp3 EBS storage:                          €2.76/month
+Elastic IP:                                     €3.65/month (if not attached to running instance)
+Data transfer (50GB out):                       €4.50/month
+──────────────────────────────────────────────────────────
+Total:                                          ~€28/month
+```
+
+That gets you 2GB of RAM. Your €350 mini PC has 16GB. A `t3.xlarge` (4 vCPU, 16GB) to match? That's €73/month on-demand. With a 1-year reserved instance you're looking at around €45/month — still comparable to your homelab total cost, but with far less storage and no GPU.
+
+### Burst GPU compute
+
+This is where AWS shines. A `g5.xlarge` (1 NVIDIA A10G GPU, 24GB VRAM) on a spot instance:
+
+```
+g5.xlarge spot price:    ~€0.35/hr (fluctuates)
+2 hours/day × 30 days:   €21/month
+```
+
+Compare that to buying an RTX 4070 (€550) that you use 2 hours a day — you'd need to run it for 26 months before the card pays for itself vs. spot pricing. If you only need GPU compute occasionally, spot instances win.
+
+### Storage
+
+S3 is almost always cheaper than local storage for archival data:
+
+```
+1TB S3 Standard:                     €23.55/month
+1TB S3 Glacier Instant Retrieval:    €4.10/month
+1TB S3 Glacier Deep Archive:         €1.02/month
+```
+
+Compare to a 4TB NAS drive at €100 amortized over 5 years: €1.67/month per TB. Local storage is cheaper per TB for hot data you access constantly, but S3 Glacier wins for backups and archives you rarely touch — and it doesn't require electricity or hardware replacement.
+
+## The decision framework
+
+After running both environments, I've landed on a simple framework. Every workload falls into one of four quadrants:
+
+### Run locally: always-on + data-heavy
+
+These workloads run 24/7 and move lots of data around. Cloud costs scale linearly with time and bandwidth, making them expensive.
+
+**Examples:**
+- Media servers (Jellyfin, Plex) — streaming terabytes locally is free, data transfer from AWS is not
+- Home automation (Home Assistant) — needs local network access and low latency
+- NAS / file storage — local storage is 5–10× cheaper for hot data
+- Ad blocking / DNS (Pi-hole, AdGuard) — must be on-network
+- Local AI inference for daily use — if you're running models multiple hours per day, owning the GPU wins
+
+### Run in the cloud: burst compute + public-facing
+
+These workloads either need power you don't own, or need to be reachable even when your home internet is down.
+
+**Examples:**
+- AI model experimentation with large models (70B+) that exceed your local VRAM
+- Public-facing websites and APIs (uptime matters, your ISP doesn't care)
+- CI/CD runners (burst compute, pay only when pipelines run)
+- Offsite backups (S3 Glacier is cheaper than a second NAS at another location)
+- VPN entry points (AWS as a stable public endpoint for WireGuard tunnels back home)
+
+### Hybrid: split the workload
+
+Some services work best with a foot in each world:
+
+- **Monitoring:** Prometheus scrapes locally, Grafana dashboard on a cheap EC2 instance accessible from anywhere
+- **Reverse proxy:** Traefik or Caddy on AWS as a public entry point, tunneled back to services running on local hardware
+- **Backups:** Local snapshots for fast recovery + S3 Glacier for disaster recovery
+- **Development:** Code and test locally, deploy to AWS for staging/production
+
+### Don't bother: cloud-native overkill
+
+Some AWS services are designed for enterprise scale and aren't worth the complexity for a solo operator:
+
+- **ECS/EKS** for a handful of containers (Docker Compose is fine)
+- **RDS** for a single Postgres database (just run it in a container)
+- **CloudWatch** for monitoring 2 servers (Prometheus is free and more capable)
+- **Lambda** for workloads that run constantly (you'll pay more than a small EC2 instance)
+
+## A practical hybrid setup
+
+Here's what I'd recommend as a starting point for someone with an existing homelab who wants to extend into AWS:
+
+```
+LOCAL (homelab)                    AWS
+├── Docker host (always-on)        ├── t3.micro (reverse proxy + VPN endpoint)
+├── NAS (media + file storage)     ├── S3 Glacier (offsite backups)
+├── Ollama (daily AI inference)    ├── Spot GPU (occasional large model runs)
+├── Home Assistant                 └── Route 53 (DNS)
+├── Prometheus + Grafana
+└── Pi-hole
+```
+
+Total added AWS cost: roughly €8–15/month for the always-on pieces, plus spot costs when you need GPU compute.
+
+The homelab handles data-heavy, always-on, latency-sensitive work. AWS handles public availability, offsite redundancy, and burst compute you can't justify buying hardware for.
+
+## When to reconsider
+
+Revisit this decision when:
+
+- **Your electricity costs spike** — if rates go above €0.40/kWh, cloud compute starts looking better for lighter workloads
+- **You need high availability** — if downtime costs you money (a consulting business, a SaaS product), the reliability premium of AWS is worth it
+- **You're traveling long-term** — running infrastructure from a laptop over hotel WiFi is miserable; shift more to the cloud
+- **A hardware failure hits** — replacing a dead motherboard at 2 AM puts the "just use the cloud" argument in sharp focus
+
+## The bottom line
+
+Your homelab isn't a sunk cost — it's a genuine advantage for always-on, data-intensive, local-network workloads. AWS isn't a replacement for it. It's an extension.
+
+Use the cloud for what it's good at: burst compute, public endpoints, offsite storage, and high availability. Keep everything else local where it's cheaper and under your control.
+
+The rest of this series will show you exactly how to set up that hybrid stack — starting with [production-grade backups to S3](/aws/aws-s3-restic-homelab-backups) for under €2/month.

@@ -1,0 +1,473 @@
+---
+title: "Terraform for Homelab Users: Infrastructure as Code Without the Enterprise Overhead"
+description: "If you already write Ansible playbooks, Terraform is the natural next step for cloud infrastructure. Provision a VPC, EC2 instance, and security group in ~50 lines. Practical guide with a homelab mindset."
+pubDate: 2026-05-01
+section: "aws"
+tags: ["aws", "terraform", "infrastructure-as-code", "homelab", "devops"]
+draft: false
+---
+
+import { Image } from 'astro:assets';
+
+If you've been following the [homelab Ansible guide](/homelab/ansible-homelab-automation), you already know the power of describing your infrastructure in code and running a single command to make it real. Terraform does the same thing, but for a different layer.
+
+Here's the mental model:
+
+- **Ansible** configures machines that already exist — installs packages, edits config files, manages services
+- **Terraform** creates the machines themselves — provisions cloud resources, networks, storage, DNS records
+
+In a homelab, you plug in hardware and then run Ansible. In the cloud, you run Terraform to create the hardware, then run Ansible to configure it. They're complementary, not competing.
+
+This guide gets you from zero to a working Terraform setup that provisions a real AWS environment — VPC, subnet, security group, and EC2 instance — in about 50 lines of configuration. No enterprise patterns, no module registries, no over-engineering.
+
+## Why Terraform matters for homelab operators
+
+You might be thinking: "I can click through the AWS console or run a few CLI commands. Why bother with Terraform?"
+
+Three reasons:
+
+**Reproducibility.** When you provision infrastructure through the console, you make 30 decisions (instance type, security group rules, subnet CIDR, tags) that exist only in your head and the AWS API. Terraform captures every decision in a file you can version-control, review, and re-run. Blow away your entire AWS setup and rebuild it identically in 2 minutes.
+
+**Drift detection.** Someone (probably you at 11 PM) opens a port in a security group through the console "temporarily." Terraform knows the desired state and will flag the change next time you run `plan`. This has saved me more times than I want to admit.
+
+**Documentation that doesn't rot.** A Terraform file is always accurate because it's the thing that creates the infrastructure. Wiki pages and READMEs about your setup go stale the moment you change something.
+
+## Installing Terraform
+
+```bash
+# Ubuntu/Debian
+wget -O - https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+sudo apt update && sudo apt install terraform
+
+# Verify
+terraform version
+```
+
+You'll also need AWS credentials configured. If you've used the AWS CLI before, Terraform picks up the same `~/.aws/credentials` file automatically.
+
+## Project structure
+
+Keep it simple. You don't need modules, workspaces, or remote state backends to start. One directory, three files:
+
+```
+homelab-cloud/
+├── main.tf          # Resources
+├── variables.tf     # Input variables
+├── outputs.tf       # Values to display after apply
+└── terraform.tfvars # Your specific values (git-ignored)
+```
+
+## The configuration
+
+### variables.tf — define your inputs
+
+```hcl
+variable "region" {
+  description = "AWS region"
+  type        = string
+  default     = "eu-central-1"
+}
+
+variable "instance_type" {
+  description = "EC2 instance type"
+  type        = string
+  default     = "t3.small"
+}
+
+variable "key_name" {
+  description = "Name of the SSH key pair in AWS"
+  type        = string
+}
+
+variable "allowed_ssh_cidr" {
+  description = "CIDR block allowed to SSH (your IP)"
+  type        = string
+}
+
+variable "domain_name" {
+  description = "Your domain name for DNS records"
+  type        = string
+  default     = ""
+}
+```
+
+### terraform.tfvars — your values
+
+```hcl
+region           = "eu-central-1"
+instance_type    = "t3.small"
+key_name         = "homelab-cloud"
+allowed_ssh_cidr = "203.0.113.42/32"  # Replace with your IP
+domain_name      = "yourdomain.com"
+```
+
+Add `terraform.tfvars` to your `.gitignore` — it contains your specific configuration and potentially your IP address.
+
+### main.tf — the infrastructure
+
+This is the core file. About 80 lines that create a complete, production-ready environment:
+
+```hcl
+terraform {
+  required_version = ">= 1.5"
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+
+provider "aws" {
+  region = var.region
+}
+
+# ─── Data sources ──────────────────────────────────────────
+
+data "aws_ami" "ubuntu" {
+  most_recent = true
+  owners      = ["099720109477"] # Canonical
+
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"]
+  }
+
+  filter {
+    name   = "state"
+    values = ["available"]
+  }
+}
+
+# ─── Networking ────────────────────────────────────────────
+
+resource "aws_vpc" "main" {
+  cidr_block           = "10.0.0.0/16"
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+
+  tags = { Name = "homelab-cloud-vpc" }
+}
+
+resource "aws_subnet" "public" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = "10.0.1.0/24"
+  availability_zone       = "${var.region}a"
+  map_public_ip_on_launch = true
+
+  tags = { Name = "homelab-cloud-public" }
+}
+
+resource "aws_internet_gateway" "gw" {
+  vpc_id = aws_vpc.main.id
+  tags   = { Name = "homelab-cloud-igw" }
+}
+
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.gw.id
+  }
+
+  tags = { Name = "homelab-cloud-public-rt" }
+}
+
+resource "aws_route_table_association" "public" {
+  subnet_id      = aws_subnet.public.id
+  route_table_id = aws_route_table.public.id
+}
+
+# ─── Security ──────────────────────────────────────────────
+
+resource "aws_security_group" "server" {
+  name_prefix = "homelab-cloud-"
+  description = "Homelab cloud server security group"
+  vpc_id      = aws_vpc.main.id
+
+  # SSH — restricted to your IP
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = [var.allowed_ssh_cidr]
+    description = "SSH from home"
+  }
+
+  # HTTP
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "HTTP"
+  }
+
+  # HTTPS
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "HTTPS"
+  }
+
+  # All outbound
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = { Name = "homelab-cloud-sg" }
+}
+
+# ─── Compute ───────────────────────────────────────────────
+
+resource "aws_instance" "server" {
+  ami                    = data.aws_ami.ubuntu.id
+  instance_type          = var.instance_type
+  key_name               = var.key_name
+  subnet_id              = aws_subnet.public.id
+  vpc_security_group_ids = [aws_security_group.server.id]
+
+  root_block_device {
+    volume_size = 30
+    volume_type = "gp3"
+    encrypted   = true
+  }
+
+  user_data = <<-USERDATA
+    #!/bin/bash
+    set -euo pipefail
+    apt-get update && apt-get upgrade -y
+    curl -fsSL https://get.docker.com | sh
+    apt-get install -y fail2ban unattended-upgrades
+    fallocate -l 1G /swapfile
+    chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
+    echo '/swapfile none swap sw 0 0' >> /etc/fstab
+    systemctl enable --now fail2ban
+  USERDATA
+
+  tags = {
+    Name        = "homelab-cloud"
+    Environment = "production"
+    ManagedBy   = "terraform"
+  }
+}
+
+resource "aws_eip" "server" {
+  instance = aws_instance.server.id
+  domain   = "vpc"
+  tags     = { Name = "homelab-cloud-eip" }
+}
+```
+
+### outputs.tf — useful info after apply
+
+```hcl
+output "public_ip" {
+  description = "Public IP of the server"
+  value       = aws_eip.server.public_ip
+}
+
+output "ssh_command" {
+  description = "SSH command to connect"
+  value       = "ssh -i ~/.ssh/${var.key_name}.pem ubuntu@${aws_eip.server.public_ip}"
+}
+
+output "instance_id" {
+  description = "EC2 instance ID"
+  value       = aws_instance.server.id
+}
+
+output "vpc_id" {
+  description = "VPC ID"
+  value       = aws_vpc.main.id
+}
+```
+
+## Running it
+
+```bash
+cd homelab-cloud/
+
+# Initialize — downloads the AWS provider
+terraform init
+
+# Preview what will be created
+terraform plan
+
+# Create everything
+terraform apply
+```
+
+Terraform shows you exactly what it will create before doing anything. Type `yes` to confirm. In about 90 seconds, you'll have a VPC, subnet, internet gateway, security group, EC2 instance with Docker, and an Elastic IP — all from code.
+
+```
+Apply complete! Resources: 8 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+instance_id = "i-0abc123def456789"
+public_ip   = "18.198.xxx.xxx"
+ssh_command = "ssh -i ~/.ssh/homelab-cloud.pem ubuntu@18.198.xxx.xxx"
+vpc_id      = "vpc-0abc123def456789"
+```
+
+## The Terraform workflow
+
+Once you're running, the day-to-day workflow is straightforward:
+
+### Make a change
+
+Edit `main.tf` — say you want to open port 8080:
+
+```hcl
+# Add to the security group resource
+ingress {
+  from_port   = 8080
+  to_port     = 8080
+  protocol    = "tcp"
+  cidr_blocks = [var.allowed_ssh_cidr]
+  description = "Custom service"
+}
+```
+
+### Preview the change
+
+```bash
+terraform plan
+```
+
+Output shows exactly what changes:
+
+```
+  # aws_security_group.server will be updated in-place
+  ~ resource "aws_security_group" "server" {
+      + ingress {
+          + cidr_blocks = ["203.0.113.42/32"]
+          + from_port   = 8080
+          + to_port     = 8080
+          + protocol    = "tcp"
+          + description = "Custom service"
+        }
+    }
+
+Plan: 0 to add, 1 to change, 0 to destroy.
+```
+
+### Apply it
+
+```bash
+terraform apply
+```
+
+### Detect drift
+
+If you (or someone else) manually changed something through the console:
+
+```bash
+terraform plan
+```
+
+Terraform compares the real state to your code and shows the difference. You can then either update your code to match reality or run `apply` to force reality to match your code.
+
+## Terraform + Ansible: the full picture
+
+Here's how the two tools work together in a homelab-to-cloud workflow:
+
+```
+┌─────────────────┐     ┌──────────────────┐
+│   Terraform      │     │   Ansible         │
+│   Creates:       │────▶│   Configures:     │
+│   • VPC          │     │   • Docker stacks │
+│   • EC2 instance │     │   • Caddy         │
+│   • Security grp │     │   • Monitoring    │
+│   • DNS records  │     │   • Backups       │
+│   • S3 buckets   │     │   • Users/SSH     │
+└─────────────────┘     └──────────────────┘
+```
+
+You can even have Terraform output an Ansible inventory automatically:
+
+```hcl
+# Add to main.tf
+resource "local_file" "ansible_inventory" {
+  content = <<-INVENTORY
+    [cloud]
+    ${aws_eip.server.public_ip} ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/${var.key_name}.pem
+  INVENTORY
+
+  filename = "${path.module}/inventory.ini"
+}
+```
+
+Now after `terraform apply`, run:
+
+```bash
+ansible-playbook -i inventory.ini your-playbook.yml
+```
+
+One command creates the infrastructure, another configures it. Version-control both. Your entire cloud setup is reproducible from two files.
+
+## State management
+
+Terraform tracks what it created in a `terraform.tfstate` file. This file is critical — lose it and Terraform loses track of your resources (they still exist in AWS, but Terraform can't manage them).
+
+For a solo operator:
+
+**Start with local state.** The `terraform.tfstate` file lives in your project directory. Commit it to a private git repo or back it up to S3. This is fine for a single person managing a small setup.
+
+**Graduate to remote state when:** You work from multiple machines, collaborate with someone else, or want automatic locking to prevent concurrent changes.
+
+```hcl
+# Add to terraform block in main.tf when you're ready
+terraform {
+  backend "s3" {
+    bucket         = "your-terraform-state-bucket"
+    key            = "homelab-cloud/terraform.tfstate"
+    region         = "eu-central-1"
+    dynamodb_table = "terraform-locks"
+    encrypt        = true
+  }
+}
+```
+
+Don't set this up on day one. Local state works perfectly for a personal infrastructure project.
+
+## Common mistakes coming from Ansible
+
+If you're used to Ansible, a few Terraform concepts will feel unfamiliar:
+
+**Terraform is declarative about existence, not configuration.** Ansible's `apt` module installs a package imperatively. Terraform's `aws_instance` resource declares that an instance should exist with certain properties. If it already exists and matches, Terraform does nothing.
+
+**Don't use Terraform for application configuration.** It's tempting to put everything in the `user_data` script, but that only runs on first boot. Use Terraform to create resources and Ansible to configure them. If you need to change Nginx config, that's an Ansible task, not a Terraform change.
+
+**Changing certain properties destroys and recreates.** Changing an EC2 instance's AMI or instance type causes Terraform to terminate the old instance and create a new one. The `plan` output warns you with `# forces replacement`. Read the plan carefully before applying.
+
+**State is sacred.** Never edit `terraform.tfstate` by hand. Never delete it unless you want to lose track of all managed resources. Back it up.
+
+## Tear it all down
+
+When you're done experimenting, or if you want to start fresh:
+
+```bash
+terraform destroy
+```
+
+Terraform removes every resource it created, in the correct dependency order. Your AWS account is clean. Try doing that after clicking through the console for an hour.
+
+## What's next
+
+This foundation sets you up for the rest of the AWS series:
+
+- [The €10/Month AWS Stack](/aws/ten-euro-month-aws-stack) — the setup you've just codified in Terraform
+- [GitHub Actions + AWS: CI/CD for Your Infrastructure](/aws/github-actions-aws-cicd) — automate `terraform apply` on every push
+- The [Ansible homelab automation guide](/homelab/ansible-homelab-automation) — the configuration layer that pairs with Terraform
+- Consider the [Ansible Homelab Bundle](https://linuxcore.gumroad.com/l/ansible-homelab-bundle) if you want production-ready playbooks to run on the infrastructure Terraform creates
+
+Infrastructure as code isn't about complexity. It's about writing down what you built so you can build it again. If you already do that with Ansible for your homelab machines, extending the habit to cloud resources with Terraform is the natural progression.

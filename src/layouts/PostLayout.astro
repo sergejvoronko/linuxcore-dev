@@ -14,7 +14,7 @@ interface Props {
   heroImageAlt?:string;
   tags?:        string[];
   readingTime?: number;
-  section?:     'homelab' | 'astro';
+  section?:     'homelab' | 'astro' | 'aws';
   headings:     MarkdownHeading[];
   affiliate?:   boolean;
 }
@@ -31,15 +31,19 @@ const formatDate = (d: Date) => new Date(d).toLocaleDateString('en-GB', {
 
 const sectionLabel = section === 'homelab' ? 'Homelab'
                    : section === 'astro'   ? 'Astro'
+                   : section === 'aws'     ? 'AWS'
                    : 'Blog';
 const sectionHref  = section === 'homelab' ? '/homelab'
                    : section === 'astro'   ? '/astro'
+                   : section === 'aws'     ? '/aws'
                    : '/blog';
 
 const tocHeadings = headings.filter(h => h.depth === 2 || h.depth === 3);
 const hasToc      = tocHeadings.length > 2;
 
-const sectionColor = section === 'astro' ? '#7eb8d4' : '#f0a500';
+const sectionColor = section === 'astro' ? '#7eb8d4'
+                   : section === 'aws'   ? '#e8923a'
+                   : '#f0a500';
 ---
 
 <BaseLayout title={title} description={description} heroImage={heroImage}>

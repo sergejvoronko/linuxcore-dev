@@ -1,0 +1,394 @@
+---
+title: "AWS S3 + Restic: Production-Grade Homelab Backups for Under €2/Month"
+description: "Set up encrypted, deduplicated offsite backups from your homelab to AWS S3 with automatic lifecycle policies, least-privilege IAM, and Glacier tiering. Complete walkthrough with real cost breakdown."
+pubDate: 2026-04-16
+section: "aws"
+tags: ["aws", "s3", "restic", "backup", "homelab", "disaster-recovery"]
+draft: false
+---
+
+import { Image } from 'astro:assets';
+
+Local backups are good. Local backups plus offsite backups are what separate "inconvenient hardware failure" from "catastrophic data loss."
+
+I've seen both sides of this — enterprise SAP systems with multi-region replication and homelabbers who lost years of data because their backup drive was sitting next to the NAS it was protecting. When the power supply blew, it took both with it.
+
+AWS S3 is the cheapest, most durable offsite storage available to individuals. Combined with restic — which handles encryption, deduplication, and incremental snapshots — you get a backup system that rivals enterprise setups for a fraction of the cost.
+
+This guide builds a complete production backup pipeline. If you've read the [homelab backup basics guide](/homelab/aws-s3-restic-backup), consider this the cloud-native deep dive with proper IAM, lifecycle policies, and cost optimization.
+
+## What this setup gives you
+
+- **Encrypted at rest and in transit** — restic encrypts before upload, S3 encrypts at the bucket level
+- **Deduplicated** — restic only uploads changed blocks, keeping transfer and storage costs minimal
+- **Versioned** — point-in-time recovery from any snapshot
+- **Tiered storage** — recent backups in S3 Standard, older ones automatically moved to Glacier
+- **Least-privilege access** — IAM policy scoped to exactly one bucket with no delete permission for the backup user
+- **Total cost** — under €2/month for 50–100GB of deduplicated data
+
+## Prerequisites
+
+- An AWS account (free tier works for the first 12 months)
+- `restic` installed on your homelab machine (`apt install restic` on Debian/Ubuntu)
+- AWS CLI v2 installed and configured (`aws configure`)
+- A Linux homelab server with data worth protecting
+
+## Step 1: Create a dedicated S3 bucket
+
+Don't reuse an existing bucket. Create one specifically for backups with versioning enabled:
+
+```bash
+# Choose a globally unique name
+BUCKET_NAME="homelab-backups-$(openssl rand -hex 4)"
+REGION="eu-central-1"
+
+# Create the bucket
+aws s3api create-bucket \
+  --bucket "$BUCKET_NAME" \
+  --region "$REGION" \
+  --create-bucket-configuration LocationConstraint="$REGION"
+
+# Enable versioning (protects against accidental overwrites)
+aws s3api put-bucket-versioning \
+  --bucket "$BUCKET_NAME" \
+  --versioning-configuration Status=Enabled
+
+# Block all public access
+aws s3api put-public-access-block \
+  --bucket "$BUCKET_NAME" \
+  --public-access-block-configuration \
+    BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
+
+echo "Bucket created: $BUCKET_NAME"
+```
+
+### Enable server-side encryption
+
+Even though restic encrypts data before uploading, belt-and-suspenders is the right approach for backups:
+
+```bash
+aws s3api put-bucket-encryption \
+  --bucket "$BUCKET_NAME" \
+  --server-side-encryption-configuration '{
+    "Rules": [{
+      "ApplyServerSideEncryptionByDefault": {
+        "SSEAlgorithm": "aws:kms",
+        "BucketKeyEnabled": true
+      }
+    }]
+  }'
+```
+
+Using `BucketKeyEnabled` reduces KMS request costs by up to 99% — important when restic writes many small objects.
+
+## Step 2: Set up lifecycle policies
+
+This is the key to keeping costs down. Recent backups stay in S3 Standard for fast restores. Older data transitions to Glacier tiers automatically:
+
+```bash
+aws s3api put-bucket-lifecycle-configuration \
+  --bucket "$BUCKET_NAME" \
+  --lifecycle-configuration '{
+    "Rules": [
+      {
+        "ID": "TransitionToGlacier",
+        "Status": "Enabled",
+        "Filter": { "Prefix": "" },
+        "Transitions": [
+          {
+            "Days": 30,
+            "StorageClass": "GLACIER_IR"
+          },
+          {
+            "Days": 90,
+            "StorageClass": "DEEP_ARCHIVE"
+          }
+        ],
+        "NoncurrentVersionTransitions": [
+          {
+            "NoncurrentDays": 7,
+            "StorageClass": "GLACIER_IR"
+          }
+        ],
+        "NoncurrentVersionExpiration": {
+          "NoncurrentDays": 180
+        }
+      }
+    ]
+  }'
+```
+
+What this does:
+
+| Age | Storage class | Cost per GB/month | Restore time |
+|-----|--------------|-------------------|--------------|
+| 0–30 days | S3 Standard | €0.0245 | Instant |
+| 30–90 days | Glacier Instant Retrieval | €0.004 | Milliseconds |
+| 90+ days | Glacier Deep Archive | €0.00099 | 12–48 hours |
+| Old versions > 180 days | Deleted | Free | — |
+
+For 100GB of data, your steady-state monthly cost lands around €0.50–1.50 depending on the age distribution of your snapshots.
+
+## Step 3: Create a least-privilege IAM user
+
+Never use your root AWS credentials for backups. Create a dedicated user with the minimum permissions restic needs:
+
+```bash
+# Create the backup user
+aws iam create-user --user-name homelab-backup
+
+# Create the access key
+aws iam create-access-key --user-name homelab-backup > /tmp/backup-keys.json
+
+# Extract the credentials (save these securely!)
+echo "Access Key: $(jq -r '.AccessKey.AccessKeyId' /tmp/backup-keys.json)"
+echo "Secret Key: $(jq -r '.AccessKey.SecretAccessKey' /tmp/backup-keys.json)"
+```
+
+Now attach a policy that only allows access to this one bucket. Critically, this policy does **not** include `s3:DeleteObject` — a compromised server can add new backups but can't delete existing ones:
+
+```bash
+cat > /tmp/backup-policy.json << 'EOF'
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowResticBackup",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:ListBucket",
+        "s3:GetBucketLocation"
+      ],
+      "Resource": [
+        "arn:aws:s3:::BUCKET_NAME",
+        "arn:aws:s3:::BUCKET_NAME/*"
+      ]
+    }
+  ]
+}
+EOF
+
+# Replace placeholder with actual bucket name
+sed -i "s/BUCKET_NAME/$BUCKET_NAME/g" /tmp/backup-policy.json
+
+# Attach the policy
+aws iam put-user-policy \
+  --user-name homelab-backup \
+  --policy-name ResticBackupAccess \
+  --policy-document file:///tmp/backup-policy.json
+
+# Clean up the temp files
+rm /tmp/backup-keys.json /tmp/backup-policy.json
+```
+
+### Why no delete permission matters
+
+If ransomware or an attacker compromises your homelab server, they can encrypt your local data — but they can't delete your S3 backups. The backup user physically cannot issue delete commands. To prune old snapshots, you'll use a separate admin credential manually or via a locked-down CI/CD pipeline.
+
+## Step 4: Initialize the restic repository
+
+On your homelab server, configure the credentials and initialize the repository:
+
+```bash
+# Store credentials in a dedicated file (not your main AWS config)
+cat > ~/.restic-env << EOF
+export AWS_ACCESS_KEY_ID="your-access-key-here"
+export AWS_SECRET_ACCESS_KEY="your-secret-key-here"
+export RESTIC_REPOSITORY="s3:s3.eu-central-1.amazonaws.com/$BUCKET_NAME"
+export RESTIC_PASSWORD="your-strong-restic-encryption-password"
+EOF
+
+chmod 600 ~/.restic-env
+source ~/.restic-env
+
+# Initialize the repository
+restic init
+```
+
+**Store the restic password somewhere safe outside your homelab** — a password manager, a printed sheet in a safe, anywhere that survives a total homelab loss. Without this password, your backups are unrecoverable by design.
+
+## Step 5: Run your first backup
+
+Back up the directories that matter. Skip transient data like caches and container layers:
+
+```bash
+source ~/.restic-env
+
+restic backup \
+  /home \
+  /etc \
+  /opt/docker \
+  /var/lib/docker/volumes \
+  --exclude='.cache' \
+  --exclude='node_modules' \
+  --exclude='*.tmp' \
+  --exclude='__pycache__' \
+  --verbose
+```
+
+The first backup uploads everything. Subsequent runs only upload changed blocks — a typical daily backup of a homelab server transfers 50–200MB even if you have 100GB+ of total data.
+
+## Step 6: Automate with systemd
+
+A backup you have to remember to run is a backup that won't happen. Set up a systemd timer that runs nightly:
+
+```bash
+sudo tee /etc/systemd/system/restic-backup.service << 'EOF'
+[Unit]
+Description=Restic backup to AWS S3
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+EnvironmentFile=/root/.restic-env
+ExecStart=/usr/bin/restic backup \
+  /home \
+  /etc \
+  /opt/docker \
+  /var/lib/docker/volumes \
+  --exclude='.cache' \
+  --exclude='node_modules' \
+  --exclude='*.tmp' \
+  --exclude='__pycache__' \
+  --quiet
+ExecStartPost=/usr/bin/restic forget \
+  --keep-daily 7 \
+  --keep-weekly 4 \
+  --keep-monthly 6 \
+  --prune
+Nice=19
+IOSchedulingClass=idle
+EOF
+
+sudo tee /etc/systemd/system/restic-backup.timer << 'EOF'
+[Unit]
+Description=Run restic backup nightly
+
+[Timer]
+OnCalendar=*-*-* 02:30:00
+RandomizedDelaySec=1800
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now restic-backup.timer
+```
+
+A few details worth noting:
+
+- `Nice=19` and `IOSchedulingClass=idle` ensure backups don't compete with your services
+- `RandomizedDelaySec=1800` adds up to 30 minutes of jitter so multiple machines don't all hit S3 at the same time
+- `Persistent=true` means if the machine was off at 2:30 AM, the backup runs as soon as it boots
+- The `forget` command with `--prune` keeps 7 daily, 4 weekly, and 6 monthly snapshots — roughly 6 months of recovery points
+
+### A note on the forget command and delete permissions
+
+The `restic forget --prune` command needs to delete objects from S3. Since our backup IAM user intentionally lacks delete permission, you have two options:
+
+**Option A (recommended for most homelabs):** Create a second IAM user with delete permission, and run `forget --prune` manually once a month from a separate machine or your desktop.
+
+**Option B (convenience trade-off):** Add `s3:DeleteObject` to the backup policy. This is less secure — a compromised server could delete backups — but it's simpler for a single-person setup. Make your own risk assessment.
+
+## Step 7: Verify your backups
+
+A backup you've never restored from is a hope, not a backup. Test regularly:
+
+```bash
+source ~/.restic-env
+
+# List snapshots
+restic snapshots
+
+# Restore a specific file to a temp directory
+restic restore latest --target /tmp/restore-test --include /etc/hostname
+
+# Verify data integrity (checks all data against stored checksums)
+restic check --read-data-subset=10%
+```
+
+Run `restic check` weekly (add another systemd timer) and do a full restore test quarterly. Put it on your calendar.
+
+## Step 8: Monitor backup health
+
+Add a simple health check that alerts you if backups stop running. This script checks the age of the latest snapshot and exits non-zero if it's stale:
+
+```bash
+#!/bin/bash
+# /usr/local/bin/check-backup-age.sh
+
+source /root/.restic-env
+
+LATEST=$(restic snapshots --json --latest 1 | jq -r '.[0].time')
+LATEST_EPOCH=$(date -d "$LATEST" +%s)
+NOW_EPOCH=$(date +%s)
+AGE_HOURS=$(( (NOW_EPOCH - LATEST_EPOCH) / 3600 ))
+
+if [ "$AGE_HOURS" -gt 48 ]; then
+  echo "CRITICAL: Last backup is ${AGE_HOURS} hours old"
+  # Add notification here: curl to webhook, email, Gotify push, etc.
+  exit 1
+fi
+
+echo "OK: Last backup ${AGE_HOURS} hours ago"
+exit 0
+```
+
+If you're running Prometheus and Grafana (and if you followed the [homelab monitoring guide](/homelab/grafana-prometheus-monitoring-stack), you are), expose this as a textfile collector metric:
+
+```bash
+# Add to cron, runs every hour
+echo "restic_backup_age_hours $AGE_HOURS" > /var/lib/prometheus/node-exporter/backup_age.prom
+```
+
+## Real cost breakdown
+
+After running this setup for a typical homelab (100GB total data, ~200MB daily change rate), here's what the monthly bill looks like:
+
+```
+S3 storage (100GB, mixed tiers):     ~€1.20
+PUT/GET requests (~3000/month):       ~€0.02
+Data transfer in (upload):             €0.00 (free)
+Data transfer out (rare restores):     €0.00 (most months)
+KMS requests (with bucket key):       ~€0.01
+────────────────────────────────────────────
+Total:                                ~€1.23/month
+```
+
+For under €15 per year, you have encrypted, versioned, geographically separate backups that survive fire, flood, theft, ransomware, and your own mistakes.
+
+## What to do when disaster strikes
+
+When you actually need to restore, here's the procedure:
+
+```bash
+# Full restore to a fresh machine
+source ~/.restic-env
+
+# See what snapshots are available
+restic snapshots
+
+# Restore the latest snapshot
+restic restore latest --target /
+
+# Or restore a specific snapshot from a specific date
+restic restore abc123ef --target /mnt/restore
+```
+
+If your data has moved to Glacier Deep Archive (90+ days old), you'll need to initiate a restore request first. This takes 12–48 hours — which is why the lifecycle policy keeps the most recent 30 days in Standard storage for instant access.
+
+## Next steps
+
+This backup setup pairs well with the rest of the AWS series:
+
+- [When to Move Your Homelab Workload to AWS](/aws/when-to-move-homelab-to-aws) — the decision framework behind this hybrid approach
+- [The €10/Month AWS Stack](/aws/ten-euro-month-aws-stack) — if you want to run compute alongside your backups
+- The [Ansible homelab automation guide](/homelab/ansible-homelab-automation) can deploy this entire backup pipeline across multiple machines with a single playbook
+
+Your data is only as safe as your worst backup. For €1.23/month, there's no reason it shouldn't survive anything.

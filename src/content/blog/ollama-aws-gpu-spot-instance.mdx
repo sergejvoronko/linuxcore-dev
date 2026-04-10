@@ -1,0 +1,415 @@
+---
+title: "Running Ollama on an AWS GPU Spot Instance for €0.30/Hour"
+description: "Spin up a GPU-powered Ollama instance on AWS spot pricing, run 70B+ parameter models, and tear it down when you're done. Complete automation script included with real cost comparisons vs. buying local GPU hardware."
+pubDate: 2026-04-25
+section: "aws"
+tags: ["aws", "ollama", "gpu", "spot-instances", "ai", "llm", "homelab"]
+draft: false
+---
+
+import { Image } from 'astro:assets';
+
+Your homelab can run 7B and 13B models just fine on a decent CPU or a mid-range GPU. But the moment you want to experiment with Llama 3 70B, Mixtral 8x22B, or any model that demands 40GB+ of VRAM, your local hardware hits a wall.
+
+You have two choices: spend €1,500+ on an RTX 4090 or A6000 that sits idle 95% of the time, or rent exactly the GPU you need for exactly as long as you need it.
+
+AWS spot instances make the second option absurdly cheap. A `g5.xlarge` with an NVIDIA A10G GPU (24GB VRAM) goes for roughly €0.30–0.45/hour on spot pricing — that's 60–80% less than on-demand. Run it for two hours, tear it down, pay less than a euro.
+
+This guide automates the entire lifecycle: launch, configure, run Ollama, and terminate — all from a single script on your homelab machine.
+
+## When this makes sense (and when it doesn't)
+
+**Use spot GPU instances when:**
+- You want to test large models (70B+) that exceed your local VRAM
+- You need GPU compute for a few hours per week, not daily
+- You're fine-tuning or benchmarking and need consistent GPU performance
+- Your local power costs make 24/7 GPU operation expensive
+
+**Stick with local hardware when:**
+- You use AI models multiple hours every day (the break-even is roughly 2hrs/day — see the cost comparison below)
+- You need instant availability with no spin-up time
+- You're running models that fit in 8–16GB VRAM (a €300 RTX 4060 handles this)
+- Privacy requirements mean data can't leave your network
+
+## GPU instance options and pricing
+
+Here's what's available for AI inference workloads on spot pricing in `eu-central-1` (Frankfurt). Prices fluctuate — these are typical ranges:
+
+| Instance | GPU | VRAM | Spot price/hr | Good for |
+|----------|-----|------|---------------|----------|
+| g5.xlarge | 1× A10G | 24GB | €0.30–0.45 | 13B–34B models, quantized 70B |
+| g5.2xlarge | 1× A10G | 24GB | €0.45–0.65 | Same GPU, more CPU/RAM for preprocessing |
+| g5.4xlarge | 1× A10G | 24GB | €0.60–0.90 | Same GPU, 64GB system RAM |
+| g5.12xlarge | 4× A10G | 96GB | €1.80–2.70 | Full 70B models, multi-GPU inference |
+| p3.2xlarge | 1× V100 | 16GB | €0.90–1.20 | Older but capable, good for fine-tuning |
+
+For most people, `g5.xlarge` is the sweet spot. The A10G's 24GB VRAM runs quantized 70B models (Q4_K_M) comfortably, and the spot price is consistently the cheapest GPU option on AWS.
+
+## Prerequisites
+
+On your homelab machine (the one you'll launch from):
+
+```bash
+# AWS CLI v2 configured with credentials that can launch EC2 instances
+aws sts get-caller-identity
+
+# jq for JSON parsing
+sudo apt install -y jq
+```
+
+You'll also need a key pair and security group. If you followed the [€10/month AWS stack guide](/aws/ten-euro-month-aws-stack), you already have these. Otherwise:
+
+```bash
+aws ec2 create-key-pair \
+  --key-name ollama-gpu \
+  --key-type ed25519 \
+  --query 'KeyMaterial' --output text > ~/.ssh/ollama-gpu.pem
+chmod 600 ~/.ssh/ollama-gpu.pem
+```
+
+## The launch script
+
+This script handles everything: finds the cheapest availability zone, requests a spot instance, installs Ollama and your chosen model, and gives you a ready-to-use endpoint.
+
+```bash
+#!/bin/bash
+# ollama-spot.sh — Launch an Ollama GPU spot instance on AWS
+set -euo pipefail
+
+# ─── Configuration ─────────────────────────────────────────
+INSTANCE_TYPE="${1:-g5.xlarge}"
+MODEL="${2:-llama3:70b-instruct-q4_K_M}"
+REGION="eu-central-1"
+KEY_NAME="ollama-gpu"
+AMI_OWNER="099720109477"  # Canonical (Ubuntu)
+
+# ─── Find the latest Ubuntu 24.04 AMI ─────────────────────
+echo "Finding latest Ubuntu 24.04 AMI..."
+AMI_ID=$(aws ec2 describe-images \
+  --region "$REGION" \
+  --owners "$AMI_OWNER" \
+  --filters \
+    "Name=name,Values=ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*" \
+    "Name=state,Values=available" \
+  --query 'sort_by(Images, &CreationDate)[-1].ImageId' \
+  --output text)
+echo "AMI: $AMI_ID"
+
+# ─── Find cheapest AZ for this instance type ──────────────
+echo "Checking spot prices across availability zones..."
+CHEAPEST=$(aws ec2 describe-spot-price-history \
+  --region "$REGION" \
+  --instance-types "$INSTANCE_TYPE" \
+  --product-descriptions "Linux/UNIX" \
+  --start-time "$(date -u +%Y-%m-%dT%H:%M:%S)" \
+  --query 'SpotPriceHistory | sort_by(@, &SpotPrice) | [0]' \
+  --output json)
+
+SPOT_PRICE=$(echo "$CHEAPEST" | jq -r '.SpotPrice')
+SPOT_AZ=$(echo "$CHEAPEST" | jq -r '.AvailabilityZone')
+echo "Best spot price: \$${SPOT_PRICE}/hr in ${SPOT_AZ}"
+
+# ─── Create a security group (if it doesn't exist) ────────
+SG_NAME="ollama-spot-sg"
+SG_ID=$(aws ec2 describe-security-groups \
+  --region "$REGION" \
+  --filters "Name=group-name,Values=$SG_NAME" \
+  --query 'SecurityGroups[0].GroupId' --output text 2>/dev/null || true)
+
+if [ "$SG_ID" = "None" ] || [ -z "$SG_ID" ]; then
+  echo "Creating security group..."
+  SG_ID=$(aws ec2 create-security-group \
+    --region "$REGION" \
+    --group-name "$SG_NAME" \
+    --description "Ollama spot instance" \
+    --query 'GroupId' --output text)
+
+  # SSH access
+  aws ec2 authorize-security-group-ingress \
+    --region "$REGION" \
+    --group-id "$SG_ID" \
+    --protocol tcp --port 22 --cidr "$(curl -4s ifconfig.me)/32"
+
+  # Ollama API (restricted to your IP)
+  aws ec2 authorize-security-group-ingress \
+    --region "$REGION" \
+    --group-id "$SG_ID" \
+    --protocol tcp --port 11434 --cidr "$(curl -4s ifconfig.me)/32"
+fi
+echo "Security group: $SG_ID"
+
+# ─── User data script ─────────────────────────────────────
+USERDATA=$(cat << SETUP
+#!/bin/bash
+set -euo pipefail
+
+# Install NVIDIA drivers
+apt-get update
+apt-get install -y linux-modules-nvidia-560-server-\$(uname -r) nvidia-utils-560-server
+modprobe nvidia
+
+# Install Ollama
+curl -fsSL https://ollama.com/install.sh | sh
+
+# Configure Ollama to listen on all interfaces
+mkdir -p /etc/systemd/system/ollama.service.d
+cat > /etc/systemd/system/ollama.service.d/override.conf << 'EOF'
+[Service]
+Environment="OLLAMA_HOST=0.0.0.0"
+Environment="OLLAMA_NUM_PARALLEL=2"
+EOF
+
+systemctl daemon-reload
+systemctl restart ollama
+
+# Wait for Ollama to be ready
+for i in {1..30}; do
+  curl -sf http://localhost:11434/api/tags && break
+  sleep 2
+done
+
+# Pull the requested model
+ollama pull $MODEL
+
+# Signal that setup is complete
+echo "READY" > /tmp/ollama-ready
+SETUP
+)
+
+# ─── Request the spot instance ─────────────────────────────
+echo "Requesting spot instance..."
+INSTANCE_ID=$(aws ec2 run-instances \
+  --region "$REGION" \
+  --image-id "$AMI_ID" \
+  --instance-type "$INSTANCE_TYPE" \
+  --key-name "$KEY_NAME" \
+  --security-group-ids "$SG_ID" \
+  --placement "AvailabilityZone=$SPOT_AZ" \
+  --instance-market-options '{"MarketType":"spot","SpotOptions":{"SpotInstanceType":"one-time","InstanceInterruptionBehavior":"terminate"}}' \
+  --block-device-mappings '[{"DeviceName":"/dev/sda1","Ebs":{"VolumeSize":100,"VolumeType":"gp3","Iops":3000,"Throughput":250}}]' \
+  --user-data "$USERDATA" \
+  --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=ollama-spot},{Key=Purpose,Value=ai-inference}]" \
+  --query 'Instances[0].InstanceId' \
+  --output text)
+
+echo "Instance: $INSTANCE_ID"
+echo "Waiting for instance to start..."
+aws ec2 wait instance-running --region "$REGION" --instance-ids "$INSTANCE_ID"
+
+PUBLIC_IP=$(aws ec2 describe-instances \
+  --region "$REGION" \
+  --instance-ids "$INSTANCE_ID" \
+  --query 'Reservations[0].Instances[0].PublicIpAddress' \
+  --output text)
+
+echo ""
+echo "════════════════════════════════════════════════════"
+echo "  Ollama Spot Instance Launched"
+echo "════════════════════════════════════════════════════"
+echo "  Instance:  $INSTANCE_ID"
+echo "  IP:        $PUBLIC_IP"
+echo "  Type:      $INSTANCE_TYPE"
+echo "  Spot:      \$${SPOT_PRICE}/hr"
+echo "  Model:     $MODEL"
+echo ""
+echo "  SSH:       ssh -i ~/.ssh/ollama-gpu.pem ubuntu@$PUBLIC_IP"
+echo "  API:       http://$PUBLIC_IP:11434"
+echo ""
+echo "  The instance is installing NVIDIA drivers and"
+echo "  pulling the model. This takes 5-10 minutes."
+echo "  Check progress:"
+echo "    ssh -i ~/.ssh/ollama-gpu.pem ubuntu@$PUBLIC_IP 'tail -f /var/log/cloud-init-output.log'"
+echo ""
+echo "  When done, terminate with:"
+echo "    aws ec2 terminate-instances --instance-ids $INSTANCE_ID"
+echo "════════════════════════════════════════════════════"
+
+# Save instance ID for easy termination
+echo "$INSTANCE_ID" > /tmp/ollama-spot-instance-id
+```
+
+Make it executable and run:
+
+```bash
+chmod +x ollama-spot.sh
+
+# Default: g5.xlarge with Llama 3 70B
+./ollama-spot.sh
+
+# Or specify instance type and model
+./ollama-spot.sh g5.xlarge "mixtral:8x22b-instruct-q4_K_M"
+```
+
+## Using the remote Ollama instance
+
+Once the setup completes (5–10 minutes for driver install + model pull), you can use Ollama exactly like you would locally.
+
+### From the command line
+
+```bash
+# Direct API call
+curl http://$PUBLIC_IP:11434/api/generate -d '{
+  "model": "llama3:70b-instruct-q4_K_M",
+  "prompt": "Explain the difference between ext4 and btrfs for a homelab NAS",
+  "stream": false
+}'
+```
+
+### Connect Open WebUI to the remote instance
+
+If you're running [Open WebUI locally](/homelab/ollama-open-webui-local-ai), you can point it at the remote Ollama instance temporarily:
+
+```bash
+# Stop your local Ollama, start Open WebUI with the remote endpoint
+docker run -d --name open-webui \
+  -p 3000:8080 \
+  -e OLLAMA_BASE_URL=http://$PUBLIC_IP:11434 \
+  ghcr.io/open-webui/open-webui:main
+```
+
+Now you get the familiar chat interface with a 70B model behind it. When you're done, switch back to your local Ollama endpoint.
+
+### SSH tunnel (more secure)
+
+If you'd rather not expose port 11434 publicly, remove the port from the security group and use an SSH tunnel:
+
+```bash
+ssh -i ~/.ssh/ollama-gpu.pem -L 11434:localhost:11434 -N ubuntu@$PUBLIC_IP &
+
+# Now access Ollama on localhost as if it were local
+curl http://localhost:11434/api/generate -d '{
+  "model": "llama3:70b-instruct-q4_K_M",
+  "prompt": "Hello from my homelab through an SSH tunnel",
+  "stream": false
+}'
+```
+
+## The termination script
+
+When you're done, terminate immediately. Every hour the instance runs costs money:
+
+```bash
+#!/bin/bash
+# ollama-spot-stop.sh — Terminate the Ollama spot instance
+set -euo pipefail
+
+INSTANCE_ID=$(cat /tmp/ollama-spot-instance-id 2>/dev/null || echo "")
+
+if [ -z "$INSTANCE_ID" ]; then
+  echo "No instance ID found. Check /tmp/ollama-spot-instance-id"
+  exit 1
+fi
+
+echo "Terminating $INSTANCE_ID..."
+aws ec2 terminate-instances --instance-ids "$INSTANCE_ID"
+aws ec2 wait instance-terminated --instance-ids "$INSTANCE_ID"
+
+rm -f /tmp/ollama-spot-instance-id
+echo "Instance terminated. No more charges."
+```
+
+## Cost comparison: spot vs. buying a GPU
+
+Here's the real math. The question is: at what point does buying local hardware save you money?
+
+### Scenario: 2 hours of GPU use per day
+
+```
+AWS spot (g5.xlarge):
+  €0.35/hr × 2 hrs × 30 days = €21.00/month
+
+Local RTX 4070 Ti (16GB VRAM):
+  Card: €650 / 36 months = €18.06/month (amortized)
+  Electricity: 200W × 2hrs × 30 days × €0.30/kWh = €3.60/month
+  Total: €21.66/month
+```
+
+At 2 hours per day, the costs are nearly identical. The card pays for itself after 31 months.
+
+### Scenario: occasional use (5 hours per week)
+
+```
+AWS spot:
+  €0.35 × 5 hrs × 4.3 weeks = €7.53/month
+
+Local RTX 4070 Ti:
+  €18.06 + €1.29 electricity = €19.35/month
+```
+
+Spot instances are 2.5× cheaper if you only use GPU compute a few hours per week. The card would take over 7 years to break even — by which point it's obsolete.
+
+### Scenario: heavy daily use (6+ hours/day)
+
+```
+AWS spot:
+  €0.35 × 6 hrs × 30 days = €63.00/month
+
+Local RTX 4070 Ti:
+  €18.06 + €10.80 electricity = €28.86/month
+```
+
+If you're running models 6+ hours daily, buy the GPU. Local hardware wins decisively for sustained workloads.
+
+### The VRAM argument
+
+The cost math above ignores a critical factor: VRAM. A `g5.xlarge` gives you an A10G with 24GB VRAM. Getting 24GB of VRAM locally means an RTX 4090 (€1,600+) or an A5000 (€2,500+). For `g5.12xlarge` you get 96GB across 4 GPUs — there's no reasonable local equivalent.
+
+If you need more than 16GB VRAM and use it less than 4 hours daily, spot instances are the clear winner.
+
+## Handling spot interruptions
+
+Spot instances can be reclaimed by AWS with 2 minutes notice. For inference workloads this isn't a big deal — you lose the current prompt, not data. But you should be aware of it.
+
+### Check for interruption warnings
+
+```bash
+# On the instance — checks the instance metadata for termination notices
+while true; do
+  STATUS=$(curl -sf -o /dev/null -w "%{http_code}" \
+    http://169.254.169.254/latest/meta-data/spot/instance-action || echo "000")
+  if [ "$STATUS" = "200" ]; then
+    echo "SPOT INTERRUPTION — instance will terminate in 2 minutes"
+    # Add notification here (webhook, Telegram, etc.)
+    break
+  fi
+  sleep 5
+done
+```
+
+### Interruption rates
+
+In practice, `g5.xlarge` spot instances in `eu-central-1` have an interruption rate under 5%. For a 2-hour inference session, the chance of being interrupted is very low. If it does happen, just re-run the launch script — it takes 5–10 minutes to get back up.
+
+## Persistent model cache (optional)
+
+The biggest cost of spinning up a fresh instance each time is re-downloading the model (5–40GB depending on size). You can cut this down by storing pulled models on an EBS snapshot:
+
+```bash
+# After pulling your models, create a snapshot of the data volume
+# First, find the volume ID
+VOL_ID=$(aws ec2 describe-instances \
+  --instance-ids "$INSTANCE_ID" \
+  --query 'Reservations[0].Instances[0].BlockDeviceMappings[0].Ebs.VolumeId' \
+  --output text)
+
+# Create snapshot
+SNAP_ID=$(aws ec2 create-snapshot \
+  --volume-id "$VOL_ID" \
+  --description "Ollama models cache" \
+  --query 'SnapshotId' --output text)
+
+echo "Snapshot: $SNAP_ID"
+echo "Use this in future launches to skip model downloads"
+```
+
+Then modify the launch script to use this snapshot as the root volume. Startup time drops from 10 minutes to under 3.
+
+## Next steps
+
+This pairs naturally with other guides in the series:
+
+- [When to Move Your Homelab Workload to AWS](/aws/when-to-move-homelab-to-aws) — the decision framework that led to this approach
+- [Spot Instances, Reserved Instances, and Savings Plans](/aws/aws-cost-guide-spot-reserved-savings) — deeper dive into AWS pricing strategies
+- [Ollama + Open WebUI on your homelab](/homelab/ollama-open-webui-local-ai) — the local setup that this extends
+
+The sweet spot is owning a modest local GPU for daily use and spinning up cloud instances when you need more power. Your homelab handles the 7B and 13B models you use every day; AWS handles the occasional 70B experiment. Best of both worlds.

@@ -13,7 +13,7 @@ const blog = defineCollection({
     // 'homelab' → appears at /homelab/slug
     // 'astro'   → appears at /astro/slug
     // omit      → appears at /blog/slug only
-    section: z.enum(['homelab', 'astro']).optional(),
+    section: z.enum(['homelab', 'astro', 'aws']).optional(),
 
     tags:        z.array(z.string()).default([]),
     featured:    z.boolean().default(false),
