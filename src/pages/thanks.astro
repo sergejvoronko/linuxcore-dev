@@ -1,0 +1,139 @@
+---
+// src/pages/thanks.astro
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout
+  title="You're in"
+  description="Thanks for subscribing to linuxcore.dev"
+  noIndex={true}
+>
+  <main class="thanks-page">
+
+    <div class="thanks-inner">
+      <div class="thanks-label">// SUBSCRIBED</div>
+      <h1 class="thanks-title">You're in.<br><span class="thanks-accent">Check your inbox.</span></h1>
+      <p class="thanks-body">
+        Confirm your email to activate your subscription — the confirmation
+        is on its way. Once confirmed you'll get new articles, scripts, and
+        homelab guides every time something worth reading goes out.
+      </p>
+
+      <!-- Lead magnet -->
+      <div class="magnet">
+        <div class="magnet-label">WHILE YOU WAIT — FREE DOWNLOAD</div>
+        <h2 class="magnet-title">6 Homelab Bash Scripts</h2>
+        <p class="magnet-desc">
+          Docker health checks, restic backup wrapper, UFW ruleset, Ollama
+          model manager, and more — all free, no sign-up required.
+        </p>
+        <a
+          href="https://github.com/linuxcore-dev/homelab-scripts"
+          target="_blank"
+          rel="noopener"
+          class="magnet-btn"
+        >
+          ↓ Get the scripts on GitHub →
+        </a>
+      </div>
+
+      <div class="thanks-links">
+        <a href="/homelab">Browse homelab guides →</a>
+        <a href="/aws">Browse AWS guides →</a>
+        <a href="/">Back to home →</a>
+      </div>
+    </div>
+
+  </main>
+</BaseLayout>
+
+<style>
+  .thanks-page {
+    min-height: 80vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem 1.5rem;
+  }
+  .thanks-inner {
+    max-width: 560px;
+    width: 100%;
+  }
+  .thanks-label {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--amber);
+    letter-spacing: 0.15em;
+    margin-bottom: 1.25rem;
+  }
+  .thanks-title {
+    font-family: var(--font-display);
+    font-size: clamp(2.2rem, 5vw, 3.2rem);
+    font-weight: 700;
+    color: var(--text-bright);
+    line-height: 1.1;
+    margin-bottom: 1.25rem;
+  }
+  .thanks-accent { color: var(--amber); }
+  .thanks-body {
+    font-size: 1rem;
+    color: var(--text-mid);
+    line-height: 1.7;
+    margin-bottom: 2.5rem;
+  }
+
+  /* Lead magnet box */
+  .magnet {
+    background: var(--bg2);
+    border: 1px solid var(--border-amber);
+    padding: 1.75rem;
+    margin-bottom: 2.5rem;
+  }
+  .magnet-label {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    color: var(--amber);
+    margin-bottom: 0.75rem;
+  }
+  .magnet-title {
+    font-family: var(--font-display);
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text-bright);
+    margin-bottom: 0.6rem;
+  }
+  .magnet-desc {
+    font-size: 0.88rem;
+    color: var(--text-mid);
+    line-height: 1.65;
+    margin-bottom: 1.25rem;
+  }
+  .magnet-btn {
+    display: inline-block;
+    background: var(--amber);
+    color: var(--bg);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    padding: 0.7rem 1.5rem;
+    text-decoration: none;
+    transition: background 0.15s;
+  }
+  .magnet-btn:hover { background: #ffc13d; }
+
+  .thanks-links {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .thanks-links a {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+  .thanks-links a:hover { color: var(--amber); }
+</style>

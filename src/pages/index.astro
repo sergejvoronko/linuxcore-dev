@@ -174,10 +174,26 @@ const recent = allPosts
       <p class="nl-eyebrow"><span class="bracket">[</span>newsletter<span class="bracket">]</span></p>
       <h2 class="nl-title">Stay in the loop</h2>
       <p class="nl-body">New articles, scripts, and homelab tips — no spam, no weekly digest nonsense.</p>
-      <form class="nl-form" action="https://assets.mailerlite.com/jsonp/2251405/forms/184104603196851942/subscribe" method="post" target="_blank">
+      <form class="nl-form" id="nl-form">
         <input type="email" name="fields[email]" placeholder="your@email.com" required class="nl-input" />
         <button type="submit" class="btn-primary">Subscribe →</button>
       </form>
+
+      <script>
+        document.getElementById('nl-form')?.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const form = e.target as HTMLFormElement;
+          const email = (form.querySelector('input[type="email"]') as HTMLInputElement).value;
+          const body = new URLSearchParams({ 'fields[email]': email });
+          try {
+            await fetch('https://assets.mailerlite.com/jsonp/2251405/forms/184104603196851942/subscribe', {
+              method: 'POST',
+              body,
+            });
+          } catch {}
+          window.location.href = '/thanks';
+        });
+      </script>
     </div>
   </section>
 </BaseLayout>
