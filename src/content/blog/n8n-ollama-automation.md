@@ -1,15 +1,25 @@
 ---
 title: "n8n + Ollama: Build an AI Automation Agent on Your Own Server"
-description: "Connect your local LLMs to real workflows: auto-summarise RSS feeds, analyse Linux logs with AI, send Telegram alerts, and build a personal AI assistant — all self-hosted, all free, all private."
+description: "Connect local LLMs to real workflows: auto-summarise RSS feeds, analyse logs with AI, send Telegram alerts — all self-hosted, private, and free."
 pubDate: 2026-04-14
 heroImage: "/images/n8n-ollama-automation.webp"
+heroImageAlt: "n8n workflow editor showing an AI automation pipeline connecting Ollama LLM to RSS feeds and Telegram alerts"
 section: "homelab"
 pillar: "Self-Hosted AI"
 type: "UNIQUE"
 tags: ["n8n", "ollama", "automation", "self-hosted", "docker", "linux", "telegram", "ai", "llm"]
-readTime: 24
+readingTime: 24
 featured: false
 draft: false
+faqs:
+  - q: "Is n8n completely free to self-host?"
+    a: "The self-hosted community edition is free with no workflow or execution limits. The n8n cloud service has paid tiers, but hosting n8n yourself on Docker costs nothing beyond your server's running costs."
+  - q: "Can n8n use cloud LLMs like OpenAI instead of Ollama?"
+    a: "Yes. n8n has native nodes for OpenAI, Anthropic, and other cloud AI providers. You can mix cloud and local models in the same workflow — for example, use Ollama for private log analysis and OpenAI for a public-facing chatbot."
+  - q: "How much memory does n8n use?"
+    a: "n8n itself uses around 200-400 MB of RAM at idle. Active workflows that handle large payloads or many concurrent executions can push this higher. For a lightly used automation server, 1 GB allocated to the n8n container is comfortable."
+  - q: "Do I need programming skills to use n8n?"
+    a: "No. Most workflows are built entirely through the visual node editor with no code. The Code node (JavaScript/Python) is available for complex transformations, but the built-in nodes cover HTTP requests, JSON manipulation, scheduling, conditionals, and integrations without writing a line of code."
 ---
 
 Running a local LLM is impressive. Having it actually do things for you is

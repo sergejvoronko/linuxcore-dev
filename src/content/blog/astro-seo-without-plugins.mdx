@@ -1,8 +1,9 @@
 ---
 title: "SEO in Astro Without Plugins — Sitemaps, Structured Data, and OG Images"
-description: "Everything Yoast SEO does on WordPress, you can do directly in Astro. Here's the complete setup: meta tags, JSON-LD structured data, XML sitemaps, Open Graph images, and robots.txt — no plugins required."
+description: "Everything Yoast SEO does on WordPress, you can do in Astro: meta tags, JSON-LD structured data, XML sitemaps, Open Graph images — no plugins required."
 pubDate: 2026-04-15
 heroImage: "/images/astro-seo-without-plugins.webp"
+heroImageAlt: "Astro layout file showing JSON-LD structured data, Open Graph meta tags, and canonical URL configuration in the head"
 section: "astro"
 tags:
   - astro
@@ -13,6 +14,15 @@ tags:
 featured: false
 draft: false
 readingTime: 11
+faqs:
+  - q: "Can Astro replace all the SEO functionality of Yoast SEO?"
+    a: "For most needs, yes. Meta tags, JSON-LD structured data, XML sitemaps, Open Graph images, canonical URLs, and robots meta are all achievable natively in Astro. What Yoast adds on top — readability analysis, content scoring, and redirect management — requires separate tooling, but those are editorial aids, not technical SEO requirements."
+  - q: "Do I need the @astrojs/sitemap integration for sitemaps?"
+    a: "It is the recommended approach. The integration auto-generates a sitemap from your routes at build time. You can also generate a sitemap manually via a dynamic src/pages/sitemap.xml.ts endpoint if you need more control over which URLs appear or want to add custom priorities."
+  - q: "What is JSON-LD structured data and why does it matter for SEO?"
+    a: "JSON-LD is a format for embedding machine-readable metadata about your page directly in the HTML. Search engines read it to understand the page's content type, author, date, and relationships. It powers rich results in Google Search — star ratings, FAQ dropdowns, breadcrumbs, and article snippets — which improve click-through rates."
+  - q: "How do I generate Open Graph images automatically in Astro?"
+    a: "Use the @vercel/og package or Satori with a Cloudflare-compatible renderer to generate OG images at build time from a template. You pass the page title and description as parameters to a dynamic API endpoint, which returns a PNG. Alternatively, use manually created images stored in /public for predictable quality."
 ---
 
 import Callout from '../../components/Callout.astro';

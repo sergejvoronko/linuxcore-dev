@@ -1,0 +1,587 @@
+---
+title: "K3s on Your Homelab: Lightweight Kubernetes That Actually Makes Sense"
+description: "Deploy a K3s Kubernetes cluster on your homelab. Single-node to multi-node HA with Traefik ingress, Longhorn storage, and real workloads running in minutes."
+pubDate: 2026-04-11
+section: "homelab"
+pillar: "Homelab"
+type: "CLUSTER"
+tags: ["kubernetes", "k3s", "homelab", "docker", "containers", "traefik", "devops"]
+heroImage: "/images/k3s-homelab.webp"
+heroImageAlt: "Terminal showing kubectl get nodes output with a 3-node K3s cluster running on homelab hardware"
+readingTime: 20
+featured: false
+draft: false
+faqs:
+  - q: "Does K3s work on Raspberry Pi?"
+    a: "Yes. K3s auto-detects ARM64 — use the standard install script with no extra flags. A Raspberry Pi 4 with 4 GB RAM or a Pi 5 works well as a single node or worker."
+  - q: "What is the difference between K3s and full Kubernetes?"
+    a: "K3s is a CNCF-certified Kubernetes distribution that removes cloud-provider plugins and uses SQLite instead of etcd by default. Every kubectl command, Helm chart, and manifest works identically — it is real Kubernetes, just packaged as a single binary under 100 MB."
+  - q: "How much RAM does K3s require?"
+    a: "K3s needs a minimum of 512 MB RAM to run, but 2 GB per node is a practical minimum for running real workloads. The server (control plane) node benefits from 4 GB or more, especially when running Longhorn or Helm charts."
+  - q: "Can I migrate from Docker Compose to K3s without downtime?"
+    a: "Yes. Run K3s alongside your existing Docker Compose stack, migrate workloads one by one using Kubernetes manifests or Helm charts, then stop the Compose services once the K3s deployments are healthy."
+  - q: "Does K3s support GPU workloads like Ollama?"
+    a: "Yes. Install the NVIDIA device plugin on the cluster, label the GPU node, and use a nodeSelector in your pod spec to schedule GPU workloads there. K3s works with the standard nvidia-container-toolkit."
+---
+
+You've got Docker Compose running on your homelab. It works. Containers come up, Traefik routes traffic, Grafana dashboards load. So why would you add Kubernetes to the mix?
+
+Because at some point, you hit the ceiling. You want rolling updates without downtime. You want workloads to survive a node failure. You want to declare the desired state of your entire stack and let something else figure out the how. That's what Kubernetes does — and K3s makes it possible without a six-figure infrastructure budget.
+
+K3s is a CNCF-certified Kubernetes distribution built by Rancher (now SUSE). It strips out cloud-provider bloat, compiles everything into a single binary under 100 MB, and uses SQLite instead of etcd by default. It's real Kubernetes — every `kubectl` command, every Helm chart, every manifest works — just without the operational overhead that makes full K8s absurd for a homelab.
+
+This guide walks you through deploying K3s on your homelab hardware, configuring Traefik as an ingress controller, setting up persistent storage, and migrating real workloads from Docker Compose.
+
+## Prerequisites
+
+You'll need:
+
+- One or more Linux machines (bare metal, Proxmox VMs, or [mini PCs](/homelab/best-mini-pc-homelab-2026)) running Ubuntu 22.04+ or Debian 12+
+- At least 2 GB RAM and 2 vCPUs per node (4 GB+ recommended for the server node)
+- SSH access with a sudo user
+- Static IPs or DHCP reservations on each node
+- A working [Docker installation](/homelab/docker-compose-homelab-stack) (helpful for testing, not required for K3s itself)
+
+If you want to automate the deployment, the [Ansible approach](#automating-with-ansible) later in this guide ties directly into the playbook patterns from the [Ansible Homelab Bundle](/homelab/ansible-homelab).
+
+## Installing K3s: Single-Node Cluster
+
+The fastest path from zero to Kubernetes:
+
+```bash
+curl -sfL https://get.k3s.io | sh -
+```
+
+That's it. One command. K3s installs as a systemd service, deploys Traefik as the default ingress controller, provisions CoreDNS, and sets up a local container runtime (containerd). After 30 seconds you have a running cluster:
+
+```bash
+sudo kubectl get nodes
+# NAME        STATUS   ROLES                  AGE   VERSION
+# homelab01   Ready    control-plane,master   45s   v1.29.2+k3s1
+```
+
+The kubeconfig lives at `/etc/rancher/k3s/k3s.yaml`. To use `kubectl` without sudo:
+
+```bash
+mkdir -p ~/.kube
+sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config
+sudo chown $(id -u):$(id -g) ~/.kube/config
+export KUBECONFIG=~/.kube/config
+```
+
+Add that `export` line to your `~/.bashrc` so it persists.
+
+### Verify the Cluster
+
+```bash
+kubectl get pods -A
+```
+
+You should see pods for Traefik, CoreDNS, metrics-server, and the local-path-provisioner (K3s's built-in storage class). Everything running in under a minute with zero YAML.
+
+## Adding Worker Nodes
+
+To scale beyond a single node, grab the node token from the server:
+
+```bash
+sudo cat /var/lib/rancher/k3s/server/node-token
+```
+
+Then on each worker machine, run:
+
+```bash
+curl -sfL https://get.k3s.io | K3S_URL=https://<SERVER_IP>:6443 K3S_TOKEN=<NODE_TOKEN> sh -
+```
+
+Replace `<SERVER_IP>` with your server node's static IP and `<NODE_TOKEN>` with the token string. Within seconds, the worker joins the cluster:
+
+```bash
+kubectl get nodes
+# NAME        STATUS   ROLES                  AGE    VERSION
+# homelab01   Ready    control-plane,master   10m    v1.29.2+k3s1
+# homelab02   Ready    <none>                 30s    v1.29.2+k3s1
+# homelab03   Ready    <none>                 25s    v1.29.2+k3s1
+```
+
+### Labeling Nodes
+
+Labels let you control where workloads land. Tag nodes with GPU access, high-memory capacity, or storage roles:
+
+```bash
+kubectl label node homelab02 gpu=true
+kubectl label node homelab03 role=storage
+```
+
+Then use `nodeSelector` in your pod specs to pin workloads:
+
+```yaml
+spec:
+  nodeSelector:
+    gpu: "true"
+```
+
+This is exactly how you'd ensure [Ollama runs on the node with your GPU](/homelab/ollama-linux-setup).
+
+## Persistent Storage with Longhorn
+
+K3s ships with `local-path-provisioner`, which works for single-node setups but doesn't replicate data across nodes. For anything production-like, install Longhorn — Rancher's distributed block storage:
+
+```bash
+kubectl apply -f https://raw.githubusercontent.com/longhorn/longhorn/v1.6.0/deploy/longhorn.yaml
+```
+
+Wait for all pods to come up:
+
+```bash
+kubectl -n longhorn-system get pods -w
+```
+
+Then set Longhorn as your default storage class:
+
+```bash
+kubectl patch storageclass local-path -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"false"}}}'
+kubectl patch storageclass longhorn -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+```
+
+Now any PersistentVolumeClaim (PVC) automatically gets replicated storage. If a node dies, Longhorn rebuilds the volume on surviving nodes. This is the homelab equivalent of enterprise SAN replication — for free.
+
+## Deploying Real Workloads
+
+Let's move actual services onto K3s. If you're coming from Docker Compose, the mental model shift is: instead of a `docker-compose.yml` that you `up -d`, you write Kubernetes manifests (or use Helm charts) that describe the desired state.
+
+### Grafana + Prometheus Monitoring Stack
+
+Instead of manually wiring containers, use the kube-prometheus-stack Helm chart:
+
+```bash
+# Install Helm if you don't have it
+curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+# Add the Prometheus community repo
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update
+
+# Install the full monitoring stack
+helm install monitoring prometheus-community/kube-prometheus-stack \
+  --namespace monitoring \
+  --create-namespace \
+  --set grafana.adminPassword=your-secure-password \
+  --set grafana.persistence.enabled=true \
+  --set grafana.persistence.size=5Gi
+```
+
+This deploys Prometheus, Grafana, Alertmanager, node-exporter, and kube-state-metrics — all pre-wired with dashboards that show cluster-level metrics out of the box. Compare that to the [manual Prometheus/Grafana setup](/homelab/grafana-prometheus-homelab) — same monitoring, but Kubernetes handles restarts, health checks, and scaling.
+
+### Ollama with GPU Passthrough
+
+For AI workloads, deploy Ollama as a Kubernetes deployment with GPU resources:
+
+```yaml
+# ollama-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ollama
+  namespace: ai
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ollama
+  template:
+    metadata:
+      labels:
+        app: ollama
+    spec:
+      nodeSelector:
+        gpu: "true"
+      containers:
+        - name: ollama
+          image: ollama/ollama:latest
+          ports:
+            - containerPort: 11434
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+          volumeMounts:
+            - name: ollama-data
+              mountPath: /root/.ollama
+      volumes:
+        - name: ollama-data
+          persistentVolumeClaim:
+            claimName: ollama-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ollama-pvc
+  namespace: ai
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ollama
+  namespace: ai
+spec:
+  selector:
+    app: ollama
+  ports:
+    - port: 11434
+      targetPort: 11434
+```
+
+Apply it:
+
+```bash
+kubectl create namespace ai
+kubectl apply -f ollama-deployment.yaml
+```
+
+GPU support requires the NVIDIA device plugin. Install it with:
+
+```bash
+kubectl apply -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.14.3/nvidia-device-plugin.yml
+```
+
+Make sure the GPU node has the NVIDIA drivers and `nvidia-container-toolkit` installed at the OS level first.
+
+### n8n Workflow Automation
+
+```yaml
+# n8n-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: n8n
+  namespace: automation
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: n8n
+  template:
+    metadata:
+      labels:
+        app: n8n
+    spec:
+      containers:
+        - name: n8n
+          image: n8nio/n8n:latest
+          ports:
+            - containerPort: 5678
+          env:
+            - name: N8N_PROTOCOL
+              value: "https"
+            - name: WEBHOOK_URL
+              value: "https://n8n.yourdomain.com/"
+          volumeMounts:
+            - name: n8n-data
+              mountPath: /home/node/.n8n
+      volumes:
+        - name: n8n-data
+          persistentVolumeClaim:
+            claimName: n8n-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: n8n-pvc
+  namespace: automation
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+```
+
+## Configuring Traefik Ingress
+
+K3s bundles Traefik v2 as the default ingress controller. Expose your services with IngressRoute CRDs:
+
+```yaml
+# grafana-ingress.yaml
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: grafana
+  namespace: monitoring
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`grafana.yourdomain.com`)
+      kind: Rule
+      services:
+        - name: monitoring-grafana
+          port: 80
+  tls:
+    certResolver: letsencrypt
+```
+
+To enable automatic Let's Encrypt certificates, configure the K3s Traefik Helm chart values. Create a file at `/var/lib/rancher/k3s/server/manifests/traefik-config.yaml`:
+
+```yaml
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    additionalArguments:
+      - "--certificatesresolvers.letsencrypt.acme.email=you@yourdomain.com"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/data/acme.json"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+    ports:
+      websecure:
+        tls:
+          enabled: true
+```
+
+K3s auto-applies any manifests in `/var/lib/rancher/k3s/server/manifests/`. This is the same Traefik you'd configure standalone — the same concepts apply whether you're running it in Docker or Kubernetes.
+
+## Running K3s on Raspberry Pi
+
+A Raspberry Pi 4 (4 GB+) or Pi 5 makes a surprisingly capable K3s node. You can build a multi-node cluster for under €150 — three Pis, a switch, and a USB power hub. It's the cheapest path to real multi-node Kubernetes.
+
+### Hardware Requirements
+
+- **Raspberry Pi 4 (4 GB)** or **Pi 5 (8 GB)** — the 2 GB Pi 4 works but you'll hit memory limits fast
+- **32 GB+ microSD card** (A2 rated) or a USB SSD for boot — SSDs dramatically improve etcd/SQLite performance
+- **Ethernet connection** — Wi-Fi adds latency and drops that make Kubernetes flaky
+- **PoE+ HAT** (optional) — eliminates the USB power cable mess in a multi-Pi setup
+
+### OS Setup
+
+Flash **Ubuntu Server 24.04 LTS (arm64)** or **Raspberry Pi OS Lite (64-bit)** using the Raspberry Pi Imager. Enable SSH, set a hostname, and configure your static IP during flashing.
+
+After first boot, enable cgroups — K3s needs them for container resource limits:
+
+```bash
+# On Raspberry Pi OS, edit /boot/firmware/cmdline.txt
+# Append to the end of the existing line (do NOT add a new line):
+cgroup_enable=cpuset cgroup_memory=1 cgroup_enable=memory
+```
+
+Reboot, then verify:
+
+```bash
+cat /proc/cgroups | grep memory
+# memory  0  104  1   <-- the "1" at the end means enabled
+```
+
+### Installing K3s on ARM64
+
+The standard K3s install script auto-detects ARM64 — no special flags needed:
+
+```bash
+# On your Pi server node
+curl -sfL https://get.k3s.io | sh -
+
+# On Pi worker nodes
+curl -sfL https://get.k3s.io | K3S_URL=https://<SERVER_IP>:6443 K3S_TOKEN=<TOKEN> sh -
+```
+
+### Pi-Specific Considerations
+
+**Storage:** The built-in `local-path-provisioner` is fine for a Pi cluster. Longhorn works on ARM64 but the replication overhead can strain SD cards — if you use Longhorn, boot from USB SSDs.
+
+**CPU-bound workloads:** Don't expect to run Ollama or heavy AI models on a Pi. Use Pis for lightweight services (Pi-hole, Home Assistant, Gitea, monitoring agents) and keep GPU/CPU-intensive workloads on your [mini PC nodes](/homelab/best-mini-pc-homelab-2026).
+
+**Mixed-architecture clusters:** You can mix Pi nodes (ARM64) with x86 mini PCs in the same cluster. Kubernetes handles scheduling, but your container images must support both architectures. Most popular images (Grafana, Prometheus, n8n, Traefik) publish multi-arch manifests. Check with:
+
+```bash
+docker manifest inspect grafana/grafana | grep architecture
+```
+
+**Power:** A 3-node Pi 4 cluster draws about 15 watts total — you can run it 24/7 for under €20/year in electricity. Compare that to a single mini PC at 35-65 watts.
+
+### Example: Pi-hole on K3s
+
+A perfect first workload for a Pi node:
+
+```yaml
+# pihole-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pihole
+  namespace: dns
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pihole
+  template:
+    metadata:
+      labels:
+        app: pihole
+    spec:
+      nodeSelector:
+        kubernetes.io/arch: arm64
+      containers:
+        - name: pihole
+          image: pihole/pihole:latest
+          ports:
+            - containerPort: 80
+              name: web
+            - containerPort: 53
+              name: dns-tcp
+              protocol: TCP
+            - containerPort: 53
+              name: dns-udp
+              protocol: UDP
+          env:
+            - name: WEBPASSWORD
+              value: "change-me"
+            - name: TZ
+              value: "Europe/Berlin"
+          volumeMounts:
+            - name: pihole-data
+              mountPath: /etc/pihole
+      volumes:
+        - name: pihole-data
+          persistentVolumeClaim:
+            claimName: pihole-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pihole-pvc
+  namespace: dns
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pihole-dns
+  namespace: dns
+spec:
+  type: LoadBalancer
+  selector:
+    app: pihole
+  ports:
+    - name: dns-tcp
+      port: 53
+      targetPort: 53
+      protocol: TCP
+    - name: dns-udp
+      port: 53
+      targetPort: 53
+      protocol: UDP
+```
+
+The `LoadBalancer` service type works on K3s thanks to its built-in ServiceLB (formerly Klipper). It binds port 53 directly on the node IP — point your router's DNS to that IP and your entire network gets ad blocking via Kubernetes.
+
+## Automating with Ansible
+
+Deploying K3s manually on three nodes is fine once. Doing it repeatedly — after a reinstall, a hardware swap, or when adding nodes — calls for automation. Here's an Ansible playbook that handles the full cluster:
+
+```yaml
+# k3s-cluster.yml
+---
+- name: Deploy K3s server
+  hosts: k3s_server
+  become: true
+  tasks:
+    - name: Install K3s server
+      shell: curl -sfL https://get.k3s.io | sh -
+      args:
+        creates: /usr/local/bin/k3s
+
+    - name: Read node token
+      slurp:
+        src: /var/lib/rancher/k3s/server/node-token
+      register: node_token
+
+    - name: Store token as fact
+      set_fact:
+        k3s_token: "{{ node_token.content | b64decode | trim }}"
+
+- name: Deploy K3s workers
+  hosts: k3s_workers
+  become: true
+  tasks:
+    - name: Install K3s agent
+      shell: >
+        curl -sfL https://get.k3s.io |
+        K3S_URL=https://{{ hostvars[groups['k3s_server'][0]].ansible_host }}:6443
+        K3S_TOKEN={{ hostvars[groups['k3s_server'][0]].k3s_token }}
+        sh -
+      args:
+        creates: /usr/local/bin/k3s-agent
+```
+
+With a matching inventory:
+
+```ini
+# inventory/homelab
+[k3s_server]
+homelab01 ansible_host=192.168.1.10
+
+[k3s_workers]
+homelab02 ansible_host=192.168.1.11
+homelab03 ansible_host=192.168.1.12
+```
+
+Run it:
+
+```bash
+ansible-playbook -i inventory/homelab k3s-cluster.yml
+```
+
+This pairs naturally with the hardening and Docker roles from the [Ansible Homelab Bundle](/homelab/ansible-homelab) — run the security playbook first, then layer K3s on top.
+
+## K3s vs Docker Compose: When to Switch
+
+Don't switch just because Kubernetes is trendy. Switch when you actually need what it provides:
+
+**Stay with Docker Compose when** you run everything on a single machine, you have fewer than 10 containers, and you're the only operator. Compose is simpler, faster to iterate, and has zero learning curve.
+
+**Move to K3s when** you have multiple nodes and want workload distribution, you need automatic failover (pod restarts, node drains), you want declarative GitOps workflows (Flux, ArgoCD), or you're using your homelab to learn Kubernetes for professional development. That last point matters — K3s on your homelab is the best way to get hands-on CKA/CKAD experience without cloud bills.
+
+## Backing Up Your Cluster
+
+K3s stores cluster state in `/var/lib/rancher/k3s/server/db/` (SQLite by default). Back it up alongside your regular [restic backup strategy](/aws/aws-s3-restic-homelab-backups):
+
+```bash
+# Snapshot the K3s database
+sudo k3s etcd-snapshot save --name homelab-backup
+
+# Or for SQLite mode, just back up the file
+sudo cp /var/lib/rancher/k3s/server/db/state.db /backup/k3s-state-$(date +%F).db
+```
+
+For Longhorn volumes, enable the Longhorn backup target pointing to your NFS share or S3 bucket.
+
+## Uninstalling K3s
+
+If you need to start over:
+
+```bash
+# On server nodes
+/usr/local/bin/k3s-uninstall.sh
+
+# On worker nodes
+/usr/local/bin/k3s-agent-uninstall.sh
+```
+
+Clean removal, no orphaned containers or iptables rules left behind.
+
+## What's Next
+
+With K3s running, you've got a real Kubernetes cluster on homelab hardware. From here, you can explore GitOps with Flux or ArgoCD for declarative deployments, add [Tailscale or WireGuard](/homelab/wireguard-tailscale-guide) for secure remote access to your cluster, set up Kubernetes-native monitoring with the [Prometheus stack](/homelab/grafana-prometheus-homelab), or integrate [WireGuard](/homelab/wireguard-tailscale-guide) for site-to-site connectivity between clusters.
+
+The beauty of K3s is that everything you learn applies directly to production Kubernetes. Same API, same tooling, same patterns — just running on a mini PC under your desk instead of a cloud region.

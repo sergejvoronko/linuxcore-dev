@@ -1,8 +1,9 @@
 ---
 title: "Newsletter Integration in Astro with MailerLite and Buttondown"
-description: "Add a newsletter subscription form to your static Astro site — no backend needed, no embed iframes. A clean API-driven setup that matches your site's design, with a three-email welcome sequence that actually runs."
-pubDate: 2026-04-20
+description: "Add a newsletter form to your Astro site without backend or iframe embeds. API-driven setup with a three-email welcome sequence — works on Cloudflare Pages."
+pubDate: 2026-04-12
 heroImage: "/images/astro-newsletter-mailerLite.webp"
+heroImageAlt: "Newsletter subscription form in an Astro site making an API call to MailerLite without a backend server"
 section: "astro"
 tags:
   - astro
@@ -14,6 +15,15 @@ tags:
 featured: false
 draft: false
 readingTime: 10
+faqs:
+  - q: "Is MailerLite free?"
+    a: "MailerLite's free plan supports up to 1,000 subscribers and 12,000 emails per month — enough for most early-stage newsletters. Automation sequences and the landing page builder are included on the free plan. Paid plans start at around €9/month for 1,000+ subscribers with unlimited emails."
+  - q: "Can I add a newsletter form to Astro without a backend server?"
+    a: "Yes, using a Cloudflare Pages Function as a thin API layer. The form submits to the Function, which calls the MailerLite or Buttondown API server-side. Your static Astro site never exposes the API key to the browser."
+  - q: "What is double opt-in and do I need it?"
+    a: "Double opt-in sends a confirmation email after signup — the subscriber only joins your list after clicking the confirmation link. It reduces list size but improves deliverability and ensures GDPR compliance. For EU audiences, double opt-in is strongly recommended. MailerLite enables it per group in your account settings."
+  - q: "Can I switch from MailerLite to Buttondown later without rebuilding my form?"
+    a: "Yes. The form component itself stays the same — only the API endpoint and payload format change inside the Cloudflare Pages Function. Swap out the MailerLite API call for Buttondown's API, update your environment variables, and the form keeps working without any frontend changes."
 ---
 
 import Callout from '../../components/Callout.astro';

@@ -1,16 +1,28 @@
 ---
 title: "Proxmox VE Homelab Setup: Complete Installation and Configuration Guide (2026)"
-description: "Install Proxmox VE 8 on a mini PC or bare metal server, configure storage, networking, and GPU passthrough, deploy your first VMs and LXC containers, and harden it for 24/7 homelab use."
+description: "Install Proxmox VE 8 on a mini PC, configure storage, networking, and GPU passthrough, then deploy your first VMs and LXC containers — complete 2026 guide."
 pubDate: 2026-05-05
 heroImage: "/images/proxmox-homelab-setup.webp"
+heroImageAlt: "Proxmox VE web interface showing a homelab node with multiple VMs and LXC containers running on a mini PC"
 section: "homelab"
 pillar: "Infrastructure"
 type: "PILLAR"
 tags: ["proxmox", "virtualization", "lxc", "vm", "homelab", "linux", "gpu-passthrough", "zfs", "networking"]
-readTime: 26
-featured: false
+readingTime: 26
+featured: true
 draft: false
 affiliate: true
+faqs:
+  - q: "Is Proxmox VE free to use?"
+    a: "Yes. Proxmox VE is open source and free to download, install, and use without a subscription. The paid subscription gives you access to the enterprise repository with tested, stable packages and commercial support. For a homelab, the free no-subscription repository works fine."
+  - q: "What is the difference between a VM and an LXC container in Proxmox?"
+    a: "A VM runs a full kernel and can run any OS — Windows, FreeBSD, whatever you need. An LXC container shares the Proxmox host kernel, which makes it much lighter (lower RAM and CPU overhead) but limits you to Linux. For most homelab Linux services, LXC is the better choice."
+  - q: "Can Proxmox run on a mini PC?"
+    a: "Yes. Proxmox runs well on any x86-64 machine with VT-x/VT-d support. An N305 mini PC with 32 GB RAM can comfortably host 6-8 LXC containers and 2-3 VMs. Make sure VT-d is enabled in BIOS if you plan to use GPU passthrough."
+  - q: "How do I back up Proxmox VMs automatically?"
+    a: "Use Proxmox's built-in Backup function under Datacenter → Backup. Schedule it to run nightly or weekly, point it at a local storage location or NFS share, and set retention rules. Backups are stored as .vma.zst files that can be restored in a few clicks from the web UI."
+  - q: "Does GPU passthrough work on Proxmox for AI workloads?"
+    a: "Yes. NVIDIA and AMD GPUs can be passed through to VMs using IOMMU/VT-d. Once configured, the VM sees the GPU as native hardware — you can install the full driver stack and run Ollama, Stable Diffusion, or any CUDA application inside the VM at near-native performance."
 ---
 
 If you run one machine in your homelab, Proxmox VE is the single best
@@ -176,7 +188,7 @@ apt update && apt dist-upgrade -y
 reboot
 ```
 
-You now have a fully updated, free Proxmox installation.
+You now have a fully updated, free Proxmox installation with no subscription nag and no enterprise repo.
 
 ---
 
@@ -213,7 +225,7 @@ zpool create -f datastore mirror /dev/nvme0n1 /dev/nvme1n1
 ```
 
 Then add it in the UI: **Datacenter → Storage → Add → ZFS** → select
-your pool.
+your pool. The pool will appear in the storage list and is ready to use immediately.
 
 **External USB backup drive:**
 
@@ -292,7 +304,8 @@ pct enter 101
 
 Inside the container it looks exactly like a fresh Debian install. Run
 `apt update`, install whatever you need, and it's isolated from everything
-else on the host.
+else on the host. The container appears in the left sidebar of the web UI
+and can be started, stopped, and snapshotted independently.
 
 ---
 
@@ -361,7 +374,10 @@ reboot
 
 ```bash
 dmesg | grep -e IOMMU -e DMAR
-# Should show IOMMU enabled messages
+# Expected output (Intel):
+# [    0.000000] DMAR: IOMMU enabled
+# [    0.000000] DMAR-IR: Enabled IRQ remapping in x2apic mode
+# If you see no output, IOMMU is not active — check BIOS settings first.
 ```
 
 **Load VFIO modules:**
@@ -641,7 +657,8 @@ lspci -nnk | grep -A3 "NVIDIA"
 ```
 
 If it shows `nvidia` instead of `vfio-pci`, the blacklist didn't apply.
-Rebuild initramfs: `update-initramfs -u -k all` and reboot.
+Rebuild initramfs: `update-initramfs -u -k all` and reboot. Once it shows
+`vfio-pci`, the GPU is ready to assign to a VM.
 
 ---
 

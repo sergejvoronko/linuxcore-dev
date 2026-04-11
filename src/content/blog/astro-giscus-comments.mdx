@@ -3,6 +3,7 @@ title: "How to Add Comments to Your Astro Blog with Giscus"
 description: "Add GitHub-backed comments to any Astro site in under 10 minutes — no database, no monthly fees, no ads. Just GitHub Discussions."
 pubDate: 2026-04-01
 heroImage: "/images/astro-giscus-comments.webp"
+heroImageAlt: "Giscus comment section embedded in an Astro blog post, backed by GitHub Discussions with dark theme styling"
 section: "astro"
 tags:
   - astro
@@ -13,6 +14,15 @@ tags:
 featured: false
 draft: false
 readingTime: 8
+faqs:
+  - q: "Do readers need a GitHub account to leave a comment with Giscus?"
+    a: "Yes. Giscus uses GitHub Discussions as its backend, so commenters must authenticate with GitHub. This is a significant filter — it means fewer comments than a traditional system, but virtually eliminates spam and low-quality drive-by comments."
+  - q: "Is Giscus free?"
+    a: "Completely free. Giscus is an open source project and GitHub Discussions is free for public repositories. There are no paid tiers, no usage limits, and no ads."
+  - q: "Can I moderate Giscus comments?"
+    a: "Yes, through GitHub Discussions. You can delete comments, mark them as spam, lock threads, or transfer discussions. Moderation happens directly in your GitHub repository's Discussions tab — no separate admin panel needed."
+  - q: "Does Giscus support dark mode?"
+    a: "Yes. Giscus has built-in theme support including dark, light, dark_dimmed, and transparent_dark. You can also set it to preferred_color_scheme to automatically match the user's OS preference, or pass a custom CSS URL for complete control."
 ---
 
 import Callout from '../../components/Callout.astro';

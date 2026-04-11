@@ -1,11 +1,22 @@
 ---
-title: "Docker & Docker Compose Explained for Homelab — What It Actually Is and How to Use It"
-description: "A practical, no-fluff guide to Docker and Docker Compose for self-hosters. Learn what containers really are, how Compose orchestrates multi-service stacks, and see real examples with Immich, Jellyfin, and more."
+title: "Docker Compose for Homelab: What It Is and How to Use It"
+description: "A practical guide to Docker and Docker Compose for self-hosters: what containers really are, how Compose orchestrates stacks, with Immich and Jellyfin examples."
 pubDate: 2026-04-05
+readingTime: 11
 heroImage: "/images/docker-compose-explained.webp"
+heroImageAlt: "Docker Compose YAML file defining a multi-container homelab stack with Immich and Jellyfin services"
 section: "homelab"
 tags: ["docker", "docker-compose", "homelab", "self-hosted", "containers", "immich", "linux"]
 draft: false
+faqs:
+  - q: "What is the difference between Docker and Docker Compose?"
+    a: "Docker runs individual containers. Docker Compose is a tool for defining and managing multi-container applications — you describe all your services, networks, and volumes in a single YAML file and start everything with one command. Compose is Docker, just with an orchestration layer on top."
+  - q: "Where does Docker store persistent data?"
+    a: "In named volumes (managed by Docker, stored under /var/lib/docker/volumes/) or in bind mounts (a directory on the host filesystem). Named volumes are the recommended approach for databases and application data. Bind mounts are useful when you need to edit config files directly on the host."
+  - q: "Can I run Docker Compose on a Raspberry Pi?"
+    a: "Yes. Docker and Docker Compose both support ARM64. Install Docker using the official convenience script (curl -fsSL https://get.docker.com | sh) and Compose via apt or pip. Most popular self-hosted images publish multi-arch manifests that run natively on Pi hardware."
+  - q: "How do I update a container to the latest image version?"
+    a: "Run docker compose pull to fetch the latest image, then docker compose up -d to recreate the container with the new image. Your volumes and data are untouched. For automated updates, tools like Watchtower can check for new images and restart containers automatically on a schedule."
 ---
 
 import { Image } from 'astro:assets';

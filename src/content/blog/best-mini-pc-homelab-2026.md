@@ -1,16 +1,26 @@
 ---
 title: "Best Mini PC for a Homelab Server in 2026: Tested & Ranked"
-description: "Which mini PC actually runs Proxmox, Docker, Ollama, and a full homelab stack without killing your electricity bill? Real hardware compared by a sysadmin — N100, N150, N305, Ryzen 7, and the MinisForum MS-01."
+description: "Which mini PC runs Proxmox, Docker, Ollama, and a full homelab stack without killing your electricity bill? N100, N305, Ryzen 7, and MS-01 — honestly compared."
 pubDate: 2026-04-28
 heroImage: "/images/best-mini-pc-homelab-2026.webp"
+heroImageAlt: "Beelink and MinisForum mini PCs lined up as homelab servers, showing compact form factor compared to a rack server"
 section: "homelab"
 pillar: "Infrastructure"
 type: "CLUSTER"
 tags: ["hardware", "mini-pc", "proxmox", "homelab", "n100", "beelink", "minisforum", "docker", "budget"]
-readTime: 19
-featured: false
+readingTime: 19
+featured: true
 draft: false
 affiliate: true
+faqs:
+  - q: "Which mini PC is best for running Proxmox and Docker simultaneously?"
+    a: "The Intel N305-based mini PCs (Beelink EQ12 Pro, MinisForum UN305) hit the sweet spot for a Proxmox host running 4-6 LXC containers. If you need GPU acceleration for Ollama or Plex transcoding, step up to a Ryzen 7 or Intel Core i5 model with integrated GPU."
+  - q: "Can a mini PC run local AI models like Ollama?"
+    a: "Yes, but results vary by model size. An N100 mini PC can run llama3.2:3b at 12-18 tokens/sec on CPU. For 7B+ models at usable speed, you need a Ryzen 7 or a model with a discrete GPU. The MS-01 with an eGPU is the most capable mini PC option for local AI."
+  - q: "What is the difference between Intel N100 and N305?"
+    a: "The N100 is a 4-core/4-thread chip aimed at light workloads — good for 2-3 Docker containers or a single VM. The N305 is an 8-core/8-thread E-core design that handles Proxmox with multiple VMs, Docker stacks, and moderate transcoding without breaking a sweat."
+  - q: "How much electricity does a mini PC homelab use per year?"
+    a: "An N100 mini PC draws 8-15W at idle, costing roughly €15-25/year at European electricity rates. An N305 system draws 12-20W idle, around €25-40/year. Compare that to a used rack server at 80-150W idle — €150-280/year just sitting there."
 ---
 
 The era of rack servers in the spare bedroom is over — at least for most
@@ -18,10 +28,9 @@ of us. A single 1U server idles at 80–150W and sounds like a jet engine.
 A modern mini PC idles at 6–12W, fits in a drawer, and runs the same
 workloads silently.
 
-The mini PC homelab is having a moment. The Intel N100 chip made it
-possible to run a capable homelab for under €200 and roughly €1/month in
-electricity. The question is no longer "can a mini PC do it" but "which
-one, and for what."
+The Intel N100 chip changed the calculation: a capable homelab for under €200
+and roughly €1/month in electricity. The question is no longer "can a mini PC
+do it" but "which one, and for what."
 
 This guide answers that question properly. Not with benchmark scores that
 don't reflect real homelab workloads — but with honest assessments of what
@@ -95,8 +104,8 @@ Home Assistant, Nextcloud, a media server, and monitoring simultaneously
 **GMKtec G3 Plus / NucBox series** (~€120–150)
 
 The budget alternative to Beelink. The GMKtec G3 Plus with Intel N150
-delivers surprising value for basic server tasks without breaking the
-bank — 16GB DDR4 RAM, 512GB NVMe SSD, 2.5GbE, and WiFi 6.
+is solid for basic server tasks — 16GB DDR4 RAM, 512GB NVMe SSD, 2.5GbE,
+and WiFi 6 at a lower price than the Beelink equivalent.
 
 Slightly lower build quality than Beelink. Fine for a dedicated
 single-purpose node. Less ideal as your only machine.
@@ -310,11 +319,13 @@ EliteDesk (used), Lenovo ThinkCentre (used)
 specs that seem too good for the price, machines without clear RAM/storage
 upgrade paths listed
 
-There are a huge number of companies selling mini PCs — many appear to
-be rebranded versions of the same hardware from the same factory. Some
-have been found to ship malware along with their Windows installation.
-Beelink is the brand most commonly deployed and trusted in the homelab
-community based on first-hand experience.
+Dozens of companies sell mini PCs — many are rebranded versions of the
+same hardware from the same factory. Beelink is the brand most commonly
+deployed and trusted in the homelab community based on first-hand experience.
+
+> **Warning:** Some lesser-known brands have shipped Windows installations
+> containing malware pre-installed. If buying from an unfamiliar brand,
+> wipe and reinstall the OS before connecting to your network.
 
 If buying from a less-known brand: check the exact model on Reddit
 (r/homelab, r/minipc), verify the BIOS allows booting Linux, and

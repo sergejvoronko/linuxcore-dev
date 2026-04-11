@@ -30,7 +30,7 @@
       data-reactions-enabled="1"
       data-emit-metadata="0"
       data-input-position="top"
-      data-theme="dark"
+      data-theme="https://linuxcore.dev/giscus-theme.css"
       data-lang="en"
       crossorigin="anonymous"
       async
@@ -65,5 +65,10 @@
 
   .giscus-wrap {
     min-height: 120px;
+    width: 100%;
+  }
+  .giscus-wrap :global(.giscus),
+  .giscus-wrap :global(.giscus-frame) {
+    width: 100% !important;
   }
 </style>

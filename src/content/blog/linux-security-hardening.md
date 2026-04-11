@@ -1,15 +1,25 @@
 ---
 title: "Linux Homelab Security Hardening: Complete Checklist (2026)"
-description: "Harden any Ubuntu or Debian server from first boot to production-ready in under an hour. SSH lockdown, UFW firewall, fail2ban, automatic updates, CrowdSec, and audit tools — every command tested, every reason explained."
+description: "Harden any Ubuntu or Debian server in under an hour: SSH lockdown, UFW, fail2ban, CrowdSec, and automatic updates — every command tested, reason explained."
 pubDate: 2026-05-19
 heroImage: "/images/linux-security-hardening.webp"
+heroImageAlt: "Linux terminal showing UFW firewall rules, fail2ban status, and SSH hardening configuration on a Debian server"
 section: "homelab"
 pillar: "Security"
 type: "PILLAR"
 tags: ["security", "linux", "ssh", "ufw", "fail2ban", "crowdsec", "hardening", "ubuntu", "debian", "homelab"]
-readTime: 20
-featured: false
+readingTime: 20
+featured: true
 draft: false
+faqs:
+  - q: "Will following these steps lock me out of my server?"
+    a: "Only if you disable password auth before testing key-based SSH. Always open a second SSH session before restarting the SSH daemon to verify your key works. The guide follows this order — keys first, then disable passwords."
+  - q: "Do I need all 12 steps or can I pick the most important ones?"
+    a: "Steps 1-6 (updates, non-root user, SSH keys, SSH hardening, UFW, fail2ban) are the essential baseline that covers the vast majority of real-world threats. Steps 7-12 add defence-in-depth and are recommended but can be phased in over time."
+  - q: "What is CrowdSec and how does it differ from fail2ban?"
+    a: "Both block IPs that show malicious behaviour. fail2ban works locally — it only blocks attackers based on your own logs. CrowdSec uses a collaborative threat intelligence network: when one server blocks an IP, that intelligence is shared across all CrowdSec users, so you benefit from blocks triggered by other people's servers too."
+  - q: "How do I check if my Linux server has already been compromised?"
+    a: "Run lynis audit system for a broad security audit. Check /var/log/auth.log for unexpected successful logins, run last to see recent login history, and check netstat -tulpn or ss -tulpn for unexpected listening services. Unexpected cron jobs in /etc/cron* and /var/spool/cron are also a red flag."
 ---
 
 A default Ubuntu or Debian install is not secure. It's functional, which

@@ -3,6 +3,7 @@ title: "Contact Forms in Astro with Cloudflare Pages Functions and MailChannels"
 description: "Send email from a fully static Astro site using Cloudflare Pages Functions and MailChannels — no backend server, no third-party form service, completely free."
 pubDate: 2026-04-05
 heroImage: "/images/astro-cloudflare-contact-form.webp"
+heroImageAlt: "Astro contact form code with Cloudflare Pages Functions handler sending email via MailChannels, no backend server"
 section: "astro"
 tags:
   - astro
@@ -13,6 +14,15 @@ tags:
 featured: false
 draft: false
 readingTime: 10
+faqs:
+  - q: "Is MailChannels still free on Cloudflare Pages?"
+    a: "MailChannels historically allowed Cloudflare Pages Functions to send email for free via their API. This partnership can change — check MailChannels' current terms before relying on it for production use. The guide also notes alternatives in case the free tier changes."
+  - q: "Do I need a backend server to send email from an Astro site?"
+    a: "No. Cloudflare Pages Functions run server-side logic at the edge without a dedicated backend server. The contact form submits to a Pages Function URL, which calls MailChannels to send the email — the static site itself never touches email delivery."
+  - q: "Can I add spam protection to the Cloudflare contact form?"
+    a: "Yes. Add Cloudflare Turnstile (free, privacy-friendly CAPTCHA) to the form. Validate the Turnstile token inside your Pages Function before calling MailChannels. This blocks most bots without requiring users to solve image puzzles."
+  - q: "Does this approach work with other static site generators?"
+    a: "Yes. The Cloudflare Pages Function and MailChannels setup is independent of the frontend framework. The same function works with Next.js, SvelteKit, Nuxt, or plain HTML — anything deployed to Cloudflare Pages can call a Pages Function endpoint."
 ---
 
 import Callout from '../../components/Callout.astro';

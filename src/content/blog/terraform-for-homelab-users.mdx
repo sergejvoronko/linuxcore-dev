@@ -1,11 +1,22 @@
 ---
-title: "Terraform for Homelab Users: Infrastructure as Code Without the Enterprise Overhead"
-description: "If you already write Ansible playbooks, Terraform is the natural next step for cloud infrastructure. Provision a VPC, EC2 instance, and security group in ~50 lines. Practical guide with a homelab mindset."
+title: "Terraform for Homelab Users: IaC Without the Complexity"
+description: "If you write Ansible playbooks, Terraform is the natural next step. Provision a VPC, EC2 instance, and security group in ~50 lines — homelab mindset guide."
 pubDate: 2026-05-01
+readingTime: 10
 section: "aws"
 heroImage: "/images/terraform-for-homelab-users.webp"
+heroImageAlt: "Terraform plan output showing AWS VPC, EC2 instance, and security group resources being provisioned for a homelab"
 tags: ["aws", "terraform", "infrastructure-as-code", "homelab", "devops"]
 draft: false
+faqs:
+  - q: "What is the difference between Terraform and Ansible?"
+    a: "Terraform provisions infrastructure — it creates and destroys cloud resources like EC2 instances, VPCs, and S3 buckets. Ansible configures software on existing machines — it installs packages, writes config files, and starts services. They are complementary: Terraform builds the server, Ansible sets it up."
+  - q: "Is Terraform free?"
+    a: "The Terraform CLI and all AWS providers are free and open source. HashiCorp's Terraform Cloud (for remote state and team collaboration) has a free tier for small teams. OpenTofu is a fully open source fork of Terraform that is also free, with no licensing restrictions."
+  - q: "Do I need prior cloud experience to use Terraform?"
+    a: "Basic AWS console familiarity helps — knowing what an EC2 instance, VPC, and security group are makes the Terraform configuration much more intuitive. If you have set up a server manually in the AWS console, you have enough context to follow a Terraform guide."
+  - q: "What happens if I accidentally run terraform destroy?"
+    a: "Terraform shows you a plan listing every resource it will delete and asks for confirmation before proceeding. Type the word 'yes' to confirm destruction. If you have remote state with Terraform Cloud or S3, you can also use state locking and access controls to prevent accidental destroys in shared environments."
 ---
 
 import { Image } from 'astro:assets';

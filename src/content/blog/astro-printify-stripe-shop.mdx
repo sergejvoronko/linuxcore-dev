@@ -1,8 +1,9 @@
 ---
 title: "Building a Print-on-Demand Shop in Astro with Printify and Stripe"
-description: "Add a fully functional merch shop to your Astro site — t-shirts, mugs, prints — using Printify for fulfilment and Stripe for payments. No inventory, no warehousing, ships worldwide."
+description: "Add a merch shop to your Astro site using Printify for fulfilment and Stripe for payments — no inventory, ships worldwide."
 pubDate: 2026-04-10
 heroImage: "/images/astro-printify-stripe-shop.webp"
+heroImageAlt: "Astro shop page displaying Printify print-on-demand products with Stripe checkout integration"
 section: "astro"
 tags:
   - astro
@@ -14,6 +15,15 @@ tags:
 featured: false
 draft: false
 readingTime: 14
+faqs:
+  - q: "Do I need to hold inventory for a print-on-demand shop?"
+    a: "No. With Printify, products are printed and shipped only when a customer places an order. You never handle stock, packaging, or shipping. Your role is to set up the products, pricing, and the checkout flow — Printify handles everything physical."
+  - q: "How does Printify fulfilment work?"
+    a: "When an order is placed and payment is confirmed via Stripe, your Cloudflare Function sends the order to Printify's API. Printify routes it to the nearest print provider, which prints the item and ships it directly to the customer, typically within 3-7 business days."
+  - q: "What fees does Stripe charge for each transaction?"
+    a: "Stripe charges 1.5% + €0.25 per transaction for European cards in Europe (Stripe Pricing as of 2026). There are no monthly fees or setup costs. Stripe Radar (fraud protection) is included. Factor this into your product pricing to ensure your margin covers the fee."
+  - q: "Can I add a shop to an existing Astro site without rebuilding it?"
+    a: "Yes. The shop is just additional pages and a Cloudflare Pages Function endpoint. Add the shop pages to your existing src/pages directory and the checkout function to src/functions. Your existing content, layout, and styles are unaffected."
 ---
 
 import Callout from '../../components/Callout.astro';

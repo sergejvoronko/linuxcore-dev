@@ -20,6 +20,13 @@ const blog = defineCollection({
     draft:       z.boolean().default(false),
     affiliate:   z.boolean().default(false),
     readingTime: z.number().optional(),
+
+    // FAQ rich results (FAQPage JSON-LD)
+    faqs: z.array(z.object({ q: z.string(), a: z.string() })).optional(),
+
+    // Content architecture (planning metadata — not rendered)
+    pillar: z.string().optional(),
+    type:   z.enum(['PILLAR', 'CLUSTER', 'UNIQUE']).optional(),
   }),
 });
 

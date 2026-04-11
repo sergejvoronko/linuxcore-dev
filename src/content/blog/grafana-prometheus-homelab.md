@@ -1,15 +1,25 @@
 ---
 title: "Grafana + Prometheus Homelab Monitoring: Full Stack Setup in 30 Minutes"
-description: "Set up a complete homelab monitoring stack with Prometheus, Grafana, Node Exporter, cAdvisor, and Alertmanager using Docker Compose. Real dashboards, real alerts, zero cloud dependency."
+description: "Set up Prometheus, Grafana, Node Exporter, cAdvisor, and Alertmanager with Docker Compose. Real dashboards, real alerts, zero cloud dependency."
 pubDate: 2026-04-07
 heroImage: "/images/grafana-prometheus-homelab.webp"
+heroImageAlt: "Grafana dashboard showing Prometheus metrics for a homelab — CPU, memory, network, and container stats"
 section: "homelab"
 pillar: "Monitoring"
 type: "PILLAR"
 tags: ["grafana", "prometheus", "monitoring", "docker", "homelab", "linux", "alertmanager", "cadvisor", "node-exporter"]
-readTime: 20
+readingTime: 20
 featured: false
 draft: false
+faqs:
+  - q: "Can Prometheus monitor hosts that are not running Docker?"
+    a: "Yes. Install node_exporter directly on the bare-metal or VM host you want to monitor, then add its IP and port (default: 9100) to your prometheus.yml scrape config. Prometheus does not require Docker — it just needs to reach the exporter's HTTP endpoint."
+  - q: "How much disk space does Prometheus use?"
+    a: "Prometheus compresses time-series data efficiently. A typical homelab setup with 5-10 hosts and 15-day retention uses 2-5 GB. Set the --storage.tsdb.retention.time flag in your Docker Compose command to control how long data is kept."
+  - q: "Can Grafana send alerts to Telegram or a phone?"
+    a: "Yes. Grafana supports alert contact points including Telegram, Slack, email, PagerDuty, and webhook. For Telegram, create a bot via @BotFather, add the bot token and chat ID to Grafana's contact point configuration, and alerts will arrive as Telegram messages."
+  - q: "Do I need Alertmanager if I'm using Grafana alerts?"
+    a: "Not necessarily. Grafana has its own built-in alerting system that handles basic alert routing without Alertmanager. Alertmanager is useful when you need advanced grouping, silencing, or routing rules — particularly if you're sending alerts from multiple Prometheus instances."
 ---
 
 Flying blind is fine — until something breaks at 2am and you have no idea

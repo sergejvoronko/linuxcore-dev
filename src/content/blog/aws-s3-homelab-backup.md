@@ -1,16 +1,26 @@
 ---
 title: "AWS S3 Backups for Your Homelab: Automated, Encrypted, Under €5/Month"
-description: "Use AWS S3 and Glacier to back up your homelab data offsite — Proxmox VMs, Docker volumes, Nextcloud, and config files — with restic, automated scheduling, and real cost numbers from a running setup."
+description: "Back up your homelab to AWS S3 and Glacier — Proxmox VMs, Docker volumes, Nextcloud — using restic with automated scheduling and real cost numbers."
 pubDate: 2026-05-26
 heroImage: "/images/aws-s3-homelab-backup.webp"
+heroImageAlt: "AWS S3 console showing encrypted homelab backup buckets with Glacier lifecycle policy configured"
 section: "homelab"
 pillar: "AWS Hybrid"
 type: "PILLAR"
 tags: ["aws", "s3", "backup", "restic", "homelab", "linux", "glacier", "proxmox", "automation", "rclone"]
-readTime: 22
+readingTime: 22
 featured: false
 draft: false
 affiliate: true
+faqs:
+  - q: "How much does S3 storage cost per month for a homelab?"
+    a: "S3 Standard costs approximately €0.023 per GB per month in eu-west-1. A 100 GB backup repository costs roughly €2.30/month. Adding a lifecycle policy to move data to Glacier after 30 days cuts the storage cost to €0.004 per GB — under €0.50/month for the same 100 GB."
+  - q: "Does restic work with Glacier?"
+    a: "Restic backs up to S3 Standard. Glacier is applied automatically via S3 lifecycle policies on the bucket — restic is not aware of it. Restoring from Glacier requires initiating a retrieval first, which takes minutes to hours depending on the tier."
+  - q: "Is my data encrypted before it leaves my homelab?"
+    a: "Yes. restic encrypts all data client-side using AES-256 before uploading. The encryption key never leaves your machine — not even AWS can read your backup data."
+  - q: "Can I restore individual files without downloading the entire backup?"
+    a: "Yes. restic supports granular restores. Use restic restore latest --target /restore/path --include /path/to/file to restore a single file or directory. You only download the relevant chunks."
 ---
 
 Your homelab has a single point of failure that no amount of RAID,

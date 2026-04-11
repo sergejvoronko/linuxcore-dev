@@ -1,11 +1,22 @@
 ---
-title: "The €10/Month AWS Stack: VPS, DNS, Monitoring, and Backups on a Homelab Budget"
-description: "Build a useful AWS presence for under €10/month. A t3.micro with Docker, Route 53 DNS, basic monitoring, and S3 backups — the minimum viable cloud setup for homelab operators."
+title: "The €10/Month AWS Stack: VPS, DNS, Monitoring, and Backups"
+description: "Build a useful AWS presence for under €10/month: t3.micro with Docker, Route 53 DNS, basic monitoring, and S3 backups — minimum viable cloud for homelab."
 pubDate: 2026-04-18
+readingTime: 10
 section: "aws"
 heroImage: "/images/ten-euro-month-aws-stack.webp"
+heroImageAlt: "AWS console showing a t3.micro EC2 instance, Route 53 DNS, and S3 bucket making up a 10 euro per month cloud stack"
 tags: ["aws", "ec2", "route53", "docker", "budget", "homelab"]
 draft: false
+faqs:
+  - q: "Is a t3.micro powerful enough to run Docker containers?"
+    a: "Yes for lightweight services. A t3.micro has 1 vCPU and 1 GB RAM — enough for Caddy, a small web app, and basic monitoring. It can burst to 2 vCPUs briefly. Avoid memory-heavy containers like databases or LLMs. For a personal site, CI runner, or low-traffic API, t3.micro is a practical choice at €8-9/month."
+  - q: "Can I get a static IP for my EC2 instance for free?"
+    a: "Yes, using an Elastic IP. One Elastic IP associated with a running instance is free. You are charged €0.005/hour only when the EIP is allocated but not associated with a running instance — so release it when you stop the instance to avoid charges."
+  - q: "How does a €10/month AWS stack compare to a Hetzner or DigitalOcean VPS?"
+    a: "A Hetzner CX22 (2 vCPU, 4 GB RAM) costs €4.85/month and offers significantly more raw compute. The AWS stack makes sense if you want to learn AWS services (EC2, Route 53, S3, CloudWatch) or need tight integration with other AWS resources. For pure VPS value, Hetzner or Contabo are cheaper."
+  - q: "What services can I realistically run on a t3.micro?"
+    a: "A personal website with Caddy, a small API or bot, a lightweight monitoring agent, or a Cloudflare Tunnel relay. You can run Gitea or a small n8n instance if you are careful with memory. Anything requiring more than 800 MB RAM will cause the instance to swap heavily and become unusable."
 ---
 
 import { Image } from 'astro:assets';

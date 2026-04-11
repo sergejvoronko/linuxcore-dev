@@ -1,11 +1,22 @@
 ---
 title: "AWS S3 + Restic: Production-Grade Homelab Backups for Under €2/Month"
-description: "Set up encrypted, deduplicated offsite backups from your homelab to AWS S3 with automatic lifecycle policies, least-privilege IAM, and Glacier tiering. Complete walkthrough with real cost breakdown."
+description: "Encrypted, deduplicated homelab backups to AWS S3 with lifecycle policies, least-privilege IAM, and Glacier tiering — full walkthrough under €2/month."
 pubDate: 2026-04-16
+readingTime: 9
 section: "aws"
 heroImage: "/images/aws-s3-restic-homelab-backups.webp"
+heroImageAlt: "Terminal showing restic backup to AWS S3 with encryption and deduplication stats — under 2 euros per month"
 tags: ["aws", "s3", "restic", "backup", "homelab", "disaster-recovery"]
 draft: false
+faqs:
+  - q: "How does restic handle deduplication?"
+    a: "restic splits files into variable-length chunks using content-defined chunking, then stores only chunks that are not already in the repository. If you back up a file that has only changed in one section, only the new chunks are uploaded — not the entire file. This makes incremental backups fast and storage-efficient."
+  - q: "Is backup data encrypted before it leaves my server?"
+    a: "Yes. restic encrypts all data client-side using AES-256-CTR before uploading to S3. The encryption key is derived from your repository password and never leaves your machine. AWS stores only ciphertext and cannot read your backup data."
+  - q: "Can I restore individual files without downloading the full backup?"
+    a: "Yes. Use restic restore latest --target /restore/path --include /specific/file to restore a single file or directory. restic only downloads the chunks needed for that file, not the entire repository."
+  - q: "How much does S3 Standard storage cost per GB?"
+    a: "In eu-west-1 (Ireland), S3 Standard costs approximately €0.023 per GB per month. A 50 GB backup repository costs around €1.15/month. Adding a lifecycle policy to move data to S3 Glacier Instant Retrieval after 30 days cuts the cost to roughly €0.004/GB — under €0.25/month for the same 50 GB."
 ---
 
 import { Image } from 'astro:assets';

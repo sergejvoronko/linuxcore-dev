@@ -17,12 +17,14 @@ interface Props {
   section?:     'homelab' | 'astro' | 'aws';
   headings:     MarkdownHeading[];
   affiliate?:   boolean;
+  noIndex?:     boolean;
+  faqs?:        { q: string; a: string }[];
 }
 
 const {
   title, description, pubDate, updatedDate,
   heroImage, heroImageAlt, tags = [], readingTime,
-  section, headings, affiliate = false,
+  section, headings, affiliate = false, noIndex = false, faqs,
 } = Astro.props;
 
 const formatDate = (d: Date) => new Date(d).toLocaleDateString('en-GB', {
@@ -44,9 +46,56 @@ const hasToc      = tocHeadings.length > 2;
 const sectionColor = section === 'astro' ? '#7eb8d4'
                    : section === 'aws'   ? '#e8923a'
                    : '#f0a500';
+
+const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+
+const faqSchema = faqs?.length ? {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": faqs.map(({ q, a }) => ({
+    "@type": "Question",
+    "name": q,
+    "acceptedAnswer": { "@type": "Answer", "text": a },
+  })),
+} : null;
+
+const articleSchema = {
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": title,
+  "description": description,
+  "datePublished": new Date(pubDate).toISOString(),
+  "dateModified": updatedDate ? new Date(updatedDate).toISOString() : new Date(pubDate).toISOString(),
+  "author": {
+    "@type": "Person",
+    "name": "Sergej Voronko",
+    "url": "https://linuxcore.dev/about",
+    "jobTitle": "SAP Basis Senior Operations Manager"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "linuxcore.dev",
+    "url": "https://linuxcore.dev"
+  },
+  ...(heroImage && { "image": new URL(heroImage, Astro.site).toString() }),
+  "mainEntityOfPage": { "@type": "WebPage", "@id": canonicalURL.toString() }
+};
+
+const breadcrumbSchema = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://linuxcore.dev" },
+    { "@type": "ListItem", "position": 2, "name": sectionLabel, "item": `https://linuxcore.dev${sectionHref}` },
+    { "@type": "ListItem", "position": 3, "name": title, "item": canonicalURL.toString() }
+  ]
+};
 ---
 
-<BaseLayout title={title} description={description} heroImage={heroImage}>
+<BaseLayout title={title} description={description} heroImage={heroImage} noIndex={noIndex}>
+  <script type="application/ld+json" set:html={JSON.stringify(articleSchema)} />
+  <script type="application/ld+json" set:html={JSON.stringify(breadcrumbSchema)} />
+  {faqSchema && <script type="application/ld+json" set:html={JSON.stringify(faqSchema)} />}
   <article class="post-wrapper">
 
     <header class="post-header" style={`--post-color: ${sectionColor}`}>
@@ -93,6 +142,20 @@ const sectionColor = section === 'astro' ? '#7eb8d4'
         </aside>
       )}
     </div>
+
+    {faqs?.length && (
+      <section class="faq-section">
+        <h2 class="faq-heading">Frequently Asked Questions</h2>
+        <dl class="faq-list">
+          {faqs.map(({ q, a }) => (
+            <div class="faq-item">
+              <dt class="faq-q">{q}</dt>
+              <dd class="faq-a">{a}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+    )}
 
     <footer class="post-footer">
       <div class="post-footer-tags">
@@ -258,6 +321,41 @@ const sectionColor = section === 'astro' ? '#7eb8d4'
   .post-body :global(tr:last-child td) { border-bottom: none; }
   .post-body :global(tr:hover td) { background: rgba(240,165,0,0.03); }
 
+  /* ── FAQ section ─── */
+  .faq-section {
+    margin-top: 56px;
+    border-top: 1px solid var(--border);
+    padding-top: 36px;
+  }
+  .faq-heading {
+    font-family: var(--display); font-weight: 600;
+    font-size: 20px; color: var(--text-bright);
+    letter-spacing: -0.01em; margin-bottom: 24px;
+  }
+  .faq-list { display: flex; flex-direction: column; gap: 0; }
+  .faq-item {
+    border-bottom: 1px solid var(--border);
+    padding: 18px 0;
+  }
+  .faq-item:first-child { border-top: 1px solid var(--border); }
+  .faq-q {
+    font-family: var(--sans); font-weight: 600;
+    font-size: 15px; color: var(--text-bright);
+    margin-bottom: 8px; line-height: 1.4;
+  }
+  .faq-q::before {
+    content: 'Q  ';
+    font-family: var(--mono); font-size: 10px;
+    font-weight: 700; letter-spacing: 0.1em;
+    color: var(--amber); margin-right: 2px;
+  }
+  .faq-a {
+    font-family: var(--sans); font-size: 15px;
+    color: var(--text); line-height: 1.75;
+    margin-left: 0; padding-left: 22px;
+    border-left: 2px solid var(--border);
+  }
+
   /* ── Post footer ─── */
   .post-footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border); }
   .post-footer-tags { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -284,7 +382,7 @@ const sectionColor = section === 'astro' ? '#7eb8d4'
 
   /* ── Comments ─── */
   .comments-outer {
-    max-width: 1100px; margin: 0 auto; padding: 0 40px 80px;
+    width: 100%; max-width: 1100px; margin: 0 auto; padding: 0 40px 80px;
   }
   @media (max-width: 600px) { .comments-outer { padding: 0 18px 60px; } }
 </style>

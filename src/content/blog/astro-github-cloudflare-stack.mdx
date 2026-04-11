@@ -1,5 +1,5 @@
 ---
-title: "Why I Ditched WordPress for Astro, GitHub, and Cloudflare Pages — And Pay €12/Year to Run It"
+title: "Astro + Cloudflare Pages vs WordPress: €12/Year for a Faster Site"
 description: "How the creator of Yoast SEO switching to Astro convinced me to rebuild my entire site — and why Linux sysadmins should care about this stack."
 pubDate: 2026-03-30
 heroImage: "/images/astro-github-cloudflare-stack.webp"
@@ -15,6 +15,15 @@ tags:
 featured: true
 draft: false
 readingTime: 12
+faqs:
+  - q: "Is Cloudflare Pages free?"
+    a: "The free tier includes unlimited requests, 500 builds per month, and unlimited bandwidth — more than enough for most personal sites and blogs. There are no egress fees. Paid plans add more build concurrency and advanced features, but the free tier covers the vast majority of use cases."
+  - q: "Can I use a custom domain with Cloudflare Pages for free?"
+    a: "Yes. Cloudflare Pages supports custom domains on the free plan with no additional charge. Point your domain's DNS to Cloudflare (or transfer it to Cloudflare Registrar) and assign it to your Pages project — SSL certificates are provisioned automatically."
+  - q: "How fast is an Astro site compared to WordPress?"
+    a: "Significantly faster. Astro generates static HTML at build time, so there is no PHP execution, no database query, and no plugin overhead per request. Lighthouse scores of 95-100 across all categories are common for Astro sites — the same content on a default WordPress install typically scores 50-70."
+  - q: "Do I need JavaScript experience to build a site with Astro?"
+    a: "Basic familiarity with HTML and CSS is enough to get started. Astro's template syntax is close to HTML. You will write some JavaScript for interactive components, but most blog and documentation sites are mostly static and require minimal scripting."
 ---
 
 import Callout from '../../components/Callout.astro';

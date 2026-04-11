@@ -1,15 +1,25 @@
 ---
 title: "WireGuard vs Tailscale for Homelab Remote Access: Full Setup Guide (2026)"
-description: "Secure remote access to your homelab without port forwarding. Set up both WireGuard and Tailscale, understand when to use each, and lock down your Linux servers properly — from a sysadmin who runs both."
+description: "Secure remote access to your homelab without port forwarding. Set up WireGuard and Tailscale, understand when to use each, and lock down your Linux servers."
 pubDate: 2026-04-21
 heroImage: "/images/wireguard-tailscale-guide.webp"
+heroImageAlt: "WireGuard and Tailscale configuration comparison on a Linux homelab — terminal showing active VPN tunnel status"
 section: "homelab"
 pillar: "Security"
 type: "PILLAR"
 tags: ["wireguard", "tailscale", "vpn", "security", "linux", "networking", "homelab", "ssh", "ufw"]
-readTime: 21
+readingTime: 21
 featured: false
 draft: false
+faqs:
+  - q: "Do I need to open ports in my router for WireGuard or Tailscale?"
+    a: "WireGuard requires one UDP port forwarded from your router to the server (default 51820). Tailscale requires no port forwarding at all — it uses NAT traversal to punch through firewalls, making it the simpler option for most homelab setups."
+  - q: "Is Tailscale free?"
+    a: "Tailscale is free for personal use with up to 3 users and 100 devices. For a homelab, the free tier is more than sufficient. The paid plans add more users, RBAC, and compliance features that most homelabbers don't need."
+  - q: "What is the difference between WireGuard and Tailscale?"
+    a: "WireGuard is a VPN protocol you configure yourself — you manage keys, IP addressing, routing, and peer configs. Tailscale builds on WireGuard but automates all of that: key exchange, NAT traversal, and device management happen automatically. WireGuard gives more control; Tailscale is faster to set up."
+  - q: "Can I use WireGuard and Tailscale simultaneously on the same server?"
+    a: "Yes. They use different network interfaces (wg0 for WireGuard, tailscale0 for Tailscale) and can coexist without conflict. A common pattern is to use Tailscale for everyday access and keep WireGuard as a fallback for cases where Tailscale's relay servers are unavailable."
 ---
 
 Your homelab is only useful if you can reach it. But opening ports on your

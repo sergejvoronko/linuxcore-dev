@@ -1,16 +1,26 @@
 ---
 title: "Docker Compose Homelab Mega-Stack: 20 Self-Hosted Services, One File"
-description: "A production-ready Docker Compose stack covering AI, monitoring, security, media, productivity, and networking — every service configured, every port documented, ready to deploy on any Linux machine."
+description: "Production-ready Docker Compose: AI, monitoring, security, media, and networking — 20 services configured, every port documented, ready to deploy."
 pubDate: 2026-05-12
 heroImage: "/images/docker-compose-homelab-stack.webp"
+heroImageAlt: "Docker Compose terminal output showing 20 self-hosted services starting up on a Linux homelab server"
 section: "homelab"
 pillar: "Infrastructure"
 type: "UNIQUE"
 tags: ["docker", "docker-compose", "self-hosted", "homelab", "linux", "containers", "ollama", "grafana", "nextcloud"]
-readTime: 23
+readingTime: 23
 featured: false
 draft: false
 affiliate: true
+faqs:
+  - q: "Do I need to run all 20 services at once?"
+    a: "No. Use Compose profiles or simply comment out the services you don't need. Running everything simultaneously needs approximately 16 GB RAM. A practical starting point is 6-8 services — Traefik, Grafana, Prometheus, Nextcloud, Ollama, and n8n — which fits comfortably in 8 GB."
+  - q: "How much RAM does the full 20-service stack require?"
+    a: "Approximately 14-18 GB with all services running and Ollama loaded with a 7B model. Without Ollama, the stack uses around 4-6 GB. The monitoring stack (Prometheus, Grafana, cAdvisor) alone adds roughly 800 MB."
+  - q: "How do I back up Docker volumes on this stack?"
+    a: "The cleanest approach is to stop the relevant container, copy the volume data to a backup location, then restart. For most services in this stack, the data lives in named volumes under /var/lib/docker/volumes/. Pair this with the restic S3 backup setup to get automated encrypted offsite backups."
+  - q: "Can I add my own services to this Compose file?"
+    a: "Yes. Add a new service block following the same pattern — image, restart policy, network, and a named volume if it needs persistent data. Make sure to add it to the traefik network if you want Traefik to route traffic to it, and add a named volume entry at the bottom of the file."
 ---
 
 Every homelab eventually becomes a collection of half-remembered Docker

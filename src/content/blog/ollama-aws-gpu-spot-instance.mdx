@@ -1,11 +1,22 @@
 ---
 title: "Running Ollama on an AWS GPU Spot Instance for €0.30/Hour"
-description: "Spin up a GPU-powered Ollama instance on AWS spot pricing, run 70B+ parameter models, and tear it down when you're done. Complete automation script included with real cost comparisons vs. buying local GPU hardware."
+description: "Spin up GPU-powered Ollama on AWS spot instances (~€0.35/hr), run 70B+ models, and tear it down when done. Full automation script with real cost comparisons."
 pubDate: 2026-04-25
+readingTime: 10
 section: "aws"
 heroImage: "/images/ollama-aws-gpu-spot-instance.webp"
+heroImageAlt: "AWS EC2 spot instance terminal running Ollama with a 70B parameter model on an NVIDIA GPU for 0.30 euros per hour"
 tags: ["aws", "ollama", "gpu", "spot-instances", "ai", "llm", "homelab"]
 draft: false
+faqs:
+  - q: "Which AWS GPU instance types work best for running LLMs with Ollama?"
+    a: "The g4dn.xlarge (NVIDIA T4, 16 GB VRAM, ~€0.35/hr spot) handles 7B-13B models well. For 70B models, use the g5.2xlarge (NVIDIA A10G, 24 GB VRAM, ~€0.70/hr spot) or g5.12xlarge for multi-GPU inference. The p3.2xlarge (V100) is an older option but often cheaper than g5 at spot pricing."
+  - q: "Can a spot instance be interrupted while I am actively using Ollama?"
+    a: "Yes. AWS can reclaim spot capacity with a 2-minute warning. For interactive sessions this is disruptive — your model generation stops mid-stream. The launch script in this guide handles relaunching automatically, but active sessions cannot be resumed. For long inference jobs, consider spot interruption handling in your client code."
+  - q: "How much does it actually cost to run a 70B model on AWS?"
+    a: "A g5.2xlarge spot instance runs at roughly €0.60-0.85/hour depending on the region and time of day. A typical session — loading the model, running 20-30 prompts, and shutting down — takes 2-3 hours and costs €1.50-2.50. Compare that to a month of API calls to a cloud provider for the same volume of requests."
+  - q: "Do I need to keep the instance running between sessions?"
+    a: "No, and you should not. The termination script in this guide stops the instance after use. Ollama re-downloads models on first run if they are not cached. To avoid re-downloading, configure a persistent EBS volume or snapshot for the model cache, as described in the optional section of the guide."
 ---
 
 import { Image } from 'astro:assets';

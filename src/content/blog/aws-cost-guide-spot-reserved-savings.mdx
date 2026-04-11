@@ -1,11 +1,22 @@
 ---
 title: "Spot Instances, Reserved Instances, and Savings Plans: A Practical Cost Guide"
-description: "AWS pricing is confusing by design. This guide breaks down the three main discount models in plain language, with real examples and a decision framework for solo operators and small teams."
+description: "AWS pricing is confusing by design. Spot, reserved, and savings plans in plain language with real examples and a decision framework for solo operators."
 pubDate: 2026-04-28
+readingTime: 11
 section: "aws"
 heroImage: "/images/aws-cost-guide-spot-reserved-savings.webp"
+heroImageAlt: "AWS Cost Explorer showing spot instance, reserved instance, and savings plan pricing comparison for a homelab operator"
 tags: ["aws", "cost-optimization", "spot-instances", "reserved-instances", "savings-plans", "infrastructure"]
 draft: false
+faqs:
+  - q: "What happens when AWS interrupts a spot instance?"
+    a: "AWS gives a 2-minute warning via instance metadata and EventBridge before terminating a spot instance. Use this window to checkpoint state, drain connections, or trigger a replacement. For stateless workloads like Ollama inference or batch jobs, interruption is a minor inconvenience — just relaunch with the same script."
+  - q: "Are Reserved Instances worth it for a homelab operator?"
+    a: "Only if you run an instance continuously for a year or more. A 1-year All Upfront Reserved Instance saves up to 40% over on-demand. But if you stop the instance on weekends or have variable usage, a Savings Plan is more flexible and saves a similar amount without locking you to a specific instance type."
+  - q: "What is the difference between a Reserved Instance and a Savings Plan?"
+    a: "Reserved Instances commit you to a specific instance type, size, and region. Savings Plans commit you to a spend rate (e.g., €0.10/hour) but apply the discount across any instance type or region that matches your plan type. Savings Plans are more flexible and are generally preferred for new commitments."
+  - q: "How do I avoid unexpected AWS bills?"
+    a: "Set up a billing alarm in CloudWatch to notify you when your monthly spend exceeds a threshold. Enable AWS Cost Anomaly Detection for automated unusual-spend alerts. Use the Free Tier usage dashboard to track what counts toward free limits. Never leave GPU instances or NAT Gateways running unintentionally — those are the most common sources of surprise charges."
 ---
 
 import { Image } from 'astro:assets';

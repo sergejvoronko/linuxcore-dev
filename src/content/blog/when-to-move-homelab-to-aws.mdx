@@ -1,11 +1,22 @@
 ---
 title: "When to Move Your Homelab Workload to AWS (And When Not To)"
-description: "A practical cost and capability comparison between running workloads on local homelab hardware vs. AWS. Real numbers, real trade-offs, and a decision framework for solo operators."
+description: "When does moving workloads to AWS actually save money? Real cost comparison, decision framework, and hybrid setup recommendations for homelab operators."
 pubDate: 2026-04-14
+readingTime: 7
 section: "aws"
 heroImage: "/images/when-to-move-homelab-to-aws.webp"
+heroImageAlt: "Cost comparison table showing homelab hardware versus AWS pricing for always-on compute and burst GPU workloads"
 tags: ["aws", "homelab", "cloud", "cost-analysis", "infrastructure"]
 draft: false
+faqs:
+  - q: "Is it always cheaper to self-host than to use AWS?"
+    a: "For always-on compute with predictable load, a homelab is almost always cheaper — a mini PC running 24/7 costs €15-40/year in electricity and has no per-request fees. AWS becomes cost-competitive for burst workloads, intermittent GPU jobs, or services that need global availability, where you only pay for what you use."
+  - q: "What homelab workloads make the most sense to move to AWS?"
+    a: "Workloads that are intermittent and resource-intensive — like running 70B AI models, large video transcoding jobs, or load testing — are ideal for AWS spot instances. Also consider AWS for anything that needs a public IP and low latency globally, like a public API or website with international visitors."
+  - q: "What is a hybrid homelab and cloud setup?"
+    a: "Running some workloads locally (always-on services like Grafana, Nextcloud, Ollama) while offloading others to AWS (backups to S3, burst compute on spot instances, public-facing endpoints on EC2). The homelab handles private, continuous workloads; AWS handles what needs elasticity or global reach."
+  - q: "How do I estimate my AWS costs before moving a workload?"
+    a: "Use the AWS Pricing Calculator at calculator.aws. For EC2, enter your expected instance type, hours per month, and region. Add S3 storage and data transfer costs if applicable. The calculator gives a monthly estimate before you commit to anything — run the numbers before migrating."
 ---
 
 import { Image } from 'astro:assets';
@@ -138,10 +149,10 @@ Some services work best with a foot in each world:
 
 Some AWS services are designed for enterprise scale and aren't worth the complexity for a solo operator:
 
-- **ECS/EKS** for a handful of containers (Docker Compose is fine)
-- **RDS** for a single Postgres database (just run it in a container)
-- **CloudWatch** for monitoring 2 servers (Prometheus is free and more capable)
-- **Lambda** for workloads that run constantly (you'll pay more than a small EC2 instance)
+- **ECS/EKS** for a handful of containers — Docker Compose is fine, and ECS adds €30–60/month in orchestration overhead plus hours of setup
+- **RDS** for a single Postgres database — a managed instance starts at €25/month; a container on your existing EC2 costs nothing extra
+- **CloudWatch** for monitoring 2 servers — Prometheus is free, more flexible, and doesn't charge per metric ingestion
+- **Lambda** for workloads that run constantly — a function running 24/7 costs more than a t3.micro EC2 instance and is harder to debug
 
 ## A practical hybrid setup
 

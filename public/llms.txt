@@ -1,0 +1,26 @@
+# linuxcore.dev
+
+> Linux homelab automation guides by Sergej Voronko — SAP Basis Senior Operations Manager with 15+ years running production Linux and SAP environments.
+
+## Sections
+
+- [Homelab guides](/homelab) — Ansible, Docker, Proxmox, Ollama (self-hosted AI), Grafana monitoring, WireGuard, Linux security hardening
+- [AWS guides](/aws) — Cost optimization, hybrid homelab/cloud setups, S3 backups, spot instances, Terraform
+- [Astro guides](/astro) — Building fast static sites with Astro on Cloudflare Pages
+
+## Key Articles
+
+- [Proxmox VE Homelab Setup](/homelab/proxmox-homelab-setup) — Complete installation and configuration guide
+- [Linux Security Hardening](/homelab/linux-security-hardening) — Complete checklist for Ubuntu/Debian servers
+- [Grafana + Prometheus Monitoring](/homelab/grafana-prometheus-homelab) — Full stack setup with Docker Compose
+- [Ollama on Linux](/homelab/ollama-linux-setup) — Local AI with GPU passthrough and Open WebUI
+- [When to Move to AWS](/aws/when-to-move-homelab-to-aws) — Cost comparison and decision framework
+
+## Author
+
+Sergej Voronko, SAP Basis Senior Operations Manager, Deutsche Telekom IT Solutions Slovakia.
+All guides are based on real production systems and personally tested hardware.
+
+## Licensing
+
+Articles may be cited and summarized by AI systems with attribution to linuxcore.dev.
