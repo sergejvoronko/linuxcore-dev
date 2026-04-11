@@ -1,6 +1,5 @@
 /* linuxcore.dev — custom Giscus theme
-   Matches the site's warm dark palette: obsidian bg, amber accent, warm text.
-   Loaded by the Giscus iframe via data-theme URL.
+   Warm dark palette: obsidian bg, amber accent, bright warm text, visible borders.
 */
 
 :root {
@@ -10,74 +9,71 @@
   --color-canvas-inset:           #18120a;
   --color-canvas-overlay:         #2d2418;
 
-  /* Foreground / text */
-  --color-fg-default:             #e8dcc8;
-  --color-fg-muted:               rgba(232, 220, 200, 0.65);
-  --color-fg-subtle:              rgba(232, 220, 200, 0.4);
+  /* Foreground / text — keep bright */
+  --color-fg-default:             #f5ede0;
+  --color-fg-muted:               #c8b99a;
+  --color-fg-subtle:              #9a8a72;
   --color-fg-on-emphasis:         #18120a;
 
-  /* Borders */
-  --color-border-default:         rgba(232, 220, 200, 0.12);
-  --color-border-muted:           rgba(232, 220, 200, 0.08);
-  --color-border-subtle:          rgba(232, 220, 200, 0.06);
+  /* Borders — visible amber-tinted lines */
+  --color-border-default:         rgba(240, 165, 0, 0.35);
+  --color-border-muted:           rgba(240, 165, 0, 0.2);
+  --color-border-subtle:          rgba(240, 165, 0, 0.12);
 
   /* Accent (amber) */
   --color-accent-fg:              #f0a500;
   --color-accent-emphasis:        #f0a500;
-  --color-accent-muted:           rgba(240, 165, 0, 0.15);
-  --color-accent-subtle:          rgba(240, 165, 0, 0.08);
+  --color-accent-muted:           rgba(240, 165, 0, 0.2);
+  --color-accent-subtle:          rgba(240, 165, 0, 0.1);
 
   /* Neutral */
-  --color-neutral-muted:          rgba(232, 220, 200, 0.08);
-  --color-neutral-subtle:         rgba(232, 220, 200, 0.05);
+  --color-neutral-muted:          rgba(240, 165, 0, 0.1);
+  --color-neutral-subtle:         rgba(240, 165, 0, 0.06);
 
-  /* Input */
-  --color-input-bg:               #18120a;
-  --color-input-contrast-bg:      #18120a;
-  --color-input-border:           rgba(232, 220, 200, 0.14);
+  /* Input fields — visible background + bright border */
+  --color-input-bg:               #261f14;
+  --color-input-contrast-bg:      #1e1710;
+  --color-input-border:           rgba(240, 165, 0, 0.4);
   --color-input-disabled-bg:      rgba(232, 220, 200, 0.05);
 
   /* Default button */
-  --color-btn-bg:                 #261f14;
-  --color-btn-border:             rgba(232, 220, 200, 0.14);
-  --color-btn-hover-bg:           #2d2418;
-  --color-btn-hover-border:       rgba(240, 165, 0, 0.3);
+  --color-btn-bg:                 #2d2418;
+  --color-btn-border:             rgba(240, 165, 0, 0.4);
+  --color-btn-hover-bg:           #362b1c;
+  --color-btn-hover-border:       rgba(240, 165, 0, 0.7);
   --color-btn-active-bg:          #231c12;
-  --color-btn-text:               #e8dcc8;
+  --color-btn-text:               #f5ede0;
   --color-btn-shadow:             0 0 transparent;
   --color-btn-inset-shadow:       0 0 transparent;
-  --color-btn-focus-shadow:       0 0 0 3px rgba(240, 165, 0, 0.2);
+  --color-btn-focus-shadow:       0 0 0 3px rgba(240, 165, 0, 0.3);
 
-  /* Primary button (Sign in with GitHub / Submit) */
+  /* Primary button — strong amber */
   --color-btn-primary-bg:         #f0a500;
-  --color-btn-primary-border:     rgba(240, 165, 0, 0.8);
+  --color-btn-primary-border:     #f0a500;
   --color-btn-primary-hover-bg:   #ffc13d;
   --color-btn-primary-hover-border: #ffc13d;
   --color-btn-primary-text:       #18120a;
-  --color-btn-primary-shadow:     0 0 0 3px rgba(240, 165, 0, 0.25);
-  --color-btn-primary-focus-shadow: 0 0 0 3px rgba(240, 165, 0, 0.4);
+  --color-btn-primary-shadow:     0 0 0 3px rgba(240, 165, 0, 0.3);
+  --color-btn-primary-focus-shadow: 0 0 0 3px rgba(240, 165, 0, 0.5);
 
   /* Reactions */
-  --color-social-reaction-bg-hover:          rgba(240, 165, 0, 0.08);
-  --color-social-reaction-bg-reacted-hover:  rgba(240, 165, 0, 0.14);
+  --color-social-reaction-bg-hover:          rgba(240, 165, 0, 0.12);
+  --color-social-reaction-bg-reacted-hover:  rgba(240, 165, 0, 0.2);
 
   /* Header / timeline */
   --color-header-bg:              #18120a;
-  --color-header-text:            #e8dcc8;
+  --color-header-text:            #f5ede0;
   --color-timeline-badge-bg:      #261f14;
 
-  /* Scrollbar */
-  --color-scrollbar-thumb:        rgba(240, 165, 0, 0.2);
-
   /* Code blocks */
-  --color-prettylights-syntax-comment:              rgba(232, 220, 200, 0.35);
+  --color-prettylights-syntax-comment:              #9a8a72;
   --color-prettylights-syntax-constant:             #f0a500;
   --color-prettylights-syntax-entity:               #7eb8d4;
-  --color-prettylights-syntax-storage-modifier-import: #e8dcc8;
+  --color-prettylights-syntax-storage-modifier-import: #f5ede0;
   --color-prettylights-syntax-entity-tag:           #4eca8b;
   --color-prettylights-syntax-keyword:              #7eb8d4;
   --color-prettylights-syntax-string:               #4eca8b;
-  --color-prettylights-syntax-variable:             #e8dcc8;
+  --color-prettylights-syntax-variable:             #f5ede0;
   --color-prettylights-syntax-brackethighlighter-unmatched: #ff6b6b;
   --color-prettylights-syntax-invalid-illegal-text: #18120a;
   --color-prettylights-syntax-invalid-illegal-bg:   #ff6b6b;
@@ -86,7 +82,7 @@
   --color-prettylights-syntax-string-regexp:        #4eca8b;
   --color-prettylights-syntax-markup-list:          #f0a500;
   --color-prettylights-syntax-markup-heading:       #f0a500;
-  --color-prettylights-syntax-markup-italic:        #e8dcc8;
+  --color-prettylights-syntax-markup-italic:        #f5ede0;
   --color-prettylights-syntax-markup-bold:          #f5ede0;
   --color-prettylights-syntax-markup-deleted-text:  #ff6b6b;
   --color-prettylights-syntax-markup-deleted-bg:    rgba(255, 107, 107, 0.1);
@@ -94,10 +90,10 @@
   --color-prettylights-syntax-markup-inserted-bg:   rgba(78, 202, 139, 0.1);
   --color-prettylights-syntax-markup-changed-text:  #f0a500;
   --color-prettylights-syntax-markup-changed-bg:    rgba(240, 165, 0, 0.1);
-  --color-prettylights-syntax-markup-ignored-text:  rgba(232, 220, 200, 0.35);
+  --color-prettylights-syntax-markup-ignored-text:  #9a8a72;
   --color-prettylights-syntax-markup-ignored-bg:    #1e1710;
   --color-prettylights-syntax-meta-diff-range:      #7eb8d4;
-  --color-prettylights-syntax-brackethighlighter-angle: rgba(232, 220, 200, 0.4);
+  --color-prettylights-syntax-brackethighlighter-angle: #9a8a72;
   --color-prettylights-syntax-sublimelinter-gutter-mark: rgba(232, 220, 200, 0.2);
   --color-prettylights-syntax-constant-other-reference-link: #4eca8b;
 }
