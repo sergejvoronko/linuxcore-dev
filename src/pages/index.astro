@@ -3,6 +3,7 @@
 import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import ArticleCard from '../components/ArticleCard.astro';
+import NewsletterForm from '../components/NewsletterForm.astro';
 
 const allPosts = await getCollection('blog', ({ data }) => !data.draft);
 const featured = allPosts
@@ -32,23 +33,23 @@ const recent = allPosts
   <!-- Hero -->
   <section class="hero">
     <div class="hero-inner">
-      <div class="hero-label">
+      <div class="hero-label reveal" style="animation-delay:0s">
         <span class="live-dot"></span> linuxcore.dev
       </div>
-      <h1 class="hero-title">
+      <h1 class="hero-title reveal" style="animation-delay:0.1s">
         Linux Infrastructure,<br>
         <em class="hero-accent">Built to Last</em>
       </h1>
-      <p class="hero-lead">
+      <p class="hero-lead reveal" style="animation-delay:0.22s">
         Practical guides on homelab automation, AWS hybrid setups, and building with Astro —
         written by a Linux infrastructure engineer who runs this stack in production every day.
       </p>
-      <div class="hero-ctas">
+      <div class="hero-ctas reveal" style="animation-delay:0.34s">
         <a href="/homelab" class="btn-primary">Homelab →</a>
         <a href="/aws" class="btn-outline">AWS</a>
         <a href="/astro" class="btn-outline">Astro</a>
       </div>
-      <div class="hero-stack">
+      <div class="hero-stack reveal" style="animation-delay:0.46s">
         {['Ansible', 'Docker', 'Proxmox', 'Ollama', 'Grafana', 'Terraform', 'AWS', 'Astro'].map(t => (
           <span class="stack-tag">{t}</span>
         ))}
@@ -133,25 +134,33 @@ const recent = allPosts
       <h2 class="section-heading"><span class="sh-prefix">$</span> Browse by Topic</h2>
       <div class="topics-grid">
         <a href="/homelab" class="topic-card">
-          <div class="topic-icon">⚙</div>
+          <div class="topic-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="5" rx="1"/><rect x="2" y="10" width="20" height="5" rx="1"/><circle cx="6" cy="5.5" r="1" fill="currentColor" stroke="none"/><circle cx="6" cy="12.5" r="1" fill="currentColor" stroke="none"/><path d="M2 19h8m4 0h8"/><path d="M12 17v4"/></svg>
+          </div>
           <h3 class="topic-title">Homelab</h3>
           <p class="topic-desc">Ansible, Docker, Proxmox, self-hosted AI, Grafana monitoring, WireGuard — built for reliability, not just tutorials.</p>
           <span class="topic-cta">Explore →</span>
         </a>
         <a href="/astro" class="topic-card">
-          <div class="topic-icon">◈</div>
+          <div class="topic-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2L2 19.5h20L12 2z"/><path d="M12 2v11"/><path d="M7 14l5-3 5 3"/></svg>
+          </div>
           <h3 class="topic-title">Build with Astro</h3>
           <p class="topic-desc">Fast static sites on Cloudflare Pages for ~€12/year. Practical guides from real production builds.</p>
           <span class="topic-cta">Explore →</span>
         </a>
         <a href="/aws" class="topic-card">
-          <div class="topic-icon">☁</div>
+          <div class="topic-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 18a7 7 0 010-12 5 5 0 019.9-1A6 6 0 1118 18H3z"/></svg>
+          </div>
           <h3 class="topic-title">AWS</h3>
           <p class="topic-desc">Cost-effective cloud for homelab operators — spot instances, S3 backups, hybrid setups, and Terraform. Real numbers, no fluff.</p>
           <span class="topic-cta">Explore →</span>
         </a>
         <a href="/scripts" class="topic-card">
-          <div class="topic-icon">#</div>
+          <div class="topic-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+          </div>
           <h3 class="topic-title">Free Scripts</h3>
           <p class="topic-desc">Production-ready Bash scripts for server hardening, monitoring, and offsite backups — free to download and use.</p>
           <span class="topic-cta">Download →</span>
@@ -214,30 +223,11 @@ const recent = allPosts
 
   <!-- Newsletter -->
   <section class="section" id="newsletter">
-    <div class="section-inner newsletter-inner">
-      <p class="nl-eyebrow"><span class="bracket">[</span>newsletter<span class="bracket">]</span></p>
-      <h2 class="nl-title">Get new guides in your inbox</h2>
-      <p class="nl-body">New guides and scripts when they publish — no spam, no filler. Unsubscribe anytime.</p>
-      <form class="nl-form" id="nl-form">
-        <input type="email" name="fields[email]" placeholder="your@email.com" required class="nl-input" />
-        <button type="submit" class="btn-primary">Subscribe →</button>
-      </form>
-
-      <script>
-        document.getElementById('nl-form')?.addEventListener('submit', async (e) => {
-          e.preventDefault();
-          const form = e.target as HTMLFormElement;
-          const email = (form.querySelector('input[type="email"]') as HTMLInputElement).value;
-          const body = new URLSearchParams({ 'fields[email]': email });
-          try {
-            await fetch('https://assets.mailerlite.com/jsonp/2251405/forms/184104603196851942/subscribe', {
-              method: 'POST',
-              body,
-            });
-          } catch {}
-          window.location.href = '/thanks';
-        });
-      </script>
+    <div class="section-inner nl-outer">
+      <NewsletterForm
+        title="Get new guides in your inbox"
+        description="New articles and scripts when they publish — no spam, no digest noise. One email per release."
+      />
     </div>
   </section>
 </BaseLayout>
@@ -254,14 +244,14 @@ const recent = allPosts
     background: var(--bg);
   }
   .tech-icon {
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
     color: var(--text-dim);
-    opacity: 0.3;
+    opacity: 0.45;
     flex-shrink: 0;
-    transition: opacity 0.2s;
+    transition: opacity 0.2s, color 0.2s;
   }
-  .tech-icon:hover { opacity: 0.6; }
+  .tech-icon:hover { opacity: 1; color: var(--amber); }
   @media (max-width: 768px) { .tech-strip { display: none; } }
 
   /* ── Hero ──────────────────────────────────────────── */
@@ -408,16 +398,17 @@ const recent = allPosts
 
   .section-heading {
     font-family: var(--font-mono);
-    font-size: 0.78rem;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    margin-bottom: 1.75rem;
+    font-size: 1rem;
+    color: var(--text-bright);
+    letter-spacing: 0.04em;
+    margin-bottom: 2rem;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.6rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border);
   }
-  .sh-prefix { color: var(--amber); }
+  .sh-prefix { color: var(--amber); font-size: 1.1rem; }
 
   /* ── Cards grid ─────────────────────────────────────── */
   .cards-grid {
@@ -438,23 +429,28 @@ const recent = allPosts
     padding: 1.75rem;
     background: var(--bg);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-left: 3px solid transparent;
     text-decoration: none;
-    transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+    transition: border-color 0.15s, border-left-color 0.15s, background 0.15s;
   }
   .topic-card:hover {
-    border-color: var(--amber-border);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    border-color: var(--border-mid);
+    border-left-color: var(--amber);
+    background: var(--bg2);
   }
   .topic-icon {
-    font-size: 1.5rem;
-    margin-bottom: 0.75rem;
+    width: 28px; height: 28px;
+    color: var(--amber);
+    margin-bottom: 1rem;
     display: block;
+    opacity: 0.7;
+    transition: opacity 0.15s;
   }
+  .topic-icon svg { width: 100%; height: 100%; }
+  .topic-card:hover .topic-icon { opacity: 1; }
   .topic-title {
     font-family: var(--font-display);
-    font-size: 1.15rem;
+    font-size: 1.1rem;
     font-weight: 600;
     color: var(--text-bright);
     margin-bottom: 0.5rem;
@@ -534,8 +530,18 @@ const recent = allPosts
     margin-top: 0.2rem;
   }
 
+  /* ── Stagger reveal ─────────────────────────────────── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .reveal {
+    opacity: 0;
+    animation: fadeUp 0.5s ease forwards;
+  }
+
   /* ── Newsletter ─────────────────────────────────────── */
-  .newsletter-inner { text-align: center; max-width: 500px; margin: 0 auto; }
+  .nl-outer { max-width: 640px; }
 
   .nl-eyebrow {
     font-family: var(--font-mono);
