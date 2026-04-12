@@ -12,14 +12,14 @@ const posts = allPosts.sort(
 );
 
 const categories = [
-  { label: 'All',       tags: [] },
-  { label: 'Cost',      tags: ['cost-analysis', 'savings', 'spot', 'budget'] },
-  { label: 'Compute',   tags: ['ec2', 'gpu', 'spot', 'ollama'] },
-  { label: 'Storage',   tags: ['s3', 'backup', 'glacier', 'restic'] },
-  { label: 'IaC',       tags: ['terraform', 'ansible', 'iac'] },
-  { label: 'Hybrid',    tags: ['wireguard', 'vpn', 'hybrid'] },
-  { label: 'DevOps',    tags: ['github-actions', 'ci-cd', 'docker', 'ecs'] },
-  { label: 'Monitoring',tags: ['prometheus', 'grafana', 'monitoring', 'cloudwatch'] },
+  { label: 'All',        tags: [] },
+  { label: 'Cost',       tags: ['cost-analysis', 'savings', 'spot', 'budget'] },
+  { label: 'Compute',    tags: ['ec2', 'gpu', 'spot', 'ollama'] },
+  { label: 'Storage',    tags: ['s3', 'backup', 'glacier', 'restic'] },
+  { label: 'IaC',        tags: ['terraform', 'ansible', 'iac'] },
+  { label: 'Hybrid',     tags: ['wireguard', 'vpn', 'hybrid'] },
+  { label: 'DevOps',     tags: ['github-actions', 'ci-cd', 'docker', 'ecs'] },
+  { label: 'Monitoring', tags: ['prometheus', 'grafana', 'monitoring', 'cloudwatch'] },
 ];
 ---
 
@@ -30,76 +30,145 @@ const categories = [
   <main class="section-page">
 
     <section class="section-hero">
-      <div class="tag-label"><span class="tb">[</span>aws<span class="tb">]</span></div>
-      <h1 class="section-title">AWS Guides</h1>
-      <p class="section-lead">
-        Cloud infrastructure for people who built their homelab first —
-        cost-conscious setups, hybrid architectures, and practical AWS
-        workflows without the enterprise overhead.
-      </p>
+      <img src="/images/section-aws.webp" alt="" class="hero-photo" width="1280" height="720" aria-hidden="true" />
+      <div class="hero-bg"></div>
+      <div class="hero-content">
+        <div class="tag-label"><span class="tb">[</span>aws<span class="tb">]</span></div>
+        <h1 class="section-title">AWS Guides</h1>
+        <p class="section-lead">
+          Cloud infrastructure for people who built their homelab first —
+          cost-conscious setups, hybrid architectures, and practical AWS
+          workflows without the enterprise overhead.
+        </p>
+      </div>
     </section>
 
-    <div class="filter-bar" id="filter-bar">
-      {categories.map((cat, i) => (
-        <button
-          class={`filter-btn ${i === 0 ? 'active' : ''}`}
-          data-tags={cat.tags.join(',')}
-        >{cat.label}</button>
-      ))}
-    </div>
+    <div class="section-body">
 
-    <div class="articles-grid" id="articles-grid">
-      {posts.map(post => (
-        <div class="card-wrap" data-tags={post.data.tags.join(',')}>
-          <ArticleCard
-            title={post.data.title}
-            description={post.data.description}
-            href={`/aws/${post.slug}`}
-            pubDate={post.data.pubDate}
-            tags={post.data.tags}
-            heroImage={post.data.heroImage}
-          />
-        </div>
-      ))}
-    </div>
+      <nav class="cat-nav" aria-label="Filter by category">
+        {categories.map((cat, i) => (
+          <button
+            class={`cat-pill ${i === 0 ? 'active' : ''}`}
+            data-tags={cat.tags.join(',')}
+          >
+            {cat.label}
+          </button>
+        ))}
+      </nav>
 
+      <section class="articles">
+        {posts.length === 0 ? (
+          <p class="empty">Articles publishing soon — subscribe to be notified.</p>
+        ) : (
+          <ul class="article-grid" id="article-grid" role="list">
+            {posts.map(post => (
+              <li data-tags={post.data.tags.join(',')}>
+                <ArticleCard
+                  title={post.data.title}
+                  description={post.data.description}
+                  href={`/aws/${post.slug}`}
+                  pubDate={post.data.pubDate}
+                  tags={post.data.tags}
+                  featured={post.data.featured}
+                  section="aws"
+                />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section class="product-cta">
+        <p class="cta-eyebrow"><span class="tb">[</span>newsletter<span class="tb">]</span></p>
+        <h2 class="cta-title">Get notified when new articles land</h2>
+        <p class="cta-body">No spam. Just an email when something new and useful goes up.</p>
+        <a href="/#newsletter" class="btn-primary">Subscribe →</a>
+      </section>
+
+    </div>
   </main>
 </BaseLayout>
 
 <script>
-  const btns  = document.querySelectorAll<HTMLButtonElement>('.filter-btn');
-  const cards = document.querySelectorAll<HTMLDivElement>('.card-wrap');
+  const pills = document.querySelectorAll<HTMLButtonElement>('.cat-pill');
+  const items = document.querySelectorAll<HTMLLIElement>('#article-grid li');
 
-  btns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      btns.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      const tags = btn.dataset.tags?.split(',').filter(Boolean) ?? [];
-      cards.forEach(card => {
-        const cardTags = card.dataset.tags?.split(',') ?? [];
-        card.hidden = tags.length > 0 && !tags.some(t => cardTags.includes(t));
+  pills.forEach(pill => {
+    pill.addEventListener('click', () => {
+      pills.forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      const filter = pill.dataset.tags ?? '';
+      items.forEach(item => {
+        if (!filter) { item.hidden = false; return; }
+        const filterTags = filter.split(',');
+        const postTags   = (item.dataset.tags ?? '').split(',');
+        item.hidden = !filterTags.some(f => postTags.includes(f));
       });
     });
   });
 </script>
 
 <style>
-  .section-page { max-width: var(--wide-w); margin: 0 auto; padding: 3rem 1.5rem 5rem; }
+  .section-page { max-width: var(--wide-w); margin: 0 auto; padding-bottom: 5rem; }
 
-  .section-hero { margin-bottom: 2.5rem; }
+  /* Hero */
+  .section-hero {
+    position: relative; overflow: hidden;
+    padding: 3rem 1.5rem 2.5rem;
+    margin-bottom: 0;
+  }
+  .hero-photo {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover; object-position: center;
+    opacity: 0.18;
+  }
+  .hero-bg {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(232,146,58,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(232,146,58,0.04) 1px, transparent 1px);
+    background-size: 60px 60px;
+    mask-image: radial-gradient(ellipse 80% 100% at 30% 50%, black, transparent);
+  }
+  .hero-content { position: relative; z-index: 1; }
   .tag-label { font-family: var(--font-mono); font-size: 0.78rem; color: var(--amber); margin-bottom: 0.75rem; }
   .tb { opacity: 0.35; }
   .section-title { font-family: var(--font-display); font-size: clamp(2rem, 5vw, 3rem); font-weight: 700; color: var(--text-bright); margin-bottom: 0.75rem; line-height: 1.1; }
   .section-lead { font-size: 1.05rem; color: var(--text-mid); max-width: 52ch; line-height: 1.7; }
 
-  .filter-bar { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 2rem; }
-  .filter-btn {
-    font-family: var(--font-mono); font-size: 0.72rem; font-weight: 700;
-    letter-spacing: 0.08em; padding: 0.35rem 0.9rem;
-    background: transparent; border: 1px solid var(--border-mid);
-    color: var(--text-dim); cursor: pointer; transition: all 0.15s;
-  }
-  .filter-btn:hover, .filter-btn.active { border-color: var(--amber); color: var(--amber); background: var(--amber-dim); }
+  /* Body */
+  .section-body { padding: 2.5rem 1.5rem 0; }
 
-  .articles-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; }
+  /* Category pills */
+  .cat-nav { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 2.5rem; }
+  .cat-pill {
+    padding: 0.35rem 0.85rem;
+    font-family: var(--font-mono); font-size: 0.7rem;
+    color: var(--text-dim); background: none;
+    border: 1px solid var(--border-mid); border-radius: 100px;
+    cursor: pointer; transition: all 0.15s; white-space: nowrap;
+  }
+  .cat-pill:hover { color: var(--amber); border-color: var(--amber-border); }
+  .cat-pill.active { color: #18120a; background: var(--amber); border-color: var(--amber); }
+
+  /* Grid */
+  .articles { margin-bottom: 4rem; }
+  .article-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.25rem; }
+  .article-grid li[hidden] { display: none; }
+  .empty { color: var(--text-dim); font-size: 0.9rem; }
+
+  /* CTA */
+  .product-cta { padding: 2.5rem; background: var(--bg2); border: 1px solid var(--amber-border); border-radius: 10px; }
+  .cta-eyebrow { font-family: var(--font-mono); font-size: 0.72rem; color: var(--amber); margin-bottom: 0.5rem; }
+  .cta-title { font-family: var(--font-display); font-size: 1.6rem; font-weight: 700; color: var(--text-bright); margin-bottom: 0.75rem; }
+  .cta-body { font-size: 0.93rem; color: var(--text-mid); line-height: 1.7; margin-bottom: 1.5rem; max-width: 54ch; }
+
+  .btn-primary {
+    display: inline-block; background: var(--amber); color: var(--bg);
+    font-family: var(--font-mono); font-size: 0.78rem; font-weight: 700;
+    letter-spacing: 0.08em; padding: 0.65rem 1.5rem; text-decoration: none;
+    transition: background 0.15s;
+  }
+  .btn-primary:hover { background: #ffc13d; }
 </style>

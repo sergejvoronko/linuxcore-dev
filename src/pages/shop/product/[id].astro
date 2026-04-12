@@ -35,71 +35,74 @@ const images = product?.images?.slice(0, 6) ?? [];
     )}
 
     {product && (
-      <div class="product-layout">
+      <>
+        <div class="product-layout">
 
-        <!-- Gallery -->
-        <div class="gallery">
-          <div class="gallery-main">
-            <img id="main-img" src={images[0]?.src ?? '/images/placeholder-product.png'} alt={product.title} width="800" height="800" />
-          </div>
-          {images.length > 1 && (
-            <div class="gallery-thumbs">
-              {images.map((img: any, i: number) => (
-                <button class={`thumb ${i === 0 ? 'active' : ''}`} data-src={img.src} aria-label={`View image ${i + 1}`}>
-                  <img src={img.src} alt={`${product.title} view ${i + 1}`} width="80" height="80" loading="lazy" />
-                </button>
-              ))}
+          <!-- Gallery -->
+          <div class="gallery">
+            <div class="gallery-main">
+              <img id="main-img" src={images[0]?.src ?? '/images/placeholder-product.png'} alt={product.title} width="800" height="800" />
             </div>
-          )}
-        </div>
-
-        <!-- Details -->
-        <div class="product-details">
-          <div class="back-link"><a href="/shop">← Shop</a></div>
-          <h1 class="product-title">{product.title}</h1>
-          <div class="product-price-display" id="price-display">
-            {formatPrice(getBasePrice(product))}
-          </div>
-
-          <!-- Variant selector -->
-          {enabledVariants.length > 0 && (
-            <div class="variants">
-              <label class="variant-label">Select option</label>
-              <select id="variant-select" class="variant-select">
-                {enabledVariants.map((v: any) => (
-                  <option
-                    value={v.id}
-                    data-price={v.price}
-                    data-title={v.title}
-                  >
-                    {v.title} — {formatPrice(v.price)}
-                  </option>
+            {images.length > 1 && (
+              <div class="gallery-thumbs">
+                {images.map((img: any, i: number) => (
+                  <button class={`thumb ${i === 0 ? 'active' : ''}`} data-src={img.src} aria-label={`View image ${i + 1}`}>
+                    <img src={img.src} alt={`${product.title} view ${i + 1}`} width="80" height="80" loading="lazy" />
+                  </button>
                 ))}
-              </select>
-            </div>
-          )}
-
-          <!-- Quantity -->
-          <div class="quantity-row">
-            <label class="variant-label" for="quantity">Quantity</label>
-            <div class="qty-control">
-              <button class="qty-btn" id="qty-minus" aria-label="Decrease quantity">−</button>
-              <input type="number" id="quantity" value="1" min="1" max="10" class="qty-input" />
-              <button class="qty-btn" id="qty-plus" aria-label="Increase quantity">+</button>
-            </div>
+              </div>
+            )}
           </div>
 
-          <button class="btn-primary buy-btn" id="buy-btn">
-            Buy Now →
-          </button>
-          <div id="buy-status" class="buy-status" aria-live="polite"></div>
+          <!-- Buy box (title, price, variants, qty, CTA) -->
+          <div class="product-details">
+            <div class="back-link"><a href="/shop">← Shop</a></div>
+            <h1 class="product-title">{product.title}</h1>
+            <div class="product-price-display" id="price-display">
+              {formatPrice(getBasePrice(product))}
+            </div>
 
-          {product.description && (
-            <div class="product-desc" set:html={product.description} />
-          )}
+            <!-- Variant selector -->
+            {enabledVariants.length > 0 && (
+              <div class="variants">
+                <label class="variant-label">Select option</label>
+                <select id="variant-select" class="variant-select">
+                  {enabledVariants.map((v: any) => (
+                    <option
+                      value={v.id}
+                      data-price={v.price}
+                      data-title={v.title}
+                    >
+                      {v.title} — {formatPrice(v.price)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <!-- Quantity -->
+            <div class="quantity-row">
+              <label class="variant-label" for="quantity">Quantity</label>
+              <div class="qty-control">
+                <button class="qty-btn" id="qty-minus" aria-label="Decrease quantity">−</button>
+                <input type="number" id="quantity" value="1" min="1" max="10" class="qty-input" />
+                <button class="qty-btn" id="qty-plus" aria-label="Increase quantity">+</button>
+              </div>
+            </div>
+
+            <button class="btn-primary buy-btn" id="buy-btn">
+              Buy Now →
+            </button>
+            <div id="buy-status" class="buy-status" aria-live="polite"></div>
+          </div>
+
         </div>
 
-      </div>
+        <!-- Full-width description below the buy-box grid -->
+        {product.description && (
+          <div class="product-desc" set:html={product.description} />
+        )}
+      </>
     )}
 
   </main>
@@ -116,7 +119,7 @@ const images = product?.images?.slice(0, 6) ?? [];
   .back-link a { font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-dim); text-decoration: none; }
   .back-link a:hover { color: var(--amber); }
 
-  .product-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: start; }
+  .product-layout { display: grid; grid-template-columns: minmax(0, 480px) minmax(0, 400px); gap: 3rem; align-items: start; justify-content: start; }
 
   /* Gallery */
   .gallery { display: flex; flex-direction: column; gap: 0.75rem; }
@@ -148,10 +151,18 @@ const images = product?.images?.slice(0, 6) ?? [];
 
   .buy-status { font-family: var(--font-mono); font-size: 0.78rem; color: var(--red); min-height: 1.2em; }
 
-  .product-desc { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border); font-size: 0.9rem; color: var(--text-mid); line-height: 1.7; }
+  .product-desc { margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--border); font-size: 0.9rem; color: var(--text-mid); line-height: 1.7; max-width: 860px; }
   .product-desc :global(p) { margin-bottom: 0.8em; }
+  .product-desc :global(table) { width: 100%; border-collapse: collapse; margin-bottom: 1.25rem; display: block; overflow-x: auto; white-space: nowrap; }
+  .product-desc :global(th),
+  .product-desc :global(td) { padding: 0.45rem 0.75rem; border: 1px solid var(--border); font-size: 0.8rem; text-align: center; white-space: nowrap; }
+  .product-desc :global(th) { background: var(--bg2); color: var(--text-dim); font-family: var(--font-mono); font-weight: 600; }
+  .product-desc :global(td:first-child) { text-align: left; white-space: normal; min-width: 120px; }
+  .product-desc :global(h1), .product-desc :global(h2), .product-desc :global(h3) { font-family: var(--font-display); color: var(--text-bright); margin: 1.25rem 0 0.5rem; font-size: 1rem; font-weight: 700; }
+  .product-desc :global(ul), .product-desc :global(ol) { padding-left: 1.25rem; margin-bottom: 0.8em; }
+  .product-desc :global(li) { margin-bottom: 0.25rem; }
 
-  @media (max-width: 720px) {
+  @media (max-width: 860px) {
     .product-layout { grid-template-columns: 1fr; gap: 2rem; }
   }
 </style>
