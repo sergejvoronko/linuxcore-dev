@@ -116,11 +116,14 @@ const categories = [
 <style>
   .section-page { max-width: var(--wide-w); margin: 0 auto; padding-bottom: 5rem; }
 
-  /* Hero */
+  /* Hero — full-bleed breakout from the max-width container */
   .section-hero {
     position: relative; overflow: hidden;
     padding: 3rem 1.5rem 2.5rem;
     margin-bottom: 0;
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
   }
   .hero-photo {
     position: absolute; inset: 0;

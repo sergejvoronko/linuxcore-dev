@@ -153,11 +153,28 @@ const images = product?.images?.slice(0, 6) ?? [];
 
   .product-desc { margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--border); font-size: 0.9rem; color: var(--text-mid); line-height: 1.7; max-width: 860px; }
   .product-desc :global(p) { margin-bottom: 0.8em; }
-  .product-desc :global(table) { width: 100%; border-collapse: collapse; margin-bottom: 1.25rem; display: block; overflow-x: auto; white-space: nowrap; }
-  .product-desc :global(th),
-  .product-desc :global(td) { padding: 0.45rem 0.75rem; border: 1px solid var(--border); font-size: 0.8rem; text-align: center; white-space: nowrap; }
-  .product-desc :global(th) { background: var(--bg2); color: var(--text-dim); font-family: var(--font-mono); font-weight: 600; }
-  .product-desc :global(td:first-child) { text-align: left; white-space: normal; min-width: 120px; }
+  .product-desc :global(table) {
+    width: 100%; border-collapse: collapse; margin-bottom: 1.5rem;
+    display: block; overflow-x: auto; white-space: nowrap;
+    border: 1px solid var(--border);
+  }
+  .product-desc :global(th) {
+    padding: 0.5rem 0.9rem;
+    background: rgba(240,165,0,0.08);
+    border: 1px solid rgba(240,165,0,0.25);
+    color: var(--amber);
+    font-family: var(--font-mono); font-size: 0.72rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    text-align: center; white-space: nowrap;
+  }
+  .product-desc :global(td) {
+    padding: 0.45rem 0.9rem;
+    border: 1px solid var(--border);
+    font-size: 0.82rem; text-align: center; white-space: nowrap;
+    color: var(--text-mid);
+  }
+  .product-desc :global(tr:nth-child(even) td) { background: var(--bg2); }
+  .product-desc :global(td:first-child) { text-align: left; white-space: normal; min-width: 140px; color: var(--text); font-family: var(--font-mono); font-size: 0.78rem; }
   .product-desc :global(h1), .product-desc :global(h2), .product-desc :global(h3) { font-family: var(--font-display); color: var(--text-bright); margin: 1.25rem 0 0.5rem; font-size: 1rem; font-weight: 700; }
   .product-desc :global(ul), .product-desc :global(ol) { padding-left: 1.25rem; margin-bottom: 0.8em; }
   .product-desc :global(li) { margin-bottom: 0.25rem; }
