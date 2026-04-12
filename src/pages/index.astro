@@ -104,7 +104,7 @@ const recent = allPosts
     <section class="section">
       <div class="section-inner">
         <h2 class="section-heading">
-          <span class="sh-prefix">$</span> Featured
+          <span class="sh-host">root@linuxcore</span><span class="sh-sep">:~#</span> cat featured
         </h2>
         <div class="cards-grid">
           {featured.map(post => {
@@ -131,7 +131,7 @@ const recent = allPosts
   <!-- Sections overview -->
   <section class="section alt">
     <div class="section-inner">
-      <h2 class="section-heading"><span class="sh-prefix">$</span> Browse by Topic</h2>
+      <h2 class="section-heading"><span class="sh-host">root@linuxcore</span><span class="sh-sep">:~#</span> ls topics/</h2>
       <div class="topics-grid">
         <a href="/homelab" class="topic-card">
           <div class="topic-icon">
@@ -173,7 +173,7 @@ const recent = allPosts
   {recent.length > 0 && (
     <section class="section">
       <div class="section-inner">
-        <h2 class="section-heading"><span class="sh-prefix">$</span> Recent Articles</h2>
+        <h2 class="section-heading"><span class="sh-host">root@linuxcore</span><span class="sh-sep">:~#</span> ls -lt articles/</h2>
         <div class="cards-grid">
           {recent.map(post => {
             const section = post.data.section;
@@ -398,17 +398,18 @@ const recent = allPosts
 
   .section-heading {
     font-family: var(--font-mono);
-    font-size: 1rem;
+    font-size: 0.9rem;
     color: var(--text-bright);
-    letter-spacing: 0.04em;
+    letter-spacing: 0;
     margin-bottom: 2rem;
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
     padding-bottom: 0.75rem;
     border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
-  .sh-prefix { color: var(--amber); font-size: 1.1rem; }
+  .sh-host { color: var(--amber); }
+  .sh-sep  { color: var(--text-dim); }
 
   /* ── Cards grid ─────────────────────────────────────── */
   .cards-grid {
