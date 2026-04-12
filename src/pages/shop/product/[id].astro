@@ -3,18 +3,25 @@
 export const prerender = false;
 
 import BaseLayout from '../../../layouts/BaseLayout.astro';
-import { getProduct, getBasePrice, getDefaultImage, formatPrice } from '../../../lib/printify';
+import NewsletterForm from '../../../components/NewsletterForm.astro';
+import { getProduct, getProducts, getBasePrice, getDefaultImage, formatPrice } from '../../../lib/printify';
 
 const env = (Astro.locals as any).runtime?.env;
 const { id } = Astro.params;
 let product: any = null;
 let fetchError = '';
+let related: any[] = [];
 
 try {
   product = await getProduct(id!, env);
 } catch (e: any) {
   fetchError = e.message;
 }
+
+try {
+  const all = await getProducts(env);
+  related = all.filter((p: any) => p.id !== id).slice(0, 3);
+} catch { /* non-critical */ }
 
 const enabledVariants = product?.variants?.filter((v: any) => v.is_enabled) ?? [];
 const images = product?.images?.slice(0, 6) ?? [];
@@ -102,6 +109,53 @@ const images = product?.images?.slice(0, 6) ?? [];
         {product.description && (
           <div class="product-desc" set:html={product.description} />
         )}
+
+        <!-- More from the shop -->
+        {related.length > 0 && (
+          <section class="related-section">
+            <div class="related-label"><span class="tb">[</span>also in the shop<span class="tb">]</span></div>
+            <div class="related-grid">
+              {related.map((p: any) => (
+                <a href={`/shop/product/${p.id}`} class="related-card">
+                  <div class="related-img-wrap">
+                    <img src={getDefaultImage(p)} alt={p.title} width="300" height="300" loading="lazy" />
+                  </div>
+                  <div class="related-info">
+                    <div class="related-name">{p.title}</div>
+                    <div class="related-price">from {formatPrice(getBasePrice(p))}</div>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <!-- Digital upsell -->
+        <section class="upsell-block">
+          <div class="upsell-eye"><span class="tb">[</span>digital product<span class="tb">]</span></div>
+          <div class="upsell-inner">
+            <div class="upsell-text">
+              <h2 class="upsell-title">Ansible Homelab Bundle</h2>
+              <p class="upsell-desc">
+                25 production-ready Ansible files — base hardening, Docker CE, SSH security,
+                Grafana monitoring, and Ollama with auto GPU detection. Provision a fresh Ubuntu
+                box to full homelab stack in 8 minutes.
+              </p>
+            </div>
+            <a href="/go/ansible-bundle" class="btn-primary upsell-btn" target="_blank" rel="noopener">
+              Get the Bundle — €29 →
+            </a>
+          </div>
+        </section>
+
+        <!-- Newsletter -->
+        <div class="nl-wrap">
+          <NewsletterForm
+            compact={true}
+            title="Get notified when new designs drop"
+            description="New merch, new articles, new scripts. No noise — one email per release."
+          />
+        </div>
       </>
     )}
 
@@ -179,8 +233,40 @@ const images = product?.images?.slice(0, 6) ?? [];
   .product-desc :global(ul), .product-desc :global(ol) { padding-left: 1.25rem; margin-bottom: 0.8em; }
   .product-desc :global(li) { margin-bottom: 0.25rem; }
 
+  /* Related products */
+  .related-section { margin-top: 3.5rem; padding-top: 2.5rem; border-top: 1px solid var(--border); }
+  .related-label { font-family: var(--font-mono); font-size: 0.72rem; color: var(--amber); margin-bottom: 1.25rem; letter-spacing: 0.08em; }
+  .tb { opacity: 0.35; }
+  .related-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; }
+  .related-card { text-decoration: none; border: 1px solid var(--border); background: var(--bg2); transition: border-color 0.15s; display: block; }
+  .related-card:hover { border-color: var(--amber); }
+  .related-img-wrap { aspect-ratio: 1; overflow: hidden; background: var(--bg); }
+  .related-img-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.2s; }
+  .related-card:hover .related-img-wrap img { transform: scale(1.04); }
+  .related-info { padding: 0.75rem; }
+  .related-name { font-size: 0.82rem; color: var(--text); line-height: 1.3; margin-bottom: 0.3rem; }
+  .related-price { font-family: var(--font-mono); font-size: 0.75rem; color: var(--amber); }
+
+  /* Digital upsell */
+  .upsell-block {
+    margin-top: 3rem; padding: 2rem 2.5rem;
+    border: 1px solid var(--amber-border);
+    background: rgba(240,165,0,0.04);
+  }
+  .upsell-eye { font-family: var(--font-mono); font-size: 0.7rem; color: var(--amber); margin-bottom: 0.75rem; letter-spacing: 0.08em; }
+  .upsell-inner { display: flex; align-items: center; gap: 2rem; flex-wrap: wrap; }
+  .upsell-text { flex: 1; min-width: 220px; }
+  .upsell-title { font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; color: var(--text-bright); margin-bottom: 0.5rem; }
+  .upsell-desc { font-size: 0.88rem; color: var(--text-mid); line-height: 1.65; }
+  .upsell-btn { white-space: nowrap; flex-shrink: 0; }
+
+  /* Newsletter */
+  .nl-wrap { margin-top: 2.5rem; }
+
   @media (max-width: 860px) {
     .product-layout { grid-template-columns: 1fr; gap: 2rem; }
+    .upsell-inner { flex-direction: column; align-items: flex-start; gap: 1.25rem; }
+    .upsell-btn { width: 100%; text-align: center; }
   }
 </style>
 

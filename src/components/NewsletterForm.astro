@@ -1,0 +1,148 @@
+---
+// src/components/NewsletterForm.astro
+interface Props {
+  title?:       string;
+  description?: string;
+  compact?:     boolean;
+}
+const {
+  title       = 'Stay in the loop',
+  description = 'New articles, scripts, and homelab tips. No spam — just an email when something useful goes up.',
+  compact     = false,
+} = Astro.props;
+---
+
+<section class:list={['nl-section', { compact }]}>
+  {!compact && (
+    <>
+      <div class="nl-label">// NEWSLETTER</div>
+      <h2 class="nl-title">{title}</h2>
+      <p class="nl-desc">{description}</p>
+    </>
+  )}
+  {compact && <p class="nl-compact-label">Get notified when new articles and designs land:</p>}
+
+  <form class="nl-form" id="nl-form" novalidate>
+    <input
+      type="email"
+      id="nl-email"
+      name="email"
+      placeholder="your@email.com"
+      required
+      class="nl-input"
+      autocomplete="email"
+    />
+    <button type="submit" class="btn-primary nl-btn" id="nl-btn">
+      Subscribe →
+    </button>
+  </form>
+
+  <div id="nl-status" class="nl-status" role="alert" aria-live="polite"></div>
+  <p class="nl-note">No spam. Unsubscribe any time.</p>
+</section>
+
+<style>
+  .nl-section {
+    padding: 2.5rem;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+  }
+  .nl-section.compact {
+    padding: 1.5rem;
+    background: transparent;
+    border: none;
+    border-top: 1px solid var(--border);
+  }
+
+  .nl-label {
+    font-family: var(--font-mono); font-size: 10px;
+    letter-spacing: .2em; color: var(--amber); margin-bottom: 10px;
+  }
+  .nl-title {
+    font-family: var(--font-display);
+    font-size: clamp(1.3rem, 3vw, 1.75rem);
+    font-weight: 600; color: var(--text-bright); margin-bottom: 10px;
+  }
+  .nl-desc {
+    font-size: 0.95rem; color: var(--text-mid);
+    line-height: 1.7; margin-bottom: 1.5rem; max-width: 48ch;
+  }
+  .nl-compact-label {
+    font-size: 0.82rem; color: var(--text-dim);
+    margin-bottom: 1rem; font-family: var(--font-mono);
+  }
+
+  .nl-form { display: flex; gap: 8px; flex-wrap: wrap; }
+  .nl-input {
+    flex: 1; min-width: 200px;
+    padding: 10px 14px;
+    background: var(--bg); border: 1px solid var(--border-mid);
+    color: var(--text); font-family: var(--font-mono); font-size: 13px;
+    outline: none; transition: border-color .15s;
+  }
+  .nl-input:focus { border-color: var(--amber); }
+  .nl-input::placeholder { color: var(--text-dim); }
+  .nl-btn { white-space: nowrap; }
+
+  .nl-status {
+    margin-top: 12px; font-family: var(--font-mono); font-size: 12px;
+    padding: 8px 12px; min-height: 36px; display: none;
+  }
+  .nl-status.success {
+    display: block;
+    background: rgba(78,202,139,.08);
+    border: 1px solid rgba(78,202,139,.25);
+    color: var(--green, #4eca8b);
+  }
+  .nl-status.error {
+    display: block;
+    background: rgba(255,107,107,.08);
+    border: 1px solid rgba(255,107,107,.25);
+    color: var(--red, #ff6b6b);
+  }
+
+  .nl-note { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); margin-top: 8px; }
+</style>
+
+<script>
+  const form   = document.getElementById('nl-form')   as HTMLFormElement;
+  const input  = document.getElementById('nl-email')  as HTMLInputElement;
+  const btn    = document.getElementById('nl-btn')    as HTMLButtonElement;
+  const status = document.getElementById('nl-status') as HTMLDivElement;
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = input.value.trim();
+    if (!email) return;
+
+    btn.disabled     = true;
+    btn.textContent  = 'Subscribing…';
+    status.className = 'nl-status';
+    status.textContent = '';
+
+    try {
+      const res  = await fetch('/api/subscribe', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ email }),
+      });
+      const data = await res.json() as { ok?: boolean; note?: string; error?: string };
+
+      if (data.ok) {
+        status.className   = 'nl-status success';
+        status.textContent = data.note === 'already_subscribed'
+          ? '✓ You\'re already subscribed — thanks!'
+          : '✓ Subscribed. Welcome aboard.';
+        form.reset();
+      } else {
+        throw new Error(data.error ?? 'Unexpected error');
+      }
+    } catch (err: any) {
+      status.className   = 'nl-status error';
+      status.textContent = `✕ ${err.message}`;
+    } finally {
+      btn.disabled    = false;
+      btn.textContent = 'Subscribe →';
+    }
+  });
+</script>
