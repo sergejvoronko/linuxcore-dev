@@ -294,27 +294,20 @@ const images = product?.images?.slice(0, 6) ?? [];
   @media (max-width: 640px) {
     .product-page { padding: 1.5rem 1rem 4rem; }
 
-    /* Constrain gallery image height on mobile */
+    /* Square container with definite height so object-fit works */
     .gallery-main {
-      max-height: min(80vw, 380px);
-      background: #fff; /* Printify mockups have white bg */
+      aspect-ratio: 1 / 1;
+      overflow: hidden;
     }
     .gallery-main img {
       width: 100%;
       height: 100%;
       object-fit: contain;
+      background: #f8f8f8;
     }
 
     /* Thumbnails smaller on mobile */
     .thumb { width: 56px; height: 56px; }
-
-    /* Size chart table: scrollable with right-fade hint */
-    .product-desc :global(.table-scroll) {
-      position: relative;
-    }
-    .product-desc :global(table) {
-      -webkit-overflow-scrolling: touch;
-    }
   }
 </style>
 
