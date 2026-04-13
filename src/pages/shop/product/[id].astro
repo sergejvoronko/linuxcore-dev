@@ -107,7 +107,7 @@ const images = product?.images?.slice(0, 6) ?? [];
 
         <!-- Full-width description below the buy-box grid -->
         {product.description && (
-          <div class="product-desc" set:html={product.description} />
+          <div class="product-desc" id="product-desc" set:html={product.description} />
         )}
 
         <!-- More from the shop -->
@@ -210,6 +210,7 @@ const images = product?.images?.slice(0, 6) ?? [];
   .product-desc :global(table) {
     width: 100%; border-collapse: collapse; margin-bottom: 1.5rem;
     display: block; overflow-x: auto; white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
   }
   .product-desc :global(th) {
     padding: 0.5rem 0.9rem;
@@ -231,6 +232,28 @@ const images = product?.images?.slice(0, 6) ?? [];
   .product-desc :global(h1), .product-desc :global(h2), .product-desc :global(h3) { font-family: var(--font-display); color: var(--text-bright); margin: 1.25rem 0 0.5rem; font-size: 1rem; font-weight: 700; }
   .product-desc :global(ul), .product-desc :global(ol) { padding-left: 1.25rem; margin-bottom: 0.8em; }
   .product-desc :global(li) { margin-bottom: 0.25rem; }
+
+  /* Scrollable table wrapper with right-fade hint */
+  .product-desc :global(.table-scroll-wrap) {
+    position: relative;
+    margin-bottom: 1.5rem;
+  }
+  .product-desc :global(.table-scroll-wrap::after) {
+    content: '';
+    position: absolute;
+    top: 0; right: 0; bottom: 0;
+    width: 40px;
+    background: linear-gradient(to right, transparent, var(--bg));
+    pointer-events: none;
+    border-radius: 0 0 0 0;
+  }
+  .product-desc :global(.table-scroll-wrap table) {
+    margin-bottom: 0;
+    width: 100%;
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 
   /* Related products */
   .related-section { margin-top: 3.5rem; padding-top: 2.5rem; border-top: 1px solid var(--border); }
@@ -267,9 +290,43 @@ const images = product?.images?.slice(0, 6) ?? [];
     .upsell-inner { flex-direction: column; align-items: flex-start; gap: 1.25rem; }
     .upsell-btn { width: 100%; text-align: center; }
   }
+
+  @media (max-width: 640px) {
+    .product-page { padding: 1.5rem 1rem 4rem; }
+
+    /* Constrain gallery image height on mobile */
+    .gallery-main {
+      max-height: min(80vw, 380px);
+      background: #fff; /* Printify mockups have white bg */
+    }
+    .gallery-main img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    /* Thumbnails smaller on mobile */
+    .thumb { width: 56px; height: 56px; }
+
+    /* Size chart table: scrollable with right-fade hint */
+    .product-desc :global(.table-scroll) {
+      position: relative;
+    }
+    .product-desc :global(table) {
+      -webkit-overflow-scrolling: touch;
+    }
+  }
 </style>
 
 <script>
+  // Wrap tables in product description with a scroll-fade container
+  document.querySelectorAll<HTMLTableElement>('#product-desc table').forEach(table => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'table-scroll-wrap';
+    table.parentNode?.insertBefore(wrapper, table);
+    wrapper.appendChild(table);
+  });
+
   // Gallery
   const mainImg  = document.getElementById('main-img') as HTMLImageElement;
   const thumbs   = document.querySelectorAll<HTMLButtonElement>('.thumb');
