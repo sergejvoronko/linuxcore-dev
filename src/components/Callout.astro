@@ -24,17 +24,21 @@ const icons = {
     display: flex;
     gap: 0.75rem;
     padding: 1rem 1.25rem;
-    border-radius: 6px;
-    border-left: 3px solid;
+    border: 1px solid;
+    border-top-width: 2px;
     margin: 1.5em 0;
     font-size: 0.92rem;
     line-height: 1.65;
   }
 
-  .callout-info    { background: rgba(126,184,212,0.08); border-color: #7eb8d4; color: var(--text-mid); }
-  .callout-tip     { background: rgba(78,202,139,0.08);  border-color: #4eca8b; color: var(--text-mid); }
-  .callout-warning { background: rgba(240,165,0,0.08);   border-color: var(--amber); color: var(--text-mid); }
-  .callout-danger  { background: rgba(255,107,107,0.08); border-color: #ff6b6b; color: var(--text-mid); }
+  .callout-info    { background: rgba(126,184,212,0.06); border-color: rgba(126,184,212,0.25); color: var(--text-mid); }
+  .callout-tip     { background: rgba(78,202,139,0.06);  border-color: rgba(78,202,139,0.25);  color: var(--text-mid); }
+  .callout-warning { background: rgb(var(--amber-rgb) / 0.06); border-color: rgb(var(--amber-rgb) / 0.25); color: var(--text-mid); }
+  .callout-danger  { background: rgba(255,107,107,0.06); border-color: rgba(255,107,107,0.25); color: var(--text-mid); }
+  .callout-info    { border-top-color: #7eb8d4; }
+  .callout-tip     { border-top-color: #4eca8b; }
+  .callout-warning { border-top-color: var(--amber); } /* already uses token */
+  .callout-danger  { border-top-color: #ff6b6b; }
 
   .callout-icon {
     font-size: 0.85rem;

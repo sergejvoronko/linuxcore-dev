@@ -214,8 +214,8 @@ const images = product?.images?.slice(0, 6) ?? [];
   }
   .product-desc :global(th) {
     padding: 0.5rem 0.9rem;
-    background: rgba(240,165,0,0.08);
-    border: 1px solid rgba(240,165,0,0.25);
+    background: rgb(var(--amber-rgb) / 0.08);
+    border: 1px solid rgb(var(--amber-rgb) / 0.25);
     color: var(--amber) !important;
     font-family: var(--font-mono); font-size: 0.72rem; font-weight: 700 !important;
     text-transform: uppercase; letter-spacing: 0.06em;
@@ -273,7 +273,7 @@ const images = product?.images?.slice(0, 6) ?? [];
   .upsell-block {
     margin-top: 3rem; padding: 2rem 2.5rem;
     border: 1px solid var(--amber-border);
-    background: rgba(240,165,0,0.04);
+    background: rgb(var(--amber-rgb) / 0.04);
   }
   .upsell-eye { font-family: var(--font-mono); font-size: 0.7rem; color: var(--amber); margin-bottom: 0.75rem; letter-spacing: 0.08em; }
   .upsell-inner { display: flex; align-items: center; gap: 2rem; flex-wrap: wrap; }

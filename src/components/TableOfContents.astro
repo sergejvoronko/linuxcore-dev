@@ -63,8 +63,8 @@ const toc = headings.filter(h => h.depth === 2 || h.depth === 3);
     border-bottom: 1px solid var(--border);
   }
   .toc-label {
-    font-size: 10px;
-    letter-spacing: 0.18em;
+    font-size: 12px;
+    letter-spacing: 0.14em;
     color: var(--amber);
     font-family: var(--mono);
     font-weight: 700;
@@ -87,24 +87,23 @@ const toc = headings.filter(h => h.depth === 2 || h.depth === 3);
     line-height: 1.5;
     color: var(--text-dim);
     text-decoration: none;
-    padding: 4px 10px 4px 10px;
-    border-left: 2px solid transparent;
-    transition: color 0.15s, border-color 0.15s, background 0.15s;
+    padding: 4px 10px;
+    transition: color 0.15s, background 0.15s;
     font-family: var(--sans);
   }
   .toc-link:hover {
     color: var(--text);
-    border-left-color: var(--border-mid);
+    background: rgb(var(--amber-rgb) / 0.04);
   }
   .toc-link.active {
     color: var(--amber);
-    border-left-color: var(--amber);
     background: var(--amber-glow);
+    font-weight: 500;
   }
 
   .toc-h3 .toc-link {
     padding-left: 22px;
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .toc-progress {

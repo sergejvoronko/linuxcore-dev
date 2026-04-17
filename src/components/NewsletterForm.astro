@@ -23,6 +23,7 @@ const {
   {compact && <p class="nl-compact-label">Get notified when new articles and designs land:</p>}
 
   <form class="nl-form" id="nl-form" novalidate>
+    <label for="nl-email" class="sr-only">Email address</label>
     <input
       type="email"
       id="nl-email"
@@ -55,8 +56,8 @@ const {
   }
 
   .nl-label {
-    font-family: var(--font-mono); font-size: 10px;
-    letter-spacing: .2em; color: var(--amber); margin-bottom: 10px;
+    font-family: var(--font-mono); font-size: 12px;
+    letter-spacing: .16em; color: var(--amber); margin-bottom: 10px;
   }
   .nl-title {
     font-family: var(--font-display);
@@ -101,7 +102,7 @@ const {
     color: var(--red, #ff6b6b);
   }
 
-  .nl-note { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); margin-top: 8px; }
+  .nl-note { font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); margin-top: 8px; }
 </style>
 
 <script>

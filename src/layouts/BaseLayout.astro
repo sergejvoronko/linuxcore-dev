@@ -17,7 +17,7 @@ const {
   title,
   description = 'Practical Linux infrastructure guides — homelab automation, AWS hybrid setups, and Astro static sites. Written by a sysadmin who runs this in production.',
   heroImage = '/images/og-default.webp',
-  noIndex   = false,
+  noIndex   = true,
   ogType    = 'website',
 } = Astro.props;
 
@@ -49,6 +49,11 @@ const currentPath  = Astro.url.pathname;
   <meta name="twitter:title"       content={`${title} | linuxcore.dev`} />
   <meta name="twitter:description" content={description} />
   <meta name="twitter:image"       content={new URL(heroImage, Astro.site)} />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&family=Space+Mono:wght@400;700&display=swap" />
 
   <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />

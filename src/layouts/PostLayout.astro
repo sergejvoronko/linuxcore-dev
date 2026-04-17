@@ -110,8 +110,8 @@ const breadcrumbSchema = {
       <h1 class="post-title">{title}</h1>
       <p class="post-desc">{description}</p>
       <div class="post-meta">
-        <span>📅 {formatDate(pubDate)}</span>
-        {updatedDate && <span>↻ Updated {formatDate(updatedDate)}</span>}
+        <time datetime={new Date(pubDate).toISOString().slice(0, 10)}>{formatDate(pubDate)}</time>
+        {updatedDate && <span>Updated {formatDate(updatedDate)}</span>}
         {tags.length > 0 && <span>{tags.slice(0,4).join(' · ')}</span>}
       </div>
       <div class="post-header-rule"></div>
@@ -194,7 +194,8 @@ const breadcrumbSchema = {
     font-size: 0.78rem;
     color: var(--text-dim);
     background: var(--bg2);
-    border-left: 3px solid var(--amber);
+    border: 1px solid rgb(var(--amber-rgb) / 0.2);
+    border-top: 2px solid var(--amber);
     padding: 0.75rem 1rem;
     margin-bottom: 2rem;
     line-height: 1.6;
@@ -206,7 +207,7 @@ const breadcrumbSchema = {
   .post-header { margin-bottom: 36px; }
   .post-tags { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
   .tag-pill {
-    font-size: 10px; letter-spacing: 0.12em; font-weight: 700;
+    font-size: 12px; letter-spacing: 0.1em; font-weight: 700;
     padding: 3px 10px; border: 1px solid; font-family: var(--mono);
   }
   .tag-type { color: var(--text-dim); border-color: var(--border); background: transparent; }
@@ -227,7 +228,7 @@ const breadcrumbSchema = {
   }
   .post-meta {
     display: flex; gap: 20px;
-    font-size: 11px; color: var(--text-dim);
+    font-size: 12px; color: var(--text-dim);
     flex-wrap: wrap; font-family: var(--mono); letter-spacing: 0.05em;
   }
   .post-header-rule { height: 1px; background: var(--border); margin-top: 24px; }
@@ -291,7 +292,9 @@ const breadcrumbSchema = {
   .post-body :global(li) { margin-bottom: 0.5em; line-height: 1.7; }
   .post-body :global(li::marker) { color: var(--amber); }
   .post-body :global(blockquote) {
-    border-left: 3px solid var(--amber); padding: 12px 20px;
+    border: 1px solid rgb(var(--amber-rgb) / 0.2);
+    border-top: 2px solid var(--amber);
+    padding: 12px 20px;
     margin: 1.5em 0; background: var(--amber-glow);
     color: var(--text-mid); font-style: italic;
     font-family: var(--display); font-size: 15px;
@@ -309,7 +312,7 @@ const breadcrumbSchema = {
   }
   .post-body :global(th) {
     background: var(--bg3); color: var(--amber);
-    font-size: 10px; letter-spacing: 0.1em; font-weight: 700;
+    font-size: 12px; letter-spacing: 0.1em; font-weight: 700;
     padding: 10px 14px; text-align: left;
     border-bottom: 1px solid var(--border-amber);
   }
@@ -319,7 +322,7 @@ const breadcrumbSchema = {
     font-family: var(--sans);
   }
   .post-body :global(tr:last-child td) { border-bottom: none; }
-  .post-body :global(tr:hover td) { background: rgba(240,165,0,0.03); }
+  .post-body :global(tr:hover td) { background: rgb(var(--amber-rgb) / 0.03); }
 
   /* ── FAQ section ─── */
   .faq-section {
@@ -345,7 +348,7 @@ const breadcrumbSchema = {
   }
   .faq-q::before {
     content: 'Q  ';
-    font-family: var(--mono); font-size: 10px;
+    font-family: var(--mono); font-size: 12px;
     font-weight: 700; letter-spacing: 0.1em;
     color: var(--amber); margin-right: 2px;
   }
@@ -353,14 +356,14 @@ const breadcrumbSchema = {
     font-family: var(--sans); font-size: 15px;
     color: var(--text); line-height: 1.75;
     margin-left: 0; padding-left: 22px;
-    border-left: 2px solid var(--border);
+    color: var(--text-mid);
   }
 
   /* ── Post footer ─── */
   .post-footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border); }
   .post-footer-tags { display: flex; gap: 8px; flex-wrap: wrap; }
   .post-tag {
-    color: var(--text-dim); font-size: 11px; letter-spacing: 0.05em;
+    color: var(--text-dim); font-size: 12px; letter-spacing: 0.05em;
     border: 1px solid var(--border); padding: 2px 8px;
     transition: border-color 0.15s, color 0.15s; font-family: var(--mono);
   }
@@ -376,8 +379,8 @@ const breadcrumbSchema = {
     width: 56px; height: 56px; border-radius: 50%; object-fit: cover; flex-shrink: 0;
   }
   .author-name { font-weight: 700; font-size: 0.95rem; color: var(--text-bright); margin-bottom: 0.2rem; }
-  .author-role { font-family: var(--mono); font-size: 0.72rem; color: var(--text-dim); margin-bottom: 0.4rem; line-height: 1.5; }
-  .author-link { font-family: var(--mono); font-size: 0.72rem; color: var(--amber); text-decoration: none; }
+  .author-role { font-family: var(--mono); font-size: 0.75rem; color: var(--text-dim); margin-bottom: 0.4rem; line-height: 1.5; }
+  .author-link { font-family: var(--mono); font-size: 0.75rem; color: var(--amber); text-decoration: none; }
   .author-link:hover { text-decoration: underline; }
 
   /* ── Comments ─── */
