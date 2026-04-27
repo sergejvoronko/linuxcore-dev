@@ -1,0 +1,207 @@
+---
+// src/pages/newsletter.astro
+import BaseLayout from '../layouts/BaseLayout.astro';
+import NewsletterForm from '../components/NewsletterForm.astro';
+
+const recentTopics = [
+  { icon: '🐳', label: 'Docker Compose homelab stack — zero-downtime deploys' },
+  { icon: '☁️', label: 'Running Ollama on AWS GPU spot instances for €0.30/hr' },
+  { icon: '🔐', label: 'Linux security hardening — SSH, UFW, fail2ban baseline' },
+  { icon: '📦', label: 'Ansible playbook that provisions a fresh server in 8 min' },
+  { icon: '💾', label: 'Restic + S3 backup strategy for homelab and VPS' },
+];
+---
+
+<BaseLayout
+  title="Newsletter"
+  description="Linux infrastructure, homelab automation, AWS hybrid setups — published when ready, not on a schedule."
+  noIndex={false}
+>
+  <div class="nl-page">
+
+    <header class="nl-header">
+      <div class="nl-header-inner">
+        <div class="nl-label">// NEWSLETTER</div>
+        <h1 class="nl-title">
+          Useful stuff,<br>
+          <span class="accent">when it's ready.</span>
+        </h1>
+        <p class="nl-subtitle">
+          When a guide, script, or tool is worth sharing — you'll hear about it.
+          No schedule, no filler, no weekly cadence to fill for the sake of it.
+        </p>
+      </div>
+    </header>
+
+    <div class="nl-body">
+
+      <div class="nl-main">
+
+        <section class="nl-what">
+          <div class="section-label">// WHAT YOU GET</div>
+          <h2 class="section-heading">Linux infrastructure, without the noise</h2>
+          <p class="section-text">
+            Content covers homelab automation (Ansible, Docker, Proxmox),
+            AWS hybrid setups for homelab users, Astro static site patterns,
+            and the occasional bash script or config that actually saves time.
+          </p>
+          <p class="section-text">
+            Everything is tested on real hardware and real AWS accounts —
+            not AI-generated theory.
+          </p>
+        </section>
+
+        <section class="nl-recent">
+          <div class="section-label">// RECENT TOPICS</div>
+          <h2 class="section-heading">What's been covered</h2>
+          <ul class="topic-list">
+            {recentTopics.map(t => (
+              <li class="topic-item">
+                <span class="topic-icon" aria-hidden="true">{t.icon}</span>
+                <span class="topic-text">{t.label}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section class="nl-promise">
+          <div class="section-label">// THE DEAL</div>
+          <ul class="promise-list">
+            <li><span class="check">✓</span> No fixed schedule — sent when something is actually ready</li>
+            <li><span class="check">✓</span> No sponsored content or paid placements</li>
+            <li><span class="check">✓</span> One-click unsubscribe, always</li>
+            <li><span class="check">✗</span> No "top 10 things" listicles</li>
+            <li><span class="check">✗</span> No AI-generated filler</li>
+          </ul>
+        </section>
+
+      </div>
+
+      <aside class="nl-sidebar">
+        <div class="nl-form-wrap">
+          <NewsletterForm
+            title="Subscribe"
+            description="Get notified when new guides, scripts, and configs are published."
+          />
+        </div>
+
+        <div class="nl-meta">
+          <div class="meta-item">
+            <span class="meta-label">PLATFORM</span>
+            <span class="meta-val">MailerLite</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">FREQUENCY</span>
+            <span class="meta-val">When ready</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">UNSUBSCRIBE</span>
+            <span class="meta-val">One click, any time</span>
+          </div>
+        </div>
+      </aside>
+
+    </div>
+
+  </div>
+</BaseLayout>
+
+<style>
+  .nl-page { max-width: 1100px; margin: 0 auto; padding: 0 40px 80px; }
+
+  /* Header */
+  .nl-header {
+    padding: 64px 0 48px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 56px;
+  }
+  .nl-label {
+    font-family: var(--mono); font-size: 12px;
+    letter-spacing: 0.16em; color: var(--amber); margin-bottom: 14px;
+  }
+  .nl-title {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: clamp(36px, 5vw, 60px);
+    color: var(--text-bright);
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+    margin-bottom: 20px;
+  }
+  .accent { color: var(--amber); }
+  .nl-subtitle {
+    font-size: 17px; color: var(--text-mid);
+    line-height: 1.7; max-width: 560px; font-weight: 300;
+  }
+
+  /* Body layout */
+  .nl-body {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 64px;
+    align-items: start;
+  }
+  @media (max-width: 820px) {
+    .nl-body { grid-template-columns: 1fr; gap: 40px; }
+    .nl-sidebar { order: -1; }
+  }
+
+  /* Main sections */
+  .nl-main { display: flex; flex-direction: column; gap: 40px; }
+  .section-label {
+    font-family: var(--mono); font-size: 11px;
+    letter-spacing: 0.16em; color: var(--amber); margin-bottom: 8px;
+  }
+  .section-heading {
+    font-family: var(--display); font-size: 20px;
+    font-weight: 600; color: var(--text-bright);
+    letter-spacing: -0.01em; margin-bottom: 14px;
+  }
+  .section-text {
+    font-size: 15px; color: var(--text-mid);
+    line-height: 1.75; margin-bottom: 12px;
+  }
+
+  /* Recent topics */
+  .topic-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+  .topic-item {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 12px 14px;
+    background: var(--bg2); border: 1px solid var(--border);
+    font-size: 13px; color: var(--text-dim);
+  }
+  .topic-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  .topic-text { font-family: var(--sans); line-height: 1.5; }
+
+  /* Promise list */
+  .promise-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+  .promise-list li {
+    display: flex; align-items: flex-start; gap: 10px;
+    font-size: 14px; color: var(--text-dim); font-family: var(--mono);
+  }
+  .check { color: var(--amber); flex-shrink: 0; font-weight: 700; }
+
+  /* Sidebar */
+  .nl-form-wrap {
+    border: 1px solid var(--border-amber);
+    margin-bottom: 24px;
+  }
+  .nl-meta {
+    background: var(--bg2); border: 1px solid var(--border);
+    padding: 16px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .meta-item {
+    display: flex; justify-content: space-between; align-items: center;
+    font-family: var(--mono); font-size: 12px;
+    padding-bottom: 12px; border-bottom: 1px solid var(--border);
+  }
+  .meta-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .meta-label { color: var(--text-dim); letter-spacing: 0.1em; }
+  .meta-val { color: var(--text-bright); font-weight: 700; }
+
+  @media (max-width: 600px) {
+    .nl-page { padding-left: 20px; padding-right: 20px; }
+    .nl-header { padding-top: 40px; }
+  }
+</style>

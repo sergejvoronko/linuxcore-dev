@@ -3,6 +3,7 @@
 import Nav from '../components/Nav.astro';
 import Footer from '../components/Footer.astro';
 import CookieBanner from '../components/CookieBanner.astro';
+import NewsletterBanner from '../components/NewsletterBanner.astro';
 import '../styles/global.css';
 
 interface Props {
@@ -68,6 +69,7 @@ const currentPath  = Astro.url.pathname;
   </main>
   <Footer />
   <CookieBanner />
+  <NewsletterBanner />
 </body>
 </html>
 

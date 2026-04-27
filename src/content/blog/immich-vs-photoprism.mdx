@@ -73,49 +73,17 @@ With SQLite instead of MariaDB, the entire stack is a single container using und
 
 ### Immich: Five Containers, Microservice Style
 
-```
-┌──────────────────────────────────────────┐
-│              Docker Network              │
-│                                          │
-│  ┌─────────────┐    ┌─────────────────┐  │
-│  │   Immich     │    │   Machine       │  │
-│  │   Server     │◄──►│   Learning      │  │
-│  │  (API + UI)  │    │  (Face/CLIP)    │  │
-│  └──────┬───────┘    └─────────────────┘  │
-│         │                                 │
-│  ┌──────┴───────┐    ┌──────────────┐     │
-│  │  PostgreSQL  │    │    Redis     │     │
-│  │ (pgvecto-rs) │    │   (cache)    │     │
-│  └──────────────┘    └──────────────┘     │
-└──────────────────────────────────────────┘
-         │
-    ┌────┴────┐
-    │ /photos │  ◄── NAS storage (bind mount)
-    └─────────┘
-```
+<figure>
+  <img src="/images/immich-architecture.webp" alt="Immich microservice architecture: Immich Server connected to ML Face/CLIP, PostgreSQL, Redis, and /photos NAS storage" width="1200" height="675" loading="lazy" style="width:100%;height:auto;border:1px solid #2a2218;" />
+</figure>
 
 Each service is isolated and independently scalable. The downside: more containers to manage, more points of failure, and PostgreSQL with the vector extension is a heavier database than what most people are used to backing up.
 
 ### PhotoPrism: One Container Does (Almost) Everything
 
-```
-┌──────────────────────────────────┐
-│          Docker Network          │
-│                                  │
-│  ┌───────────────────────────┐   │
-│  │       PhotoPrism          │   │
-│  │  (API + UI + ML + Jobs)   │   │
-│  └────────────┬──────────────┘   │
-│               │                  │
-│  ┌────────────┴──────────────┐   │
-│  │   MariaDB (or SQLite)     │   │
-│  └───────────────────────────┘   │
-└──────────────────────────────────┘
-         │
-    ┌────┴────┐
-    │ /photos │  ◄── NAS storage (bind mount)
-    └─────────┘
-```
+<figure>
+  <img src="/images/photoprism-architecture.webp" alt="PhotoPrism monolithic architecture: single PhotoPrism container with API, UI, ML and Jobs, backed by MariaDB and /photos NAS storage" width="1200" height="675" loading="lazy" style="width:100%;height:auto;border:1px solid #2a2218;" />
+</figure>
 
 Simpler to deploy, simpler to back up, fewer things that can break. With SQLite, you eliminate the database container entirely — everything is one container and one file.
 

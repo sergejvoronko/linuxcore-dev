@@ -29,22 +29,9 @@ This guide builds a practical AWS setup that costs under €10/month. Not a toy 
 
 ## What you're building
 
-```
-┌─────────────────────────────────────────────┐
-│  AWS Account (~€10/month)                   │
-│                                             │
-│  ┌──────────────┐    ┌──────────────────┐   │
-│  │  EC2 t3.micro│    │  Route 53        │   │
-│  │  1GB RAM     │    │  DNS hosting     │   │
-│  │  Docker CE   │    │  yourdomain.com  │   │
-│  │  Caddy proxy │    └──────────────────┘   │
-│  └──────┬───────┘                           │
-│         │            ┌──────────────────┐   │
-│         │            │  S3 Bucket       │   │
-│         └───────────▶│  Backups + logs  │   │
-│                      └──────────────────┘   │
-└─────────────────────────────────────────────┘
-```
+<figure>
+  <img src="/images/aws-stack-diagram.webp" alt="AWS stack architecture diagram: EC2 t3.micro with Docker CE and Caddy, Route 53 DNS, S3 Bucket for backups, and CloudWatch monitoring — all inside an AWS Account boundary costing approx €10/month" width="1200" height="675" loading="lazy" style="width:100%;height:auto;border:1px solid #2a2218;" />
+</figure>
 
 **Components:**
 - **EC2 t3.micro** — 2 vCPU, 1GB RAM, 30GB gp3 disk. Runs Docker with Caddy as a reverse proxy.

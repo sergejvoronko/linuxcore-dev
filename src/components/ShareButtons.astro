@@ -1,0 +1,117 @@
+---
+// src/components/ShareButtons.astro
+interface Props {
+  title: string;
+  url?:  string;
+}
+
+const { title } = Astro.props;
+const url = Astro.props.url ?? Astro.url.href;
+
+const encoded = {
+  url:   encodeURIComponent(url),
+  title: encodeURIComponent(title),
+};
+
+const platforms = [
+  {
+    id:    'x',
+    label: 'X / Twitter',
+    href:  `https://x.com/intent/tweet?text=${encoded.title}&url=${encoded.url}`,
+    icon:  `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.262 5.636L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z"/></svg>`,
+  },
+  {
+    id:    'linkedin',
+    label: 'LinkedIn',
+    href:  `https://www.linkedin.com/sharing/share-offsite/?url=${encoded.url}`,
+    icon:  `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>`,
+  },
+  {
+    id:    'hn',
+    label: 'HackerNews',
+    href:  `https://news.ycombinator.com/submitlink?u=${encoded.url}&t=${encoded.title}`,
+    icon:  `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M0 24V0h24v24H0zM6.951 5.896l4.112 7.708v5.064h1.583v-4.972l4.148-7.799h-1.749l-2.457 4.875c-.372.745-.688 1.434-.688 1.434s-.297-.708-.651-1.434L8.831 5.896H6.95z"/></svg>`,
+  },
+  {
+    id:    'copy',
+    label: 'Copy link',
+    href:  '#',
+    icon:  `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`,
+    isCopy: true,
+  },
+];
+---
+
+<div class="share-row">
+  <span class="share-label">// SHARE</span>
+  {platforms.map(p => (
+    <a
+      href={p.href}
+      class:list={['share-btn', { 'copy-btn': p.isCopy }]}
+      target={p.isCopy ? undefined : '_blank'}
+      rel={p.isCopy ? undefined : 'noopener noreferrer'}
+      aria-label={`Share on ${p.label}`}
+      data-url={p.isCopy ? url : undefined}
+    >
+      <Fragment set:html={p.icon} />
+      <span>{p.label}</span>
+    </a>
+  ))}
+</div>
+
+<style>
+  .share-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 16px 0;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    margin: 32px 0;
+  }
+  .share-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    color: var(--text-dim);
+    margin-right: 4px;
+    white-space: nowrap;
+  }
+  .share-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    color: var(--text-dim);
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    text-decoration: none;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+    white-space: nowrap;
+  }
+  .share-btn:hover { color: var(--amber); border-color: var(--border-amber); background: var(--amber-glow); }
+  .share-btn.copied { color: var(--green, #4eca8b); border-color: rgba(78,202,139,.4); }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLAnchorElement>('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const urlToCopy = btn.dataset.url ?? window.location.href;
+      try {
+        await navigator.clipboard.writeText(urlToCopy);
+        const span = btn.querySelector('span');
+        if (span) {
+          const orig = span.textContent;
+          span.textContent = 'Copied!';
+          btn.classList.add('copied');
+          setTimeout(() => { span.textContent = orig; btn.classList.remove('copied'); }, 2000);
+        }
+      } catch {}
+    });
+  });
+</script>
