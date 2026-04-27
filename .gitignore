@@ -1,4 +1,10 @@
 
+# Build output
+dist/
+
+# Astro generated
+.astro/
+
 # Playwright
 node_modules/
 /test-results/
