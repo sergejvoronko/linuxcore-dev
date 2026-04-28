@@ -1,0 +1,168 @@
+---
+title: "Astro vs Hugo vs Jekyll: SSG Build Speed Benchmark for Developers Who Actually Ship"
+description: "Practical build speed and bundle size comparison of Astro 5, Hugo 0.120, and Jekyll 4 for self-hosted sites and Cloudflare Pages deployments in 2026."
+pubDate: 2026-04-28
+readingTime: 8
+heroImage: "/images/astro-vs-hugo-vs-jekyll-ssg-benchmark.webp"
+heroImageAlt: "Terminal output showing build times for Astro, Hugo, and Jekyll static site generators side by side"
+section: "astro"
+tags: ["astro", "hugo", "jekyll", "static-site-generator"]
+draft: false
+faqs:
+  - q: "Is Hugo always faster than Astro for static site builds?"
+    a: "For large content sites (500+ pages), Hugo is consistently 10-50x faster than Astro due to its Go-based build pipeline. However, for smaller sites under 100 pages, the difference is under a few seconds and rarely matters in practice."
+  - q: "Does Astro's larger bundle size affect Cloudflare Pages performance?"
+    a: "On Cloudflare Pages, bundle size affects cold build times and deploy upload speed more than end-user performance. Astro's output is still static HTML with optional JS islands, so page load performance is excellent. The build artifact size only matters if you're hitting Cloudflare's free-tier limits."
+  - q: "Can I run Jekyll on a homelab without Ruby version headaches?"
+    a: "Yes — Docker is the cleanest solution. Run Jekyll inside a container pinned to a specific Ruby version and you avoid the rbenv or rvm dependency management entirely. The Docker Compose snippet in this article covers that setup."
+---
+
+If you're running a self-hosted site on a Raspberry Pi, a Proxmox VM, or pushing deploys to Cloudflare Pages on a free tier, your SSG choice has real consequences — not philosophical ones. Build time means CI minutes or local CPU cycles. Bundle size means bandwidth and storage. This article cuts through the hype and gives you numbers to make an actual decision.
+
+## The Benchmark Setup
+
+The reference benchmarks tested [Astro 5, Hugo 0.120, and Jekyll 4](https://dev.to/johalputt/benchmark-astro-5-vs-hugo-0120-vs-jekyll-4-for-static-site-build-time-and-bundle-size-5bfl) across three content set sizes: 10, 100, and 500 Markdown pages. Cold builds (no cache) and warm builds (incremental/cached) were measured separately. Here's a condensed view of what matters:
+
+| Generator | 100 pages (cold) | 500 pages (cold) | Output size (100 pages) |
+|-----------|-----------------|-----------------|------------------------|
+| Hugo      | ~0.3s           | ~1.1s           | ~2.1 MB                |
+| Jekyll    | ~6s             | ~38s            | ~3.4 MB                |
+| Astro     | ~8s             | ~52s            | ~4.8 MB                |
+
+Hugo is in a different category. It's not slightly faster — it's an order of magnitude faster. Jekyll and Astro are closer to each other, with Astro edging out Jekyll only on warm rebuilds when its Vite-based dev server kicks in.
+
+## When Build Speed Actually Matters
+
+For most homelab sites and small blogs, it doesn't. A 52-second cold build on a 500-page site runs once per deploy. If you deploy twice a day, that's under two minutes of compute. On a Raspberry Pi 4 you might double those numbers, but you're still not paying by the minute for local hardware.
+
+Build time starts mattering in these specific situations:
+
+**Cloudflare Pages free tier** caps build minutes. If you're running multiple projects and pushing frequently, a Hugo site gives you far more headroom before you hit limits or need to upgrade.
+
+**CI/CD pipelines with paid runners** — GitHub Actions, GitLab CI. Every second of build time has a cost. Hugo's sub-second builds can keep you well within free tier limits; Astro at 52 seconds for 500 pages adds up across branches and PRs.
+
+**Content-heavy sites scaling past 1,000 pages.** Astro's build time grows roughly linearly with content. At 1,000 pages you're looking at 100+ seconds cold. Hugo stays under 3 seconds. That's a different class of tool.
+
+**Local development iteration loops.** Astro's dev server with HMR is excellent for component-heavy work. Hugo's watch mode is faster for pure content editing. Jekyll's watch mode is sluggish and the gap widens with site size.
+
+## What the Bundle Size Difference Costs You
+
+Astro outputting ~4.8 MB for 100 pages vs Hugo's ~2.1 MB sounds significant. In practice, for static hosting it rarely translates to real costs.
+
+On **Cloudflare Pages**, you get 500 MB per site with unlimited bandwidth on the free tier. You'd need a very large site before asset size becomes a constraint.
+
+On a **homelab with nginx** serving over a local network or through a Cloudflare Tunnel, the difference is negligible. A 2.7 MB delta across the entire site output is not a per-request cost — it's a one-time storage cost.
+
+Where it does matter: **object storage backends.** If you're syncing your build output to S3-compatible storage (Wasabi, Backblaze B2, MinIO on your NAS), you pay for storage and egress. Hugo's leaner output adds up over time if you're versioning deployments.
+
+For a homelab MinIO sync workflow the math looks like this over a year of daily deploys with 10 versions retained:
+
+- Hugo: 2.1 MB × 10 = 21 MB retained
+- Astro: 4.8 MB × 10 = 48 MB retained
+
+At Backblaze B2 rates (~$0.006/GB/month) neither breaks the bank. But if your site grows to thousands of pages, the multiplier matters.
+
+## Running Jekyll Without the Ruby Headaches
+
+Jekyll's biggest practical problem isn't build speed — it's dependency management. Here's a Docker Compose setup that eliminates the rbenv/rvm problem entirely:
+
+```yaml
+# docker-compose.yml
+services:
+  jekyll:
+    image: jekyll/jekyll:4.3.3
+    command: jekyll serve --watch --force_polling --drafts
+    ports:
+      - "4000:4000"
+      - "35729:35729"
+    volumes:
+      - .:/srv/jekyll
+      - jekyll_gems:/usr/local/bundle
+    environment:
+      - JEKYLL_ENV=development
+
+volumes:
+  jekyll_gems:
+```
+
+Start it with:
+
+```bash
+docker compose up
+# Build only (no server):
+docker compose run --rm jekyll jekyll build
+```
+
+The `jekyll_gems` volume caches your gem bundle so subsequent starts don't reinstall everything. This is the sanest way to run Jekyll in 2026 on any homelab box regardless of the host Ruby version.
+
+## Hugo for the Speed-Critical Case
+
+If you've decided Hugo's build speed is the right tradeoff, here's a minimal build-and-deploy script for pushing to an S3-compatible bucket or rsync target:
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+BUILD_DIR="public"
+REMOTE="user@homelab-nginx:/var/www/mysite"
+
+echo "Building with Hugo..."
+hugo --minify --gc
+
+echo "Deploying to ${REMOTE}..."
+rsync -avz --delete "${BUILD_DIR}/" "${REMOTE}/"
+
+echo "Done. Build output: $(du -sh ${BUILD_DIR} | cut -f1)"
+```
+
+Run `hugo --minify --gc` — the `--gc` flag cleans up unused cache files and keeps your build directory lean.
+
+## Astro's Real Advantage: Component-Driven Sites
+
+If your site is mostly Markdown content, Hugo wins on every practical metric. But if you're building something with interactive components — a dashboard, a docs site with search, a homelab status page that islands in some live data — Astro's architecture earns its overhead.
+
+Astro's island architecture means you ship zero JavaScript by default and opt in component by component. Hugo requires external JavaScript tooling to get there. Jekyll doesn't have a story for it at all.
+
+For a homelab monitoring page that embeds a live Prometheus query result or a status widget, Astro lets you write:
+
+```astro
+---
+// No import statements needed for static content
+const buildTime = new Date().toISOString();
+---
+
+<section>
+  <p>Site built: {buildTime}</p>
+  <!-- Your static content here -->
+</section>
+```
+
+And add one interactive island without hydrating the entire page. That's genuinely useful for hybrid homelab dashboards.
+
+## The Decision Matrix
+
+**Choose Hugo if:**
+- Your site is primarily Markdown content
+- You're on Cloudflare Pages free tier with limited build minutes
+- You're deploying from a low-power device (Pi, old NAS)
+- Site scale is 500+ pages or growing fast
+
+**Choose Astro if:**
+- You need component-driven pages or interactive islands
+- Your team knows JavaScript and wants one language across the stack
+- You're building docs, a portfolio, or a hybrid content/app site
+- Build time is not a constraint for your deployment pipeline
+
+**Choose Jekyll if:**
+- You're maintaining an existing Jekyll site (migration cost isn't worth it)
+- You need GitHub Pages native support without custom Actions
+- The ecosystem of plugins (jekyll-feed, jekyll-seo-tag) solves your needs already
+
+For greenfield homelab sites in 2026: Hugo for pure content, Astro for anything interactive. Jekyll is legacy unless you have a specific reason.
+
+## What's Next
+
+- [Deploy a Hugo site to Cloudflare Pages with automatic builds](/astro/cloudflare-pages-static-site-deploy)
+- [Self-host your site behind a Cloudflare Tunnel on Proxmox](/homelab/cloudflare-tunnel-proxmox-setup)
+- [Astro Content Collections for a homelab documentation site](/astro/astro-content-collections-docs-site)
+- [MinIO object storage on a homelab NAS for static site backups](/homelab/minio-homelab-nas-static-site-backup)
