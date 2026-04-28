@@ -1,7 +1,7 @@
 ---
 title: "Best Mini PC for a Homelab Server in 2026: Tested & Ranked"
 description: "Which mini PC runs Proxmox, Docker, Ollama, and a full homelab stack without killing your electricity bill? N100, N305, Ryzen 7, and MS-01 — honestly compared."
-pubDate: 2026-04-28
+pubDate: 2026-04-29
 heroImage: "/images/best-mini-pc-homelab-2026.webp"
 heroImageAlt: "Beelink and MinisForum mini PCs lined up as homelab servers, showing compact form factor compared to a rack server"
 section: "homelab"

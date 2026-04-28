@@ -54,6 +54,12 @@ body {
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: rgb(var(--amber-rgb) / 0.2); }
 
+@media (min-width: 768px) {
+  ::-webkit-scrollbar       { width: 6px; }
+  ::-webkit-scrollbar-thumb { background: rgb(var(--amber-rgb) / 0.45); }
+  ::-webkit-scrollbar-thumb:hover { background: rgb(var(--amber-rgb) / 0.7); }
+}
+
 body::before {
   content: '';
   position: fixed; inset: 0;
