@@ -109,9 +109,9 @@ const recent = allPosts
         <div class="cards-grid">
           {featured.map(post => {
             const section = post.data.section;
-            const href = section === 'homelab' ? `/homelab/${post.slug}`
-                       : section === 'astro'   ? `/astro/${post.slug}`
-                       : `/blog/${post.slug}`;
+            const href = section === 'homelab' ? `/homelab/${post.id}`
+                       : section === 'astro'   ? `/astro/${post.id}`
+                       : `/blog/${post.id}`;
             return (
               <ArticleCard
                 title={post.data.title}
@@ -177,9 +177,9 @@ const recent = allPosts
         <div class="cards-grid">
           {recent.map(post => {
             const section = post.data.section;
-            const href = section === 'homelab' ? `/homelab/${post.slug}`
-                       : section === 'astro'   ? `/astro/${post.slug}`
-                       : `/blog/${post.slug}`;
+            const href = section === 'homelab' ? `/homelab/${post.id}`
+                       : section === 'astro'   ? `/astro/${post.id}`
+                       : `/blog/${post.id}`;
             return (
               <ArticleCard
                 title={post.data.title}

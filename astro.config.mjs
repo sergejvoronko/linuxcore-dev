@@ -7,7 +7,7 @@ import sitemap from '@astrojs/sitemap';
 
 export default defineConfig({
   site: 'https://linuxcore.dev',
-  output: 'hybrid',
+  output: 'static',
   adapter: cloudflare(),
   integrations: [
     tailwind(),

@@ -14,7 +14,7 @@ const { currentSlug, currentTags, section, limit = 3 } = Astro.props;
 const all = await getCollection('blog', ({ data }) => !data.draft);
 
 const scored = all
-  .filter(p => p.slug !== currentSlug)
+  .filter(p => p.id !== currentSlug)
   .map(p => {
     let score = 0;
     if (p.data.section && p.data.section === section) score += 2;
@@ -47,7 +47,7 @@ const formatDate = (d: Date) => new Date(d).toLocaleDateString('en-GB', {
   <div class="related-grid">
     {scored.map(post => {
       const sec = post.data.section;
-      const slug = sec ? `/${sec}/${post.slug}` : `/blog/${post.slug}`;
+      const slug = sec ? `/${sec}/${post.id}` : `/blog/${post.id}`;
       const color = sectionColor(sec);
       return (
         <a href={slug} class="rel-card" style={`--rc: ${color}`}>

@@ -16,9 +16,9 @@ export async function GET(context: APIContext) {
     site: context.site!.toString(),
     items: sorted.map(post => {
       const section = post.data.section;
-      const link = section === 'homelab' ? `/homelab/${post.slug}`
-                 : section === 'astro'   ? `/astro/${post.slug}`
-                 : `/blog/${post.slug}`;
+      const link = section === 'homelab' ? `/homelab/${post.id}`
+                 : section === 'astro'   ? `/astro/${post.id}`
+                 : `/blog/${post.id}`;
       return {
         title:       post.data.title,
         description: post.data.description,

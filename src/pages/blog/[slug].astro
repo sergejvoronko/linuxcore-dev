@@ -4,19 +4,19 @@
 // Section-specific routes (/homelab/[slug], /astro/[slug]) re-export
 // getStaticPaths from here, filtered by section.
 
-import { getCollection } from 'astro:content';
+import { getCollection, render } from 'astro:content';
 import PostLayout from '../../layouts/PostLayout.astro';
 
 export async function getStaticPaths() {
   const posts = await getCollection('blog', ({ data }) => !data.draft);
   return posts.map(post => ({
-    params: { slug: post.slug },
+    params: { slug: post.id },
     props:  { post },
   }));
 }
 
 const { post } = Astro.props;
-const { Content, headings } = await post.render();
+const { Content, headings } = await render(post);
 const { title, description, pubDate, updatedDate, heroImage, heroImageAlt, tags, readingTime, section, affiliate } = post.data;
 ---
 
@@ -32,7 +32,7 @@ const { title, description, pubDate, updatedDate, heroImage, heroImageAlt, tags,
   {section}
   {headings}
   {affiliate}
-  slug={post.slug}
+  slug={post.id}
   noIndex={!!section}
 >
   <Content />
