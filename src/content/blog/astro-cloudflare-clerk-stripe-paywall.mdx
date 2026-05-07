@@ -1,0 +1,279 @@
+---
+title: "Add a Paywall to Your Astro Blog with Cloudflare Pages, Clerk, and Stripe"
+description: "Gate premium Astro blog content using Clerk auth and Stripe payments on Cloudflare Pages — no backend server, near-zero monthly cost."
+pubDate: 2026-05-05
+readingTime: 8
+heroImage: "/images/astro-cloudflare-clerk-stripe-paywall.webp"
+heroImageAlt: "Astro blog paywall architecture diagram showing Cloudflare Pages, Clerk authentication, and Stripe payment flow"
+section: "astro"
+tags: ["astro-paywall", "astro-stripe-subscription", "cloudflare-pages-clerk-auth", "astro-middleware"]
+draft: false
+faqs:
+  - q: "Does this setup require a backend server or database?"
+    a: "No. All logic runs in Cloudflare Pages Functions (edge workers). Clerk stores user sessions, Stripe stores subscription state, and your Astro middleware reads both at the edge on every request."
+  - q: "Can I use one-time payments instead of subscriptions?"
+    a: "Yes. Create a Stripe Payment Link or use the Checkout API with mode: 'payment' instead of mode: 'subscription'. Store the completed payment ID in Clerk's publicMetadata the same way you store the subscription status."
+  - q: "What happens if Clerk or Stripe goes down?"
+    a: "Your middleware should fail open or fail closed depending on your preference. The example below fails closed — unauthenticated or unverifiable requests are redirected to the pricing page. Add a try/catch around the Clerk verification call and decide which behavior fits your audience."
+---
+
+Monetising a static blog usually means reaching for a SaaS paywall service that costs $50/month before you have a single paying reader. This guide wires Clerk, Stripe, and Astro middleware together on Cloudflare Pages so the whole stack costs essentially nothing until you have real revenue.
+
+## What You're Building
+
+- Public pages render normally for everyone.
+- `/premium/*` routes check for a valid Clerk session **and** an active Stripe subscription (or completed one-time payment).
+- A `/api/webhook` endpoint receives Stripe events and writes subscription status back to the Clerk user's `publicMetadata`.
+- No Express, no database, no separate API server.
+
+## Prerequisites
+
+- Astro project already deployed to Cloudflare Pages (SSR mode, `output: 'server'`).
+- A Clerk account — free tier covers 10 000 MAU.
+- A Stripe account in test mode.
+- Node 20+ locally; `wrangler` CLI installed.
+
+## 1. Install Dependencies
+
+```bash
+npm install @clerk/astro @clerk/backend stripe
+```
+
+`@clerk/astro` ships an Astro integration and middleware helper. `@clerk/backend` gives you the server-side `verifyToken` utilities needed inside Cloudflare Functions.
+
+## 2. Configure Astro for Cloudflare SSR
+
+```js
+// astro.config.mjs
+import { defineConfig } from 'astro/config';
+import clerk from '@clerk/astro';
+import cloudflare from '@astrojs/cloudflare';
+
+export default defineConfig({
+  output: 'server',
+  adapter: cloudflare(),
+  integrations: [clerk()],
+});
+```
+
+Add your secrets to Cloudflare Pages → Settings → Environment Variables:
+
+```
+CLERK_SECRET_KEY=sk_live_...
+CLERK_PUBLISHABLE_KEY=pk_live_...
+STRIPE_SECRET_KEY=sk_live_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+```
+
+For local dev, put the same keys in `.dev.vars` (Wrangler's equivalent of `.env`):
+
+```bash
+# .dev.vars — never commit this
+CLERK_SECRET_KEY=sk_test_...
+CLERK_PUBLISHABLE_KEY=pk_test_...
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+```
+
+## 3. Write the Middleware
+
+Astro middleware runs on every request before any page renders. Create `src/middleware.ts`:
+
+```ts
+import { clerkMiddleware, createRouteMatcher } from '@clerk/astro/server';
+
+const isPremium = createRouteMatcher(['/premium(.*)']);
+
+export const onRequest = clerkMiddleware(async (auth, context, next) => {
+  if (!isPremium(context.request)) {
+    return next(); // public route — pass through
+  }
+
+  const { userId, sessionClaims } = await auth();
+
+  if (!userId) {
+    // Not signed in — send to sign-in page
+    return context.redirect('/sign-in');
+  }
+
+  const subscriptionStatus =
+    (sessionClaims?.publicMetadata as Record<string, string>)?.stripeStatus;
+
+  if (subscriptionStatus !== 'active') {
+    return context.redirect('/pricing');
+  }
+
+  return next();
+});
+```
+
+`sessionClaims.publicMetadata` is populated by Clerk from the user record. You'll write `stripeStatus` there via the webhook in step 5.
+
+## 4. Create Stripe Checkout
+
+Add a `src/pages/api/checkout.ts` endpoint that creates a Stripe Checkout Session:
+
+```ts
+import type { APIRoute } from 'astro';
+import Stripe from 'stripe';
+
+export const POST: APIRoute = async ({ request, locals }) => {
+  const auth = locals.auth();
+  const { userId } = auth;
+
+  if (!userId) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+
+  const stripe = new Stripe(import.meta.env.STRIPE_SECRET_KEY, {
+    apiVersion: '2024-04-10',
+  });
+
+  const session = await stripe.checkout.sessions.create({
+    mode: 'subscription',             // or 'payment' for one-time
+    payment_method_types: ['card'],
+    line_items: [
+      {
+        price: 'price_YOUR_PRICE_ID', // replace with your Stripe Price ID
+        quantity: 1,
+      },
+    ],
+    success_url: `${new URL(request.url).origin}/premium/welcome`,
+    cancel_url: `${new URL(request.url).origin}/pricing`,
+    metadata: { clerkUserId: userId },
+  });
+
+  return Response.redirect(session.url!, 303);
+};
+```
+
+Wire up a button on your `/pricing` page that POSTs to this endpoint:
+
+```astro
+---
+// src/pages/pricing.astro
+---
+<form method="POST" action="/api/checkout">
+  <button type="submit">Subscribe — $9/month</button>
+</form>
+```
+
+## 5. Handle the Stripe Webhook
+
+This is the critical link: Stripe tells you the payment succeeded, you write that back to Clerk so the middleware can see it.
+
+Create `src/pages/api/webhook.ts`:
+
+```ts
+import type { APIRoute } from 'astro';
+import Stripe from 'stripe';
+import { createClerkClient } from '@clerk/backend';
+
+export const POST: APIRoute = async ({ request }) => {
+  const stripe = new Stripe(import.meta.env.STRIPE_SECRET_KEY, {
+    apiVersion: '2024-04-10',
+  });
+
+  const sig = request.headers.get('stripe-signature') ?? '';
+  const body = await request.text();
+
+  let event: Stripe.Event;
+
+  try {
+    event = stripe.webhooks.constructEvent(
+      body,
+      sig,
+      import.meta.env.STRIPE_WEBHOOK_SECRET
+    );
+  } catch {
+    return new Response('Webhook signature verification failed', { status: 400 });
+  }
+
+  const clerk = createClerkClient({
+    secretKey: import.meta.env.CLERK_SECRET_KEY,
+  });
+
+  if (
+    event.type === 'customer.subscription.created' ||
+    event.type === 'customer.subscription.updated'
+  ) {
+    const subscription = event.data.object as Stripe.Subscription;
+    const userId = subscription.metadata?.clerkUserId;
+
+    if (userId) {
+      await clerk.users.updateUser(userId, {
+        publicMetadata: { stripeStatus: subscription.status },
+      });
+    }
+  }
+
+  if (event.type === 'customer.subscription.deleted') {
+    const subscription = event.data.object as Stripe.Subscription;
+    const userId = subscription.metadata?.clerkUserId;
+
+    if (userId) {
+      await clerk.users.updateUser(userId, {
+        publicMetadata: { stripeStatus: 'canceled' },
+      });
+    }
+  }
+
+  return new Response('ok', { status: 200 });
+};
+```
+
+Register the webhook in the Stripe dashboard pointing at `https://yourdomain.com/api/webhook`. Select at minimum `customer.subscription.created`, `customer.subscription.updated`, and `customer.subscription.deleted`.
+
+> **Note on Cloudflare's body handling:** Cloudflare Workers receive the raw body as a string correctly via `request.text()`. Do not call `request.json()` before passing the body to `stripe.webhooks.constructEvent` — the signature check will fail.
+
+## 6. Propagate Metadata into Session Claims
+
+Clerk's session token is cached for up to 60 seconds by default. To make `publicMetadata` available in `sessionClaims` without a round-trip to Clerk's API on every request, enable **JWT Templates** in the Clerk dashboard:
+
+1. Go to **JWT Templates** → **Sessions**.
+2. Add `"publicMetadata": "{{user.public_metadata}}"` to the claims JSON.
+
+This bakes the metadata into the short-lived JWT so your middleware never makes an external HTTP call per request — ideal for edge performance.
+
+## 7. Protect a Premium Page
+
+```astro
+---
+// src/pages/premium/index.astro
+// Middleware already blocked unauthenticated/unpaid users.
+// By the time this runs, the user is authenticated and subscribed.
+const { userId } = Astro.locals.auth();
+---
+
+<h1>Premium Content</h1>
+<p>Welcome, subscriber. Your user ID is {userId}.</p>
+```
+
+## Testing Locally
+
+```bash
+# Start Astro dev server with Wrangler bindings
+npx wrangler pages dev -- npx astro dev
+
+# In a second terminal, forward Stripe events
+stripe listen --forward-to localhost:4321/api/webhook
+```
+
+Use Stripe's test card `4242 4242 4242 4242` with any future expiry to complete a checkout. The webhook fires locally, Clerk gets updated, and the next sign-in will have `stripeStatus: active` baked into the session.
+
+## Cost Reality Check
+
+| Service | Free Tier |
+|---|---|
+| Cloudflare Pages | 500 builds/month, unlimited requests |
+| Clerk | 10 000 MAU free |
+| Stripe | No monthly fee — 2.9% + 30¢ per transaction |
+
+You pay nothing until you have paying users. Once you do, Stripe's cut comes out of revenue, not your pocket.
+
+## What's Next
+
+- [Deploy an Astro Site to Cloudflare Pages from Scratch](/astro/deploy-astro-cloudflare-pages)
+- [Astro Content Collections: Structure a Blog That Scales](/astro/astro-content-collections-guide)
+- [Self-Host Plausible Analytics on Your Homelab for Zero-Cost Traffic Insights](/homelab/self-host-plausible-analytics)
+- [Serve Your Astro Blog Behind Cloudflare with Custom Headers and Cache Rules](/astro/cloudflare-cache-headers-astro)
