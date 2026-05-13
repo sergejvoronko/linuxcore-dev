@@ -1,0 +1,161 @@
+---
+title: "Your Container Is Not a Sandbox: Why MicroVMs Are the Future of Homelab Isolation"
+description: "Docker containers share the host kernel — learn why that matters, and how microVMs like Firecracker give your homelab real isolation without VM overhead."
+pubDate: 2026-05-04
+readingTime: 8
+heroImage: "/images/docker-container-not-a-sandbox-microvm-homelab-isolation.webp"
+heroImageAlt: "A diagram showing the kernel boundary between containers and microVMs on a homelab server"
+section: "homelab"
+tags: ["docker container security homelab", "microvm vs container isolation", "firecracker homelab", "proxmox security"]
+draft: false
+faqs:
+  - q: "Are Docker containers safe enough for homelab use?"
+    a: "For low-risk, internal-only services, Docker with seccomp and AppArmor profiles is acceptable. But containers share the host kernel, so a kernel exploit or misconfigured privileged container can compromise the entire host. If you're running untrusted workloads or exposing services to the internet, microVMs or Kata Containers offer meaningfully stronger isolation."
+  - q: "What is the difference between a microVM and a regular VM?"
+    a: "A microVM uses a stripped-down hypervisor (like Firecracker's KVM-based VMM) to boot a minimal Linux kernel in milliseconds with very low memory overhead — typically under 5 MB of memory per VM. A traditional VM like a QEMU/KVM guest includes a full BIOS, emulated hardware, and takes seconds to boot. MicroVMs give you VM-level kernel isolation at near-container startup speed."
+  - q: "Can I run Firecracker directly on Proxmox?"
+    a: "Firecracker requires bare-metal KVM access, which means it runs best on a dedicated host or inside a Proxmox VM with nested virtualization enabled. You cannot run Firecracker inside a Proxmox LXC container. A practical homelab approach is to dedicate one Proxmox VM with KVM passthrough for Firecracker workloads, or use Kata Containers on top of containerd on a standard VM."
+---
+
+If you've built your homelab around Docker containers — running Home Assistant, Jellyfin, Vaultwarden, Nginx Proxy Manager, and a dozen other services — you've probably told yourself the containers are isolated. They're not. Not really.
+
+Containers are process groups with namespace and cgroup boundaries. They share your host kernel. Every container on your machine is one syscall away from the same kernel your host OS depends on. That's not a security model — it's convenience with a label on it.
+
+This article is not a scare piece. It's a practical look at what isolation actually means, where containers fall short, and what you can do about it in a real homelab without rebuilding everything from scratch.
+
+## What Containers Actually Give You
+
+Docker isolates processes using three Linux primitives:
+
+- **Namespaces** — separate views of the filesystem, network, PIDs, users, and more
+- **Cgroups** — resource limits (CPU, memory, I/O)
+- **Seccomp/AppArmor/SELinux** — optional syscall filtering and MAC policies
+
+What they do *not* give you: a separate kernel. Every container on your host makes syscalls directly to the same kernel your host userspace uses. If an attacker inside a container finds a kernel vulnerability — a bad `io_uring` path, a netfilter bug, a bad `runc` escape — they're talking to the same kernel that owns your disks, your network interfaces, and every other container.
+
+Container escapes are not theoretical. CVE-2019-5736 (runc), CVE-2022-0185 (kernel), and the long tail of `io_uring` vulnerabilities have all been exploited in practice. In a corporate environment with dedicated security teams, this is managed. In a homelab running as root with bind-mounted `/var/run/docker.sock` everywhere, it is not.
+
+## The Actual Threat Model for a Homelab
+
+You probably aren't running containers for zero-trust multi-tenant workloads. But consider what's actually on your homelab:
+
+- Services exposed to the internet (Nginx, Vaultwarden, Immich)
+- Services pulling third-party container images updated automatically
+- Services running as root inside the container
+- `/var/run/docker.sock` mounted into management containers like Portainer or Watchtower
+
+That last point is particularly sharp. Mounting the Docker socket into a container gives that container full root equivalent on your host. If Portainer or Watchtower is ever compromised, the host is gone.
+
+The threat model isn't "nation-state APT." It's a vulnerable Vaultwarden version, a malicious container image update, or a CVE in a service you forgot to patch.
+
+## What Real Isolation Looks Like
+
+There are three meaningful options beyond raw Docker:
+
+### Firecracker MicroVMs
+
+[Firecracker](https://firecracker-microvm.github.io/) is Amazon's open-source VMM, built on KVM. It boots a minimal Linux kernel in under 125ms with a ~5 MB memory footprint per VM. Each microVM has its own kernel. A kernel exploit inside one VM cannot touch another VM or the host kernel directly — it has to go through the hypervisor.
+
+Firecracker is what powers AWS Lambda and Fargate. You can run it in your homelab on any machine with KVM support.
+
+### Kata Containers
+
+[Kata Containers](https://katacontainers.io/) wraps each container (or pod) in a lightweight VM using either QEMU, Firecracker, or Cloud Hypervisor as the backend. It integrates with containerd and Kubernetes, so you can use it as a drop-in runtime. Each container gets its own kernel while still being managed by your normal container tooling.
+
+For a Proxmox-based homelab, Kata running on a dedicated VM with nested virtualization is the most practical path.
+
+### gVisor
+
+[gVisor](https://gvisor.dev/) takes a different approach: it intercepts syscalls in userspace via a Go-based kernel called "Sentry." Containers run against gVisor's syscall surface, not the host kernel. It's not as strong as a separate kernel, but it massively reduces the host kernel attack surface. It runs natively with Docker and containerd with minimal configuration changes.
+
+## The Middle Ground: Hardening What You Have
+
+Not everyone wants to rebuild their homelab around microVMs today. That's fine. Here's the minimum viable hardening for a Docker-based setup.
+
+### Drop Unnecessary Capabilities
+
+```yaml
+# docker-compose.yml
+services:
+  vaultwarden:
+    image: vaultwarden/server:latest
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    read_only: true
+    tmpfs:
+      - /tmp
+    user: "1000:1000"
+    volumes:
+      - ./data:/data
+    ports:
+      - "8080:80"
+```
+
+`no-new-privileges` prevents privilege escalation via `setuid` binaries. `cap_drop: ALL` removes every Linux capability and you add back only what's needed. `read_only: true` with a tmpfs for `/tmp` prevents an attacker from writing to the container filesystem.
+
+### Enable a Seccomp Profile
+
+Docker's default seccomp profile blocks ~44 syscalls. That's better than nothing, but you can go further with a custom profile that only allows exactly what your service needs. The Docker docs provide a [default profile](https://github.com/moby/moby/blob/master/profiles/seccomp/default.json) you can use as a starting point.
+
+```bash
+docker run --security-opt seccomp=/path/to/your-profile.json your-image
+```
+
+For AppArmor, Docker auto-generates a `docker-default` profile. You can load custom profiles with:
+
+```bash
+apparmor_parser -r -W /etc/apparmor.d/your-custom-profile
+docker run --security-opt apparmor=your-custom-profile your-image
+```
+
+### Never Mount the Docker Socket
+
+Replace Portainer with [Portainer's agent model](https://docs.portainer.io/admin/environments/add/docker/agent) or switch to a read-only socket proxy like [Tecnativa's docker-socket-proxy](https://github.com/Tecnativa/docker-socket-proxy) that restricts which API endpoints are exposed.
+
+## Running Firecracker on a Homelab Node
+
+If you want to go further and start running actual microVM workloads, here's the minimal path on a Debian/Ubuntu host with KVM:
+
+```bash
+# Verify KVM is available
+ls /dev/kvm
+
+# Download Firecracker
+ARCH=$(uname -m)
+release_url="https://github.com/firecracker-microvm/firecracker/releases"
+latest=$(curl -s "${release_url}/latest" | grep -oP '(?<=tag/)[^"]+')
+curl -Lo firecracker "${release_url}/download/${latest}/firecracker-${latest}-${ARCH}.tgz"
+tar -xzf firecracker-*.tgz
+sudo mv release-*/firecracker-* /usr/local/bin/firecracker
+
+# Verify
+firecracker --version
+```
+
+From here, you use the Firecracker API (a Unix socket) to configure a kernel image, rootfs, network interface, and boot the microVM. For managing multiple microVMs, [Flintlock](https://github.com/weaveworks/flintlock) and [Ignite](https://github.com/weaveworks/ignite) provide higher-level orchestration.
+
+For a Proxmox homelab, create a dedicated VM with CPU type set to `host` and nested virtualization enabled, then run Firecracker inside that VM.
+
+## What to Actually Do This Week
+
+If you do nothing else:
+
+1. Audit every container running with `--privileged` or with `/var/run/docker.sock` mounted. Remove it.
+2. Add `no-new-privileges: true` and `cap_drop: ALL` to every compose file.
+3. Run containers as non-root users wherever possible.
+4. If you're on Proxmox, move internet-facing services into proper KVM VMs rather than LXC containers.
+
+If you want stronger isolation without abandoning your workflow, install `gvisor` and switch your high-risk containers to the `runsc` runtime. It's a single config change in `/etc/docker/daemon.json` and your compose files stay the same.
+
+MicroVMs are the right long-term answer for homelab services you care about protecting. Containers are fast and convenient — they're just not sandboxes.
+
+## What's Next
+
+- [Hardening Your Proxmox Host: KVM vs LXC Security Tradeoffs](/homelab/proxmox-kvm-vs-lxc-security)
+- [Setting Up a Homelab Firewall with nftables and VLANs](/homelab/homelab-firewall-nftables-vlans)
+- [Running Immich on Proxmox Without Losing Your Photos](/homelab/immich-proxmox-setup-guide)
+- [Self-Hosting Secrets: Vaultwarden Hardening and Backup Strategy](/homelab/vaultwarden-hardening-backup)

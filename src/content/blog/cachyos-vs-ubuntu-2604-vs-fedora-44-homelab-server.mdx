@@ -1,0 +1,142 @@
+---
+title: "CachyOS vs Ubuntu 26.04 LTS vs Fedora 44: Best Linux Distro for Your Homelab Server"
+description: "Comparing CachyOS, Ubuntu 26.04 LTS, and Fedora 44 for homelab server use. Real trade-offs on stability, containers, and whether benchmark wins matter."
+pubDate: 2026-05-01
+readingTime: 8
+heroImage: "/images/cachyos-vs-ubuntu-2604-vs-fedora-44-homelab-server.webp"
+heroImageAlt: "Three terminal windows side by side showing CachyOS, Ubuntu 26.04, and Fedora 44 system info on a homelab server rack"
+section: "homelab"
+tags: ["homelab", "linux", "ubuntu", "cachyos", "fedora", "containers"]
+draft: false
+faqs:
+  - q: "Is CachyOS stable enough for a homelab server?"
+    a: "CachyOS is Arch-based with a rolling release model, which means you get the latest packages but also accept more breakage risk. For a homelab where downtime is annoying but not catastrophic, it's workable — but you need to stay on top of updates and test after major kernel or glibc bumps. For anything you need to walk away from for weeks, stick with Ubuntu LTS."
+  - q: "Does Ubuntu 26.04 LTS support Docker and Podman out of the box?"
+    a: "Yes. Ubuntu 26.04 LTS ships with Docker available via the official Docker repo and Podman available in the default apt repositories. Docker Compose v2 is the default. Container tooling on Ubuntu LTS is well-tested and the snap-based Docker situation from earlier releases has been resolved — install from the Docker apt repo and you're fine."
+  - q: "Will Fedora 44 packages be too new for production homelab services?"
+    a: "Fedora 44 ships very recent upstream versions of almost everything — kernel, systemd, podman, and core libraries. For most homelab workloads like Jellyfin, Home Assistant, Nextcloud in containers, or self-hosted Git, this is a non-issue since you're running containerized apps anyway. Where it bites you is with third-party RPM packages or proprietary software that hasn't caught up to Fedora's glibc or dependency versions."
+---
+
+Phoronix ran a [head-to-head benchmark of CachyOS, Ubuntu 26.04 LTS, and Fedora 44](https://www.phoronix.com/review/cachyos-ubuntu-2604-fedora-44) and the numbers are interesting — but benchmarks answer the wrong question for homelab use. Raw compile times and compression throughput don't tell you which distro you should be running Jellyfin, Nextcloud, or a Kubernetes cluster on at home.
+
+This guide answers the actual question: given your homelab's uptime expectations, maintenance tolerance, and workload mix, which of these three distros should you reach for?
+
+---
+
+## The Three Contenders at a Glance
+
+**Ubuntu 26.04 LTS** — Five-year support window, enterprise-grade stability, largest third-party package ecosystem. The safe default.
+
+**Fedora 44** — Six to thirteen months of support, ships upstream packages fast, Podman-first container story, excellent SELinux integration.
+
+**CachyOS** — Arch-based rolling release with aggressive kernel patching (BORE scheduler, ThinLTO, x86-64-v3/v4 ISA targeting). Optimized for throughput at the cost of predictability.
+
+---
+
+## Stability and Update Cadence
+
+This is where the decision forks immediately.
+
+**Ubuntu 26.04 LTS** gives you a fixed target. Kernel, glibc, Python, OpenSSL — they're locked to known versions and only receive security backports. If you provision a server today and want it running the same way in two years with minimal intervention, Ubuntu LTS is the answer. It's boring in the best possible way.
+
+**Fedora 44** runs on a roughly six-month release cycle with about thirteen months of total support. That means you're doing a dist-upgrade every year, minimum. In-place upgrades with `dnf system-upgrade` are reliable in practice, but they're not zero-risk. For a homelab this is usually fine — you're not running a hospital — but calendar the upgrade windows.
+
+**CachyOS** is rolling, Arch-based, and ships kernel updates aggressively. The CachyOS team maintains their own kernel variants (`linux-cachyos`, `linux-cachyos-bore`) with patches that aren't in mainline yet. This is great for performance. It also means that occasionally a `pacman -Syu` will require manual intervention — a broken initramfs, a changed config schema, a rebuilt package order. If your homelab runs unattended for weeks at a time, this is a real operational risk.
+
+---
+
+## Container Support: Where Most Homelabs Actually Live
+
+Most homelab workloads run in containers. Here's how each distro handles that reality.
+
+**Ubuntu 26.04 LTS** — Install Docker from the official apt repo, not snap. Docker Compose v2 is included. Rootless Docker works. Podman is available but Docker is the better-supported path here. AppArmor is the default MAC system.
+
+```bash
+# Clean Docker install on Ubuntu 26.04
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
+  | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+
+echo "deb [arch=$(dpkg --print-architecture) \
+  signed-by=/etc/apt/keyrings/docker.gpg] \
+  https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" \
+  | sudo tee /etc/apt/sources.list.d/docker.list
+
+sudo apt update && sudo apt install -y docker-ce docker-ce-cli \
+  containerd.io docker-buildx-plugin docker-compose-plugin
+```
+
+**Fedora 44** — Podman is the first-class citizen. Quadlets (systemd-native container management) are mature and genuinely worth using if you want containers that behave like proper systemd services. Docker works but requires disabling or working around SELinux labels in some configs. Fedora's rootless Podman story is the best of the three distros.
+
+```yaml
+# docker-compose.yml works with podman compose on Fedora 44
+# Install: sudo dnf install podman-compose
+services:
+  jellyfin:
+    image: jellyfin/jellyfin:latest
+    container_name: jellyfin
+    network_mode: host
+    volumes:
+      - ./config:/config
+      - /mnt/media:/media:ro
+    restart: unless-stopped
+    environment:
+      - JELLYFIN_PublishedServerUrl=http://192.168.1.50
+```
+
+**CachyOS** — Docker and Podman both work. Since it's Arch-based, you pull from the AUR or official Arch repos. Container tooling is current — often more current than the other two. No AppArmor by default, no SELinux. AppArmor is available but not configured out of the box. For homelab use this is usually acceptable. For anything handling sensitive data, think twice.
+
+---
+
+## Does the Performance Delta Actually Matter?
+
+Phoronix's benchmarks show CachyOS pulling measurable wins in CPU-bound workloads — compile jobs, compression, certain database operations. The x86-64-v3 baseline (requiring AVX2 support) and BORE scheduler tuning are real advantages.
+
+But ask yourself: is your homelab server CPU-bound?
+
+For the most common homelab workloads:
+
+- **Jellyfin / Plex** — Bottleneck is GPU transcoding or disk I/O, not scheduler tuning
+- **Nextcloud** — PHP and database I/O bound
+- **Home Assistant** — Single-threaded Python, not scheduler-sensitive
+- **Self-hosted Git (Gitea/Forgejo)** — Network and disk bound
+- **Prometheus + Grafana** — Memory and disk I/O
+- **Kubernetes (k3s)** — Network and memory, etcd I/O
+
+The workloads where CachyOS's optimizations show up are workloads most homelabs don't run at scale: heavy compilation, ML inference on CPU, video encoding without hardware acceleration. If you're running a build farm or doing something genuinely compute-intensive, the CachyOS numbers matter. Otherwise, you're trading stability for benchmark wins you won't notice.
+
+---
+
+## The Honest Decision Matrix
+
+| Factor | Ubuntu 26.04 LTS | Fedora 44 | CachyOS |
+|---|---|---|---|
+| Support window | 5 years | ~13 months | Rolling |
+| Maintenance burden | Low | Medium | High |
+| Container ecosystem | Docker-first | Podman-first | Both |
+| Security defaults | AppArmor | SELinux | Minimal |
+| Third-party software | Excellent | Good | AUR covers gaps |
+| Raw CPU performance | Baseline | +3-8% | +8-20% |
+| Upgrade risk | Very low | Low-medium | Medium-high |
+| Best for | Set-and-forget servers | Developers, edge tooling | Power users, compute nodes |
+
+---
+
+## Recommended Configurations by Use Case
+
+**NAS / Media Server / Home Automation** → Ubuntu 26.04 LTS. You want it running in two years without a dist-upgrade. The performance delta is invisible to Jellyfin transcoding via VAAPI.
+
+**Self-hosted developer tooling (CI, Git, registry)** → Fedora 44. You want current tooling, Podman Quadlets keep services clean, and you're already used to maintaining infrastructure.
+
+**Dedicated compute node or build server** → CachyOS, but only if you're comfortable with Arch maintenance patterns. Lock down `pacman` to avoid unattended upgrades breaking things mid-job.
+
+**Mixed homelab, single server doing everything** → Ubuntu 26.04 LTS. The conservative choice wins when one box does everything and downtime is annoying.
+
+---
+
+## What's Next
+
+- [/homelab/podman-quadlets-systemd-homelab-services](/homelab/podman-quadlets-systemd-homelab-services) — Replace Docker Compose with Podman Quadlets for proper systemd-managed containers
+- [/homelab/k3s-homelab-cluster-setup](/homelab/k3s-homelab-cluster-setup) — Running a lightweight Kubernetes cluster on homelab hardware
+- [/homelab/btrfs-vs-zfs-homelab-nas](/homelab/btrfs-vs-zfs-homelab-nas) — Filesystem choice for your homelab NAS: Btrfs vs ZFS in 2026
+- [/aws/self-hosted-vs-aws-homelab-cost-comparison](/aws/self-hosted-vs-aws-homelab-cost-comparison) — When it actually makes sense to move homelab workloads to AWS

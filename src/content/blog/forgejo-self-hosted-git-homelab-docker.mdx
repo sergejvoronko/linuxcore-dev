@@ -1,0 +1,216 @@
+---
+title: "Self-Hosting Forgejo on Your Homelab: A GitHub-Free Git Server Setup"
+description: "Deploy a self-hosted Git server with Forgejo on Docker Compose, reverse proxy via Caddy, SSH access, and optional Cloudflare Tunnel for remote reach."
+pubDate: 2026-04-29
+readingTime: 8
+heroImage: "/images/forgejo-self-hosted-git-homelab-docker.webp"
+heroImageAlt: "Terminal window showing Forgejo self-hosted Git server running on a homelab server with Docker Compose"
+section: "homelab"
+tags: ["self-hosted git server", "Forgejo homelab", "GitHub alternative self-hosted", "docker compose"]
+draft: false
+faqs:
+  - q: "Is Forgejo compatible with GitHub Actions workflows?"
+    a: "Forgejo has its own CI system called Forgejo Actions, which is largely compatible with GitHub Actions YAML syntax. You can run existing workflows with minor adjustments, and Forgejo runners are available as Docker images."
+  - q: "Can I migrate my existing GitHub repositories to Forgejo?"
+    a: "Yes. Forgejo includes a built-in migration tool under Site Administration that can import repositories, issues, pull requests, labels, and milestones directly from GitHub, including private repos using a personal access token."
+  - q: "Do I need a domain name to use Forgejo on my homelab?"
+    a: "Not strictly. Forgejo works fine on a local IP address or a .local hostname for LAN-only use. A domain is only required if you want HTTPS via Caddy or external access through a Cloudflare Tunnel."
+---
+
+The GitHub exodus is real. Between AI training controversies, Copilot monetization creep, and a general unease about storing your work inside a VC-backed platform, more developers are looking for exits. If you already run a homelab, standing up your own Git server is the obvious next step — and [Forgejo](https://forgejo.org) is the cleanest option available right now.
+
+Forgejo is a hard fork of Gitea, community-governed, actively maintained, and ships everything you need: repos, issues, pull requests, webhooks, and an Actions-compatible CI runner. It's lightweight enough to run on a Raspberry Pi 4 and capable enough to replace GitHub for personal and small-team use.
+
+This guide walks you through a production-ready homelab deployment: Docker Compose for Forgejo, Caddy as a reverse proxy with automatic HTTPS, SSH access on a non-standard port, and an optional Cloudflare Tunnel if you want to reach it from outside your LAN without opening firewall ports.
+
+## Prerequisites
+
+- A Linux server on your LAN (Debian, Ubuntu, or Arch — doesn't matter)
+- Docker and Docker Compose v2 installed
+- A domain name pointed at your server, OR Cloudflare Tunnel for remote access
+- Basic familiarity with `docker compose` and editing config files
+
+## Directory Structure
+
+Create a working directory and set up the folder layout Forgejo expects:
+
+```bash
+mkdir -p ~/forgejo/{data,config,ssh}
+cd ~/forgejo
+```
+
+## Docker Compose Setup
+
+Create `docker-compose.yml` in `~/forgejo`:
+
+```yaml
+services:
+  forgejo:
+    image: codeberg.org/forgejo/forgejo:9
+    container_name: forgejo
+    restart: unless-stopped
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+      - FORGEJO__database__DB_TYPE=sqlite3
+      - FORGEJO__server__DOMAIN=git.yourdomain.com
+      - FORGEJO__server__ROOT_URL=https://git.yourdomain.com
+      - FORGEJO__server__SSH_DOMAIN=git.yourdomain.com
+      - FORGEJO__server__SSH_PORT=2222
+      - FORGEJO__server__HTTP_PORT=3000
+      - FORGEJO__service__DISABLE_REGISTRATION=true
+    volumes:
+      - ./data:/data
+      - ./config:/etc/forgejo
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - "3000:3000"
+      - "2222:22"
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    external: true
+```
+
+A few notes on the config above:
+
+- `DISABLE_REGISTRATION=true` — set this after creating your first admin account. You don't want an open registration on a homelab instance.
+- SQLite is fine for personal use. If you're hosting for a small team, swap in PostgreSQL — add a `db` service and update `DB_TYPE`, `DB_HOST`, `DB_NAME`, `DB_USER`, and `DB_PASSWD` accordingly.
+- SSH runs on port `2222` on the host, mapped to `22` inside the container. This avoids conflicts with your host's SSH daemon.
+- The `proxy` network is an external Docker network shared with your reverse proxy. Create it once: `docker network create proxy`.
+
+Start the stack:
+
+```bash
+docker compose up -d
+docker compose logs -f forgejo
+```
+
+Forgejo will initialize on first boot. Navigate to `http://your-server-ip:3000` to complete the web installer — most settings are pre-populated from the environment variables above. Create your admin account here.
+
+## Reverse Proxy: Caddy
+
+If you're using Caddy, add a block to your `Caddyfile`:
+
+```
+git.yourdomain.com {
+    reverse_proxy forgejo:3000
+}
+```
+
+Caddy handles TLS automatically via Let's Encrypt. Reload Caddy:
+
+```bash
+docker exec caddy caddy reload --config /etc/caddy/Caddyfile
+```
+
+### Using Nginx Proxy Manager Instead
+
+If you prefer Nginx Proxy Manager, add a new Proxy Host in the UI:
+
+- **Domain Names:** `git.yourdomain.com`
+- **Forward Hostname/IP:** `forgejo`
+- **Forward Port:** `3000`
+- Enable **SSL** with Let's Encrypt and force HTTPS
+
+NPM and Forgejo need to share the same Docker network (`proxy`) for the hostname `forgejo` to resolve.
+
+## SSH Access
+
+With the Compose config above, your SSH clone URLs will look like:
+
+```
+ssh://git@git.yourdomain.com:2222/youruser/yourrepo.git
+```
+
+On your client machine, add this to `~/.ssh/config` to avoid specifying the port every time:
+
+```
+Host git.yourdomain.com
+    User git
+    Port 2222
+    IdentityFile ~/.ssh/id_ed25519
+```
+
+Add your public key in Forgejo under **Settings → SSH / GPG Keys**, then test:
+
+```bash
+ssh -T git@git.yourdomain.com -p 2222
+```
+
+You should see: `Hi youruser! You've successfully authenticated...`
+
+## Optional: Cloudflare Tunnel for Remote Access
+
+If your homelab sits behind CGNAT or you'd rather not expose ports, Cloudflare Tunnel lets you reach Forgejo externally without touching your router.
+
+Install `cloudflared` on your server and authenticate:
+
+```bash
+cloudflared tunnel login
+cloudflared tunnel create forgejo-tunnel
+```
+
+Create `~/.cloudflared/config.yml`:
+
+```yaml
+tunnel: <your-tunnel-id>
+credentials-file: /root/.cloudflared/<your-tunnel-id>.json
+
+ingress:
+  - hostname: git.yourdomain.com
+    service: http://localhost:3000
+  - service: http_status:404
+```
+
+Run the tunnel as a service:
+
+```bash
+cloudflared service install
+systemctl enable --now cloudflared
+```
+
+Point your DNS `CNAME` for `git.yourdomain.com` to `<tunnel-id>.cfargotunnel.com` in the Cloudflare dashboard. HTTP traffic reaches Forgejo; SSH over the tunnel requires additional `cloudflared` config on the client side, so for SSH you may still want a direct port forward or VPN.
+
+## Post-Setup Hardening
+
+A few things worth doing before you call this production-ready:
+
+**Lock down registration.** If you didn't set `DISABLE_REGISTRATION=true` in the environment, go to **Site Administration → User Management → Authentication Sources** and disable it there, or set it in `app.ini` inside `./data/forgejo/conf/`.
+
+**Enable 2FA.** Forgejo supports TOTP. Enforce it for admin accounts under **Site Administration → Security**.
+
+**Automated backups.** Forgejo's data lives entirely in `./data`. A simple cron job that tarballs and pushes this directory to a Backblaze B2 bucket or a NAS share is sufficient:
+
+```bash
+0 3 * * * tar -czf /mnt/backup/forgejo-$(date +\%F).tar.gz ~/forgejo/data
+```
+
+**Update strategy.** Pin the image to a minor version tag (e.g., `forgejo:9`) and watch the [Forgejo release page](https://forgejo.org/releases/) for updates. Updating is as simple as pulling the new image and restarting the container — your data persists in the volume.
+
+## Migrating from GitHub
+
+Once Forgejo is up, pull your repos over. Go to **+ → New Migration → GitHub** in the Forgejo UI. Provide a GitHub personal access token and Forgejo will import repos, issues, labels, milestones, and pull requests. For a large migration, Jonas Hietala documented his own move from GitHub to Codeberg/Forgejo in detail — worth reading for the edge cases around SSH key migration and CI pipeline adjustments.
+
+For a scripted approach to cloning all your GitHub repos locally first:
+
+```bash
+gh repo list --limit 100 --json nameWithOwner -q '.[].nameWithOwner' | \
+  xargs -I {} gh repo clone {}
+```
+
+Then push each to Forgejo with:
+
+```bash
+git remote set-url origin ssh://git@git.yourdomain.com:2222/youruser/reponame.git
+git push --mirror
+```
+
+## What's Next
+
+- [/homelab/cloudflare-tunnel-homelab-setup](/homelab/cloudflare-tunnel-homelab-setup) — Full Cloudflare Tunnel guide for exposing homelab services without open ports
+- [/homelab/caddy-reverse-proxy-docker](/homelab/caddy-reverse-proxy-docker) — Setting up Caddy as a reverse proxy for your entire Docker homelab stack
+- [/homelab/vaultwarden-self-hosted-password-manager](/homelab/vaultwarden-self-hosted-password-manager) — Self-host Vaultwarden for a fully private Bitwarden-compatible password manager
+- [/homelab/docker-compose-homelab-best-practices](/homelab/docker-compose-homelab-best-practices) — Structuring your Docker Compose files for a maintainable homelab
