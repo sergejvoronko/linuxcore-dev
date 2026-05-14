@@ -1,0 +1,210 @@
+---
+title: "Fragnesia: How to Check and Patch the Linux Privilege Escalation Exploit on Your Homelab"
+description: "Fragnesia is a Linux kernel LPE exploit hitting homelabs hard. Here's how to check your kernel, patch via apt/dnf/pacman, and apply stopgap mitigations on Proxmox, Ubuntu, and Debian."
+pubDate: 2026-05-14
+readingTime: 8
+heroImage: "/images/fragnesia-linux-privilege-escalation-homelab-patch-guide.webp"
+heroImageAlt: "Terminal output showing kernel version check and patch commands for the Fragnesia Linux privilege escalation vulnerability"
+section: "homelab"
+tags: ["fragnesia", "linux-security", "privilege-escalation", "homelab"]
+draft: false
+faqs:
+  - q: "What kernel versions does Fragnesia affect?"
+    a: "Fragnesia affects Linux kernel versions from approximately 5.14 through 6.8 where unprivileged user namespaces are enabled. Kernels 6.9 and later with the upstream patch applied are not vulnerable. Check your exact version with 'uname -r' and cross-reference your distro's security advisory."
+  - q: "Is Proxmox VE affected by Fragnesia?"
+    a: "Yes, most Proxmox VE 7.x and 8.x installs are running kernel versions in the affected range. Proxmox ships its own pve-kernel packages, so you need to run 'apt update && apt dist-upgrade' and look specifically for pve-kernel updates, not just a standard Debian kernel update."
+  - q: "Can I mitigate Fragnesia without rebooting?"
+    a: "Partially. You can restrict unprivileged user namespaces immediately with a sysctl command without rebooting, which closes the primary attack surface. But the full patch requires a kernel update and reboot. If your workload depends on unprivileged namespaces (Docker rootless, Podman, Flatpak), test before you apply."
+---
+
+Fragnesia is a local privilege escalation vulnerability in the Linux kernel — a legitimate one, not a proof-of-concept that requires seventeen dependencies and a full moon. A local user with shell access can use it to get root. In a homelab that's often "just me," that sounds theoretical until you remember you're probably running a few web-facing services, maybe a VPN with port forwarding, and at least one container runtime that hands out unprivileged shells.
+
+Let's get your exposure assessed and patched.
+
+## What Fragnesia Actually Does
+
+The vulnerability sits in how the kernel handles user namespace creation for unprivileged users. Without getting into a full CVE writeup: an attacker with local execution can trigger a specific sequence through the namespace subsystem that results in a privilege escalation to uid 0. No SUID binary required. No kernel module. Just kernel syscalls.
+
+The attack surface is *unprivileged user namespaces* — a feature that's been on by default in Ubuntu since 2013, enabled in most container runtimes, and generally left wide open because turning it off breaks things. That's the tension here.
+
+## Step 1: Check Your Kernel Version
+
+```bash
+uname -r
+```
+
+If you're on anything between `5.14` and `6.8.x` without a distro backport applied, you're likely exposed. That said, distro-specific backporting means the version number alone doesn't tell the whole story — Ubuntu 22.04 may be running `5.15.x` with the patch already applied.
+
+The more reliable check is against your distro's CVE tracker.
+
+**Ubuntu/Debian:**
+```bash
+apt-cache policy linux-image-$(uname -r)
+```
+
+Check the output against [Ubuntu's security notices](https://ubuntu.com/security/notices) or Debian's security tracker. Look for the Fragnesia CVE number in your distro's advisories.
+
+**Proxmox VE:**
+```bash
+apt-cache policy pve-kernel-$(uname -r | sed 's/-pve//')
+pveversion -v
+```
+
+Proxmox packages its kernel separately. The `pveversion` output will show your kernel package version — cross-reference with the [Proxmox security list](https://forum.proxmox.com/forums/proxmox-ve-security-advisories.107/).
+
+## Step 2: Check If Unprivileged User Namespaces Are Enabled
+
+This is the immediate risk factor. If this is off, the primary exploit path is blocked.
+
+```bash
+sysctl kernel.unprivileged_userns_clone 2>/dev/null || \
+  cat /proc/sys/user/max_user_namespaces
+```
+
+On Ubuntu/Debian, you'll see `kernel.unprivileged_userns_clone = 1` if it's enabled. On other distros, check `max_user_namespaces` — if it's `0`, you're already restricted.
+
+## Step 3: Apply the Patch
+
+### Ubuntu Server (22.04 / 24.04)
+
+```bash
+sudo apt update
+sudo apt upgrade linux-image-generic linux-headers-generic
+sudo reboot
+```
+
+After reboot, verify:
+
+```bash
+uname -r
+apt-cache policy linux-image-$(uname -r)
+```
+
+If you're on HWE kernels (likely on 22.04):
+
+```bash
+sudo apt upgrade linux-image-generic-hwe-22.04
+```
+
+### Debian (Stable / Bookworm)
+
+```bash
+sudo apt update && sudo apt full-upgrade
+```
+
+Debian is conservative with kernel updates in stable. If the patch isn't in stable yet, check `debian-security`:
+
+```bash
+grep -i security /etc/apt/sources.list
+```
+
+If that line is missing, add it:
+
+```
+deb http://security.debian.org/debian-security bookworm-security main
+```
+
+Then `apt update && apt upgrade`.
+
+### Proxmox VE 8.x
+
+```bash
+sudo apt update
+sudo apt dist-upgrade
+```
+
+Proxmox uses `dist-upgrade` because kernel updates require metapackage changes. Don't use plain `upgrade` here — I've gotten burned by that before, sitting at an old kernel wondering why the patch wasn't applying. After the upgrade, check:
+
+```bash
+proxmox-boot-tool status
+```
+
+Make sure the new kernel is in the boot entries, then reboot.
+
+### Fedora / RHEL (dnf)
+
+```bash
+sudo dnf upgrade --security
+sudo reboot
+```
+
+### Arch Linux (pacman)
+
+```bash
+sudo pacman -Syu
+sudo reboot
+```
+
+Arch users are probably already patched given rolling release cadence, but verify with `uname -r` after.
+
+## Step 4: Stopgap If a Patch Isn't Available Yet
+
+If your distro hasn't shipped a fix yet — which happens with Debian stable or older Proxmox installations where you can't immediately reboot production — restrict unprivileged user namespaces:
+
+```bash
+# Immediate (no reboot):
+sudo sysctl -w kernel.unprivileged_userns_clone=0
+
+# Persist across reboots:
+echo "kernel.unprivileged_userns_clone = 0" | sudo tee /etc/sysctl.d/99-fragnesia-mitigation.conf
+sudo sysctl -p /etc/sysctl.d/99-fragnesia-mitigation.conf
+```
+
+On distros using `user.max_user_namespaces` instead:
+
+```bash
+sudo sysctl -w user.max_user_namespaces=0
+echo "user.max_user_namespaces = 0" | sudo tee /etc/sysctl.d/99-fragnesia-mitigation.conf
+```
+
+**What breaks:** Docker rootless mode, Podman without root, Flatpak, Chrome/Chromium sandbox, some Electron apps. Standard Docker with the daemon running as root is *not affected* by this change because the daemon already runs privileged.
+
+If you're running a homelab with rootless containers, you've got a decision to make. My take: temporarily switch your containers to standard (rooted) daemon mode and apply the sysctl until the kernel patch lands. It's a short-term compromise.
+
+Here's a quick check to see what on your system uses user namespaces:
+
+```bash
+# Find processes actively using user namespaces
+sudo lsns -t user
+```
+
+## Optional: Kernel Lockdown Mode
+
+If you want a harder stance, Kernel Lockdown (UEFI Secure Boot path) restricts what even root can do to the kernel. It won't directly block Fragnesia's user-namespace vector, but it limits post-exploitation persistence options like loading unsigned kernel modules.
+
+Check current lockdown state:
+
+```bash
+cat /sys/kernel/security/lockdown
+```
+
+To enable at boot, add `lockdown=confidentiality` to your kernel cmdline in `/etc/default/grub`, then run `update-grub`. On Proxmox, edit `/etc/kernel/cmdline` and run `proxmox-boot-tool refresh`.
+
+Fair warning: `confidentiality` mode is aggressive. `integrity` is the middle ground that blocks unsigned module loading without breaking hibernation and a few other things. For a homelab, `integrity` is probably your ceiling without pain.
+
+## Verifying the Patch Worked
+
+After reboot:
+
+```bash
+uname -r
+# Cross-reference this with your distro's patched version in their security advisory
+
+# Confirm namespace restriction if you applied it:
+sysctl kernel.unprivileged_userns_clone
+```
+
+If you want to actually test exploit viability: the Fragnesia PoC is publicly available. Run it in a throwaway VM before and after patching. Seeing `[+] Got root!` flip to a permissions error is satisfying in a way that reading patch notes never quite is.
+
+## One Thing Worth Noting About Proxmox Specifically
+
+Proxmox LXC containers by default share the host kernel. That means a privileged LXC container (not unprivileged) running a vulnerable kernel is a *direct path to the Proxmox host*. If you're running privileged containers — which is the Proxmox default unless you explicitly configured otherwise — patch the host kernel first. The containers inherit whatever kernel you're running.
+
+Unprivileged LXC containers with user namespace remapping have some additional isolation, but given this specific vulnerability targets namespace handling, don't treat that as a safety net until you've patched.
+
+## What's Next
+
+- [/homelab/proxmox-ve-hardening-guide](/homelab/proxmox-ve-hardening-guide) — Lock down your Proxmox host properly after this patch scare
+- [/homelab/rootless-docker-podman-homelab](/homelab/rootless-docker-podman-homelab) — Understanding rootless containers and when they actually matter for security
+- [/homelab/kernel-live-patching-ubuntu-proxmox](/homelab/kernel-live-patching-ubuntu-proxmox) — Apply kernel patches without rebooting using kpatch or livepatch
+- [/homelab/homelab-network-segmentation-vlans](/homelab/homelab-network-segmentation-vlans) — Defense in depth: limit blast radius from any local exploit with proper network segmentation
