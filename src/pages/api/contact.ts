@@ -1,26 +1,4 @@
-// functions/api/contact.ts
-// Cloudflare Pages Function — handles POST /api/contact
-// Sends email via Brevo API
-//
-// Env vars required (set in Cloudflare Pages → Settings → Environment Variables):
-//   BREVO_API_KEY     — from brevo.com dashboard
-//   CONTACT_TO_EMAIL  — where messages land (your inbox)
-//   CONTACT_FROM      — verified sender, e.g. contact@linuxcore.dev
-
-import type { EventContext } from '@cloudflare/workers-types';
-
-interface Env {
-  BREVO_API_KEY:    string;
-  CONTACT_TO_EMAIL: string;
-  CONTACT_FROM:     string;
-}
-
-interface Body {
-  name:    string;
-  email:   string;
-  subject: string;
-  message: string;
-}
+import type { APIRoute } from 'astro';
 
 const CORS = {
   'Access-Control-Allow-Origin':  '*',
@@ -28,16 +6,22 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
-export const onRequestOptions = () =>
+export const OPTIONS: APIRoute = () =>
   new Response(null, { status: 204, headers: CORS });
 
-export async function onRequestPost({
-  request,
-  env,
-}: EventContext<Env, string, unknown>): Promise<Response> {
+export const POST: APIRoute = async ({ request, locals }) => {
+  const env = (locals as any).runtime?.env ?? {};
 
-  const json: Body = await request.json();
-  const { name, email, subject, message } = json;
+  let body: { name?: string; email?: string; subject?: string; message?: string };
+  try {
+    body = await request.json();
+  } catch {
+    return new Response(JSON.stringify({ error: 'Invalid request body.' }), {
+      status: 400, headers: { ...CORS, 'Content-Type': 'application/json' },
+    });
+  }
+
+  const { name, email, subject, message } = body;
 
   if (!name || !email || !subject || !message) {
     return new Response(JSON.stringify({ error: 'All fields are required.' }), {
@@ -52,10 +36,10 @@ export async function onRequestPost({
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      sender:  { name: 'linuxcore.dev', email: env.CONTACT_FROM },
-      to:      [{ email: env.CONTACT_TO_EMAIL }],
-      replyTo: { email },
-      subject: `[linuxcore.dev] ${subject}`,
+      sender:      { name: 'linuxcore.dev', email: env.CONTACT_FROM },
+      to:          [{ email: env.CONTACT_TO_EMAIL }],
+      replyTo:     { email },
+      subject:     `[linuxcore.dev] ${subject}`,
       htmlContent: `
         <div style="font-family:monospace;background:#18120a;color:#e8dcc8;padding:32px;border-radius:8px;max-width:560px">
           <div style="color:#f0a500;font-size:11px;letter-spacing:0.1em;margin-bottom:16px">[CONTACT FORM]</div>
@@ -74,8 +58,7 @@ export async function onRequestPost({
   });
 
   if (!res.ok) {
-    const err = await res.text();
-    console.error('Brevo error:', err);
+    console.error('Brevo error:', await res.text());
     return new Response(JSON.stringify({ error: 'Failed to send email.' }), {
       status: 500, headers: { ...CORS, 'Content-Type': 'application/json' },
     });
@@ -84,4 +67,4 @@ export async function onRequestPost({
   return new Response(JSON.stringify({ ok: true }), {
     status: 200, headers: { ...CORS, 'Content-Type': 'application/json' },
   });
-}
+};

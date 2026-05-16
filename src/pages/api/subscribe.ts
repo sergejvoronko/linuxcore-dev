@@ -1,11 +1,4 @@
-// functions/api/subscribe.ts
-// MailerLite subscriber endpoint for Cloudflare Pages Functions.
-// Set MAILERLITE_API_KEY and MAILERLITE_GROUP_ID in Cloudflare Pages env vars.
-
-interface Env {
-  MAILERLITE_API_KEY: string;
-  MAILERLITE_GROUP_ID: string;
-}
+import type { APIRoute } from 'astro';
 
 const CORS = {
   'Access-Control-Allow-Origin':  '*',
@@ -13,10 +6,11 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
-export const onRequestOptions = () =>
+export const OPTIONS: APIRoute = () =>
   new Response(null, { status: 204, headers: CORS });
 
-export async function onRequestPost({ request, env }: { request: Request; env: Env }) {
+export const POST: APIRoute = async ({ request, locals }) => {
+  const env = (locals as any).runtime?.env ?? {};
   const { email } = await request.json() as { email?: string };
 
   if (!email?.trim() || !email.includes('@')) {
@@ -47,16 +41,14 @@ export async function onRequestPost({ request, env }: { request: Request; env: E
   });
 
   if (res.status === 200 || res.status === 201) {
-    return new Response(
-      JSON.stringify({ ok: true }),
-      { status: 200, headers: { ...CORS, 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200, headers: { ...CORS, 'Content-Type': 'application/json' },
+    });
   }
   if (res.status === 409) {
-    return new Response(
-      JSON.stringify({ ok: true, note: 'already_subscribed' }),
-      { status: 200, headers: { ...CORS, 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify({ ok: true, note: 'already_subscribed' }), {
+      status: 200, headers: { ...CORS, 'Content-Type': 'application/json' },
+    });
   }
 
   const error = await res.json() as any;
@@ -64,4 +56,4 @@ export async function onRequestPost({ request, env }: { request: Request; env: E
     JSON.stringify({ error: error?.message ?? 'Subscription failed' }),
     { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } }
   );
-}
+};
