@@ -1,16 +1,16 @@
 // functions/api/contact.ts
 // Cloudflare Pages Function — handles POST /api/contact
-// Sends email via Resend API
+// Sends email via Brevo API
 //
 // Env vars required (set in Cloudflare Pages → Settings → Environment Variables):
-//   RESEND_API_KEY    — from resend.com dashboard
+//   BREVO_API_KEY     — from brevo.com dashboard
 //   CONTACT_TO_EMAIL  — where messages land (your inbox)
 //   CONTACT_FROM      — verified sender, e.g. contact@linuxcore.dev
 
 import type { EventContext } from '@cloudflare/workers-types';
 
 interface Env {
-  RESEND_API_KEY:   string;
+  BREVO_API_KEY:    string;
   CONTACT_TO_EMAIL: string;
   CONTACT_FROM:     string;
 }
@@ -45,18 +45,18 @@ export async function onRequestPost({
     });
   }
 
-  const res = await fetch('https://api.resend.com/emails', {
+  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${env.RESEND_API_KEY}`,
-      'Content-Type':  'application/json',
+      'api-key':      env.BREVO_API_KEY,
+      'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from:     `linuxcore.dev contact form <${env.CONTACT_FROM}>`,
-      to:       [env.CONTACT_TO_EMAIL],
-      reply_to: email,
-      subject:  `[linuxcore.dev] ${subject}`,
-      html: `
+      sender:  { name: 'linuxcore.dev', email: env.CONTACT_FROM },
+      to:      [{ email: env.CONTACT_TO_EMAIL }],
+      replyTo: { email },
+      subject: `[linuxcore.dev] ${subject}`,
+      htmlContent: `
         <div style="font-family:monospace;background:#18120a;color:#e8dcc8;padding:32px;border-radius:8px;max-width:560px">
           <div style="color:#f0a500;font-size:11px;letter-spacing:0.1em;margin-bottom:16px">[CONTACT FORM]</div>
           <table style="width:100%;border-collapse:collapse;margin-bottom:24px">
@@ -75,7 +75,7 @@ export async function onRequestPost({
 
   if (!res.ok) {
     const err = await res.text();
-    console.error('Resend error:', err);
+    console.error('Brevo error:', err);
     return new Response(JSON.stringify({ error: 'Failed to send email.' }), {
       status: 500, headers: { ...CORS, 'Content-Type': 'application/json' },
     });
