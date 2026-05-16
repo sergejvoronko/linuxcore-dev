@@ -4,6 +4,8 @@ compatibility_flags = ["nodejs_compat"]
 
 [vars]
 PRINTIFY_SHOP_ID = "27112844"
+CONTACT_TO_EMAIL = "airbrushden@gmail.com"
+CONTACT_FROM = "contact@linuxcore.dev"
 
 [assets]
 directory = "dist"
