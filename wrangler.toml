@@ -1,8 +1,6 @@
 name = "linuxcore-dev"
 compatibility_date = "2026-04-09"
 compatibility_flags = ["nodejs_compat"]
-main = "dist/server/entry.mjs"
-
 [vars]
 PRINTIFY_SHOP_ID = "27112844"
 CONTACT_TO_EMAIL = "airbrushden@gmail.com"
