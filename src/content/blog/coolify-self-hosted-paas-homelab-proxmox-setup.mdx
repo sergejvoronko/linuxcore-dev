@@ -1,0 +1,151 @@
+---
+title: "Coolify on Your Homelab: Ditch Vercel and Heroku for Good"
+description: "Step-by-step guide to deploying Coolify on Proxmox or bare-metal Linux, setting up push-to-deploy, and routing traffic with Caddy or Traefik. Self-hosted PaaS that actually works."
+pubDate: 2026-05-18
+readingTime: 8
+heroImage: "/images/coolify-self-hosted-paas-homelab-proxmox-setup.webp"
+heroImageAlt: "Coolify dashboard running on a Proxmox VM with Docker containers and a custom domain configured via Caddy reverse proxy"
+section: "homelab"
+tags: ["coolify", "self-hosted-paas", "proxmox", "docker", "homelab"]
+draft: false
+faqs:
+  - q: "Can Coolify run on a Proxmox LXC instead of a VM?"
+    a: "Technically yes, but unprivileged LXC containers have Docker quirks that will waste your afternoon. Use a VM. Give it 2 vCPUs, 4GB RAM, and 40GB disk and move on."
+  - q: "Does Coolify handle SSL certificates automatically?"
+    a: "Yes. It uses Let's Encrypt via its built-in Traefik proxy. Point your domain DNS at the server, make sure ports 80 and 443 are open, and Coolify provisions certs on first deploy. If you're running your own Caddy in front, you'll need to disable the built-in proxy and terminate TLS yourself."
+  - q: "Can I deploy from a private GitHub or GitLab repo?"
+    a: "Yes. Coolify supports GitHub App integration, GitHub/GitLab personal access tokens, and self-hosted Gitea. The GitHub App route gives you per-repo webhook installs without handing over a broad-scope PAT."
+---
+
+Vercel is genuinely good at what it does, which makes the pricing conversation awkward the moment you have more than a hobby project. Heroku hasn't been the same since Salesforce decided free dynos were too generous. If you're already running a homelab with spare compute, paying either of them to host a Node app or a static site feels like renting a storage unit when you have a garage.
+
+Coolify is the self-hosted answer. It's a PaaS that runs on your hardware, wraps Docker under a clean UI, handles push-to-deploy webhooks, provisions SSL certs, and manages multiple servers from one dashboard. It won't do everything Vercel does — edge functions at 200 PoPs isn't on the menu — but for most real apps it's more than enough.
+
+Here's how to actually get it running.
+
+## What You Need Before You Start
+
+- A Linux server or Proxmox VM with a public IP (or a Cloudflare Tunnel if you're behind NAT — more on that later)
+- Ubuntu 22.04 or Debian 12 recommended. The installer script assumes one of these.
+- Ports 80, 443, and 8000 reachable from the internet (8000 is the Coolify UI)
+- A domain you control
+
+If you're on Proxmox, create a VM with at least 2 vCPUs, 4GB RAM, and 40GB disk. The Coolify dashboard itself is light, but once you're running five or six containers the memory adds up fast. Don't cheap out here and then complain when your Node app OOM-kills itself.
+
+## Installing Coolify
+
+Coolify ships a one-liner installer. Run it as root or with sudo:
+
+```bash
+curl -fsSL https://cdn.coollabs.io/coolify/install.sh | bash
+```
+
+That script installs Docker, pulls the Coolify stack (it's a Docker Compose setup itself), and starts everything. On a clean Ubuntu 22.04 VM it takes about three minutes. When it finishes, Coolify is listening on port 8000.
+
+Hit `http://your-server-ip:8000` in a browser. You'll land on the onboarding wizard — create your admin account, name your instance, done. There's no "click through twelve config screens" nonsense here. The defaults are sensible.
+
+One thing that bit me on first setup: if your server has a firewall (it should), you need to explicitly open 8000 or you'll stare at a timeout and wonder if the install failed.
+
+```bash
+ufw allow 8000/tcp
+ufw allow 80/tcp
+ufw allow 443/tcp
+ufw reload
+```
+
+## Connecting a Source Repository
+
+Go to **Sources** in the sidebar and add your Git provider. The GitHub App integration is the cleanest option — it installs a webhook automatically on each repo you connect, so Coolify gets notified on every push without you configuring anything manually.
+
+If you're self-hosting Gitea, add it as a custom Git source. You'll need to create a Gitea OAuth application and paste the credentials in. Takes five minutes, works well.
+
+## Deploying Your First App
+
+Create a new **Resource**, pick **Application**, and select your repo. Coolify will inspect the repo and try to detect the build pack — Node, Python, static site, Dockerfile, Docker Compose. The detection is decent but not magic. If it guesses wrong, override it manually.
+
+For a Next.js app, for example:
+
+- Build pack: Nixpacks (Coolify's default, builds without a Dockerfile)
+- Build command: `npm run build`
+- Start command: `npm run start`
+- Port: `3000`
+
+Hit **Deploy**. Coolify pulls the repo, builds a Docker image, and starts the container. Build logs stream in real time in the UI. The first build takes longer because it's pulling base images — subsequent builds are faster.
+
+The push-to-deploy webhook fires on every push to your configured branch. No additional setup needed if you used the GitHub App integration.
+
+## The Reverse Proxy Decision
+
+This is where people trip up. Coolify ships with Traefik as its built-in reverse proxy. It handles routing and SSL certs automatically. For most setups: **just use it**. Don't fight it.
+
+Where it gets complicated is if you already have a Caddy or Nginx setup on that server managing other services. Running two reverse proxies on the same box trying to own ports 80 and 443 will not end well.
+
+**Option A: Let Coolify's Traefik own everything.** Point your other services at Coolify and let it manage their routing too. You can add custom domains and proxy rules in the Coolify UI. This is the path of least resistance.
+
+**Option B: Disable Coolify's proxy, run your own Caddy in front.** In Coolify settings, turn off the built-in proxy. Coolify will bind your app containers to internal ports. You then configure Caddy to proxy to those ports. Here's a minimal Caddyfile example:
+
+```
+app.yourdomain.com {
+    reverse_proxy localhost:3000
+    tls your@email.com
+}
+```
+
+You'll need to map Coolify's container port to a stable host port — do that in the app's **Network** settings in Coolify. Set a fixed host port and don't let Docker randomize it.
+
+**Option C: Cloudflare Tunnel.** If your homelab is behind CGNAT or a residential connection without a static IP, Cloudflare Tunnel is the cleanest solution. Install `cloudflared` on the server, create a tunnel, and route DNS through Cloudflare. Zero open inbound ports required. Coolify doesn't know or care — it just sees traffic arriving.
+
+## Environment Variables and Secrets
+
+Coolify has a secrets manager built in. Add environment variables per-application in the **Environment Variables** tab. They're injected at build time and runtime. You can mark them as "Build Variable" (available during the Docker build step) or keep them runtime-only.
+
+Don't put secrets in your `docker-compose.yml` in the repo. Use Coolify's secrets UI and reference them as variables. This is obvious advice that gets ignored until someone pushes an API key to GitHub.
+
+## Running a Docker Compose Stack
+
+Coolify handles multi-container apps well. Create a new resource and pick **Docker Compose**. You can paste a compose file directly or point it at a `docker-compose.yml` in your repo.
+
+Here's an example for a simple app with a Postgres database:
+
+```yaml
+services:
+  app:
+    image: myapp:latest
+    environment:
+      DATABASE_URL: postgresql://user:password@db:5432/mydb
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: mydb
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
+```
+
+Coolify manages the volumes and networking. The `db` service isn't exposed publicly — only the `app` port gets routed through Traefik.
+
+## A Few Things That Surprised Me
+
+**Coolify restarts itself when you update it.** It's self-hosted but self-updating. You can trigger updates from the UI. The update process is smooth but your apps will have a brief blip if your proxy routes through Coolify's Traefik during the restart.
+
+**The UI is fast.** After years of Heroku dashboards loading for five seconds to show you one dyno, this feels unreasonably snappy.
+
+**Nixpacks build caching is aggressive.** If a build is behaving weirdly after a dependency change, force a clean build. There's a checkbox for it in the deploy settings. I spent 20 minutes debugging a problem that was just stale Nixpacks cache.
+
+**Database backups aren't automatic.** Coolify can run your Postgres container but it doesn't schedule backups. That's on you. Set up a cron job dumping to S3-compatible storage (Backblaze B2 is cheap) from day one, not after you lose something.
+
+## What's Next
+
+- [Running Nginx Proxy Manager on Proxmox for Homelab Routing](/homelab/nginx-proxy-manager-proxmox-setup)
+- [Proxmox VM vs LXC: When to Use Each for Homelab Services](/homelab/proxmox-vm-vs-lxc-containers)
+- [Cloudflare Tunnels for Homelab: Expose Services Without Port Forwarding](/homelab/cloudflare-tunnel-homelab-setup)
+- [Self-Hosting Gitea on Docker: Your Own GitHub at Home](/homelab/gitea-self-hosted-git-docker)
