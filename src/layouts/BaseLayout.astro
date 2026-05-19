@@ -62,6 +62,7 @@ const currentPath  = Astro.url.pathname;
 
   <!-- RSS -->
   <link rel="alternate" type="application/rss+xml" title="linuxcore.dev" href="/rss.xml" />
+  <slot name="head" />
 </head>
 <body>
   <Nav currentPath={currentPath} />

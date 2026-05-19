@@ -17,6 +17,7 @@ const recent = allPosts
 ---
 
 <BaseLayout title="Linux Infrastructure Guides — Homelab, AWS & Astro">
+  <link slot="head" rel="preload" as="image" href="/images/hero-bg.webp" fetchpriority="high" />
   <script type="application/ld+json">{JSON.stringify({
     "@context": "https://schema.org",
     "@type": "WebSite",
@@ -524,7 +525,7 @@ const recent = allPosts
   .meta-label {
     font-family: var(--font-mono);
     font-size: 0.75rem;
-    color: var(--text-dim);
+    color: var(--text-mid);
     text-transform: uppercase;
     letter-spacing: 0.08em;
     margin-top: 0.2rem;
