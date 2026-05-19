@@ -10,7 +10,7 @@ type: "PILLAR"
 tags: ["aws", "s3", "backup", "restic", "homelab", "linux", "glacier", "proxmox", "automation", "rclone"]
 readingTime: 22
 featured: false
-draft: false
+draft: true
 affiliate: true
 faqs:
   - q: "How much does S3 storage cost per month for a homelab?"

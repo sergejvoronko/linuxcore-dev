@@ -10,7 +10,7 @@ type: "PILLAR"
 tags: ["security", "linux", "ssh", "ufw", "fail2ban", "crowdsec", "hardening", "ubuntu", "debian", "homelab"]
 readingTime: 20
 featured: true
-draft: false
+draft: true
 faqs:
   - q: "Will following these steps lock me out of my server?"
     a: "Only if you disable password auth before testing key-based SSH. Always open a second SSH session before restarting the SSH daemon to verify your key works. The guide follows this order — keys first, then disable passwords."
