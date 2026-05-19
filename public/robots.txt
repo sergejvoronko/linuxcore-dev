@@ -1,4 +1,8 @@
 User-agent: *
-Disallow: /
+Allow: /
+Disallow: /go/
+Disallow: /thanks/
+Disallow: /shop/success/
+Disallow: /gpsr/
 
 Sitemap: https://linuxcore.dev/sitemap.xml
