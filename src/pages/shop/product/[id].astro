@@ -6,21 +6,19 @@ import BaseLayout from '../../../layouts/BaseLayout.astro';
 import NewsletterForm from '../../../components/NewsletterForm.astro';
 import { getProduct, getProducts, getBasePrice, getDefaultImage, formatPrice } from '../../../lib/printify';
 
-let env: Record<string, string> | undefined;
-try { env = (Astro.locals as any).runtime?.env; } catch { env = undefined; }
 const { id } = Astro.params;
 let product: any = null;
 let fetchError = '';
 let related: any[] = [];
 
 try {
-  product = await getProduct(id!, env);
+  product = await getProduct(id!);
 } catch (e: any) {
   fetchError = e.message;
 }
 
 try {
-  const all = await getProducts(env);
+  const all = await getProducts();
   related = all.filter((p: any) => p.id !== id).slice(0, 3);
 } catch { /* non-critical */ }
 

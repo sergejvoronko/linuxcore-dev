@@ -5,13 +5,11 @@ export const prerender = false;
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getProducts, getBasePrice, getDefaultImage, formatPrice } from '../../lib/printify';
 
-let env: Record<string, string> | undefined;
-try { env = (Astro.locals as any).runtime?.env; } catch { env = undefined; }
 let products: any[] = [];
 let fetchError = '';
 
 try {
-  products = await getProducts(env);
+  products = await getProducts();
 } catch (e: any) {
   fetchError = e.message;
 }
