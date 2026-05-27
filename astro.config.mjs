@@ -11,7 +11,9 @@ export default defineConfig({
   build: {
     inlineStylesheets: 'always',
   },
-  adapter: cloudflare(),
+  adapter: cloudflare({
+    platformProxy: { enabled: true },
+  }),
   integrations: [
     tailwind(),
     mdx(),

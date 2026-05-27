@@ -6,7 +6,8 @@ import BaseLayout from '../../../layouts/BaseLayout.astro';
 import NewsletterForm from '../../../components/NewsletterForm.astro';
 import { getProduct, getProducts, getBasePrice, getDefaultImage, formatPrice } from '../../../lib/printify';
 
-const env = (Astro.locals as any).runtime?.env;
+let env: Record<string, string> | undefined;
+try { env = (Astro.locals as any).runtime?.env; } catch { env = undefined; }
 const { id } = Astro.params;
 let product: any = null;
 let fetchError = '';
