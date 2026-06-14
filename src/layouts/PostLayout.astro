@@ -244,7 +244,10 @@ const breadcrumbSchema = {
 
   /* ── Hero ─── */
   .post-hero { margin-bottom: 36px; border: 1px solid var(--border); }
-  .post-hero img { width: 100%; height: auto; display: block; }
+  .post-hero img {
+    width: 100%; height: auto; display: block;
+    aspect-ratio: 1200 / 630; object-fit: cover;
+  }
   @media (max-width: 600px) {
     .post-hero { margin-left: -18px; margin-right: -18px; border-left: none; border-right: none; }
   }
