@@ -1,4 +1,5 @@
 import type { APIRoute } from 'astro';
+import { env } from 'cloudflare:workers';
 
 export const prerender = false;
 
@@ -12,8 +13,6 @@ export const OPTIONS: APIRoute = () =>
   new Response(null, { status: 204, headers: CORS });
 
 export const POST: APIRoute = async ({ request, locals }) => {
-  const env = (locals as any).runtime?.env ?? {};
-
   let body: { name?: string; email?: string; subject?: string; message?: string };
   try {
     body = await request.json();
