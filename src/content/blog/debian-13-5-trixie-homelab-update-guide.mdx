@@ -1,0 +1,158 @@
+---
+title: "Debian 13.5 (Trixie) Released: What Homelab Admins Need to Know Before Updating"
+description: "Debian 13.5 is out with CVE patches and updated packages. Here's the safe update workflow for homelab servers, plus whether Trixie beats Ubuntu LTS."
+pubDate: 2026-05-17
+readingTime: 8
+heroImage: "/images/debian-13-5-trixie-homelab-update-guide.webp"
+heroImageAlt: "Terminal output showing Debian Trixie apt upgrade completing on a homelab server"
+section: "homelab"
+tags: ["debian-trixie", "homelab", "debian-vs-ubuntu", "linux-server"]
+draft: false
+faqs:
+  - q: "Do I need to do anything special to get Debian 13.5 on an existing Trixie install?"
+    a: "No. Run apt update && apt full-upgrade. Debian point releases are cumulative, so you don't reinstall or change sources. If you're already running Trixie you'll get 13.5 packages automatically."
+  - q: "Is Debian 13 (Trixie) stable enough for a homelab server in 2026?"
+    a: "Yes. Trixie has been the stable branch since mid-2025. Point releases like 13.5 only add security patches and critical bug fixes - nothing breaks. It's more conservative than Ubuntu LTS, which backports more aggressively."
+  - q: "Should I switch from Ubuntu 24.04 LTS to Debian Trixie for my homelab?"
+    a: "Depends on your workload. Debian wins on predictability and lower baseline memory usage. Ubuntu wins if you need newer kernels, better Snap/hardware support, or you're running things like MicroK8s. For a NAS, DNS, or self-hosted app server, Debian is the smarter pick."
+---
+
+Debian 13.5 dropped in May 2026. It's a point release, which means no new features, no surprises - just accumulated security fixes and updated installer images. That's exactly what you want from a server OS.
+
+If you've been sitting on a Trixie install waiting to see if something breaks before you update, you can stop waiting. Here's what changed, what CVEs got patched, and how to run the update without losing a Saturday.
+
+## What Actually Changed in 13.5
+
+Point releases in Debian are boring by design. The 13.5 update rolls up all security advisories published since 13.4, updates the installer media, and fixes a handful of serious package-level bugs. Per the Phoronix report and the official release notes, highlights include:
+
+- **Linux kernel** updated to address multiple CVEs including local privilege escalation bugs and network stack issues
+- **OpenSSL** patched for a timing side-channel vulnerability (tracked as high severity)
+- **curl** updated - the perennial punching bag of CVE reporters got another round
+- **GnuTLS**, **libgcrypt**, and **nghttp2** all received security updates
+- **Xorg** and **Mesa** patches if you're running a desktop (unlikely on a server, but noted)
+- Installer ISOs refreshed to include all fixes through 13.5, useful for new deployments
+
+Nothing in this list should scare you. None of these are zero-days being actively exploited in homelab-typical scenarios. But a local privilege escalation CVE in the kernel matters if you're running untrusted containers or multi-user systems - and most homelab setups are one shell mistake away from running as root anyway, so patching is still worth doing.
+
+## The Right Way to Update a Running Homelab Server
+
+Don't just `apt upgrade` on a machine serving things your household actually uses. The two-minute extra work of snapshotting first has saved me from a borked NFS mount more than once.
+
+### Step 1: Snapshot in Proxmox First
+
+If your server is a Proxmox VM or LXC container, snapshot it before touching packages:
+
+```bash
+# On the Proxmox host - replace 101 with your VM/CT ID
+pvesh create /nodes/$(hostname)/qemu/101/snapshot \
+  --snapname pre-debian-135 \
+  --description "Before Debian 13.5 update $(date +%Y-%m-%d)"
+```
+
+For LXC containers:
+```bash
+pct snapshot 101 pre-debian-135 --description "Before Debian 13.5 update"
+```
+
+Takes about five seconds. Rollback takes about ten. Worth it every time.
+
+### Step 2: Run the Actual Update
+
+```bash
+# Always update the package index first
+sudo apt update
+
+# Check what's queued - don't skip this
+apt list --upgradable 2>/dev/null | head -40
+
+# Full-upgrade handles dependency changes that upgrade won't
+sudo apt full-upgrade -y
+
+# Clean up old packages
+sudo apt autoremove --purge -y
+sudo apt autoclean
+
+# Check if a reboot is needed (kernel or libc updates)
+if [ -f /var/run/reboot-required ]; then
+  echo "Reboot required"
+  cat /var/run/reboot-required.pkgs
+fi
+```
+
+Use `full-upgrade` over `upgrade`. On a point release it almost never matters, but `upgrade` will silently skip packages that require dependency changes. You won't notice until something breaks later for a completely different-looking reason.
+
+### Step 3: After the Reboot
+
+Verify the kernel version actually changed if one was patched:
+
+```bash
+uname -r
+# Compare against: https://packages.debian.org/trixie/linux-image-amd64
+```
+
+Check that your services came back up:
+
+```bash
+systemctl --failed
+journalctl -p err -b --since "10 minutes ago"
+```
+
+That second command has caught more problems for me than any monitoring dashboard. If systemd logged errors in the first ten minutes after boot, you want to know now.
+
+## A Note on Docker Compose Stacks
+
+If you're running containerized services - and at this point most homelabs are - your containers don't automatically pick up host kernel security fixes, but they do inherit the patched glibc and OpenSSL from the host if you're not running scratch images. For actual application security, your Dockerfiles need updating separately.
+
+That said, after a kernel update you should restart your containers to let them re-attach to the new kernel's namespaces and cgroups cleanly:
+
+```yaml
+# If you're using Compose, restart affected stacks:
+# docker compose down && docker compose up -d
+# Or for a specific service:
+# docker compose restart myservice
+```
+
+Most of the time they'll keep running fine. But if you applied a kernel patch that changes cgroup behavior, a container that was started on the old kernel can occasionally misbehave. It's rare, but restarting stacks after a kernel update is good hygiene.
+
+## Debian Trixie vs Ubuntu 24.04 LTS for Homelab: The Honest Answer
+
+This question comes up constantly. Here's where each one actually wins:
+
+**Debian Trixie wins when:**
+- You want a server that doesn't surprise you for 5 years
+- You're running static workloads: Pihole, Home Assistant, Jellyfin, Nextcloud, NFS/Samba
+- You care about baseline memory usage (Debian's minimal install genuinely uses less RAM)
+- You want to understand exactly what's installed - no cloud-init, no snap, no mystery services
+
+**Ubuntu 24.04 LTS wins when:**
+- You need a newer kernel without backport gymnastics (Ubuntu ships mainline-adjacent kernels)
+- You're deploying something with official Ubuntu support or tutorials (Canonical's ecosystem is still larger)
+- You want Landscape, MicroK8s, or anything in the Snap store
+- You're running AMD GPUs and want the latest ROCm without a fight
+
+The argument that Ubuntu is "more stable" for homelabs is mostly mythology at this point. Ubuntu has had rougher point releases than Debian in the last two years. Trixie's package selection is newer than Ubuntu 24.04 in most categories because it was released later. The "old boring packages" knock on Debian doesn't apply to Trixie the way it did to Buster.
+
+The real reason most people end up on Ubuntu is familiarity and documentation coverage. That's a valid reason. Just don't confuse it with a technical argument.
+
+My take: new homelab build in 2026 should default to Debian Trixie unless you have a specific reason not to. Existing Ubuntu machines aren't worth migrating just for the sake of it.
+
+## One Gotcha Worth Mentioning
+
+If you're running Debian Trixie on a machine with `unattended-upgrades` configured, check that it's actually picking up security updates from the right origin. The source string changed slightly between Bullseye and Trixie:
+
+```bash
+# /etc/apt/apt.conf.d/50unattended-upgrades
+# Make sure you have this origin pattern:
+Unattended-Upgrade::Origins-Pattern {
+    "origin=Debian,codename=${distro_codename},label=Debian-Security";
+};
+```
+
+The `${distro_codename}` variable should resolve to `trixie` automatically, but if you copied a config from an older machine that hardcoded `bullseye-security`, your security updates have been silently skipped. Worth checking.
+
+## What's Next
+
+- [Set Up Proxmox Automated Snapshots Before Every Update](/homelab/proxmox-automated-snapshots-before-updates)
+- [Running Home Assistant on Debian Trixie with Docker Compose](/homelab/home-assistant-debian-trixie-docker-compose)
+- [Hardening a Debian Server for Homelab Exposure: The Practical Checklist](/homelab/debian-server-hardening-homelab-checklist)
+- [Monitoring Your Homelab with Grafana and Prometheus on Debian](/homelab/grafana-prometheus-homelab-debian)
