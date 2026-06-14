@@ -22,8 +22,7 @@ export default defineConfig({
         !page.includes('/go/') &&
         !page.includes('/thanks/') &&
         !page.includes('/shop/success/') &&
-        !page.includes('/gpsr/') &&
-        !page.match(/\/blog\/[^/]+\//),
+        !page.includes('/gpsr/'),
     }),
   ],
   markdown: {

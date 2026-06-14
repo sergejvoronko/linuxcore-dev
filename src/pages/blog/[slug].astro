@@ -1,14 +1,15 @@
 ---
 // src/pages/blog/[slug].astro
-// Master post route. Handles ALL blog posts regardless of section.
-// Section-specific routes (/homelab/[slug], /astro/[slug]) re-export
-// getStaticPaths from here, filtered by section.
+// Fallback post route for section-less posts only.
+// Sectioned posts render at their canonical /homelab|/astro|/aws/[slug]
+// route, so they are NOT emitted here — this avoids duplicate (noindexed)
+// URLs wasting crawl budget and self-canonicalling to the wrong path.
 
 import { getCollection, render } from 'astro:content';
 import PostLayout from '../../layouts/PostLayout.astro';
 
 export async function getStaticPaths() {
-  const posts = await getCollection('blog', ({ data }) => !data.draft);
+  const posts = await getCollection('blog', ({ data }) => !data.draft && !data.section);
   return posts.map(post => ({
     params: { slug: post.id },
     props:  { post },
@@ -33,7 +34,6 @@ const { title, description, pubDate, updatedDate, heroImage, heroImageAlt, tags,
   {headings}
   {affiliate}
   slug={post.id}
-  noIndex={!!section}
 >
   <Content />
 </PostLayout>

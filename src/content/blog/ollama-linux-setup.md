@@ -6,7 +6,7 @@ section: "homelab"
 pillar: "Self-Hosted AI"
 type: "PILLAR"
 tags: ["ollama", "docker", "self-hosted", "llm", "linux"]
-readingTime: 18
+readingTime: 9
 featured: true
 heroImage: "/images/ollama-linux-setup.webp"
 heroImageAlt: "Terminal showing Ollama pulling a Llama 3 model on Linux with GPU acceleration active and Open WebUI running"
@@ -21,11 +21,21 @@ faqs:
     a: "Yes, if you expose it over the network. By default Ollama listens on localhost only. Set OLLAMA_HOST=0.0.0.0 in the systemd service to expose it on your LAN, then use Tailscale or WireGuard to share secure access with other users without opening firewall ports."
 ---
 
+**Short version:** install Ollama with the official script (`curl -fsSL https://ollama.com/install.sh | sh`), pull a model with `ollama pull llama3.2`, and you have a local, OpenAI-compatible API on port `11434`. Add Open WebUI in Docker for a ChatGPT-style interface, the NVIDIA Container Toolkit for GPU acceleration, and Tailscale to reach it securely from anywhere. The full walkthrough below is tested on Debian and Ubuntu homelab hardware, with model-sizing, quantization, security, and tuning notes you won't get from the one-liner.
+
 ## Why Run AI Locally?
 
 You don't need OpenAI's API. You don't need a $200/month cloud bill.
 A single machine in your home lab can run large language models — all without
 sending a byte of data to someone else's server.
+
+Three reasons it's worth the setup over a hosted API:
+
+- **Privacy.** Prompts, code, documents, and logs never leave your network. For anything covered by GDPR, an NDA, or internal policy, local inference removes the data-transfer question entirely.
+- **Cost.** After the hardware, inference is free. A used RTX 3060 12GB pays for itself fast if you'd otherwise run a paid API daily, and there's no per-token meter making you ration requests.
+- **Control.** You pick the model, the quantization, the context window, and the uptime. No surprise deprecations, no rate limits, no model swapped out from under your prompts.
+
+The trade-off is quality at the top end — a local 8B model is not GPT-class — but for summarization, classification, code completion, RAG over your own docs, and automation glue, an 8B–14B model on a mid-range GPU is more than enough.
 
 ## Prerequisites
 
@@ -45,6 +55,33 @@ systemctl status ollama
 ```
 
 Ollama runs as a `systemd` service and exposes an OpenAI-compatible API on port **11434**.
+
+### Pick the Right Model for Your VRAM
+
+The single biggest factor in whether Ollama feels fast or painful is fitting the model entirely in VRAM. If it spills into system RAM, inference drops by an order of magnitude. As a rough rule, a 4-bit quantized model needs about **0.6 GB of VRAM per billion parameters**, plus headroom for the context window:
+
+| Model size | 4-bit VRAM need | Fits on |
+|:-----------|:---------------:|:--------|
+| 3B  | ~2.5 GB  | Any modern GPU, or CPU |
+| 7–8B | ~5–6 GB | RTX 3060 12GB, 4060 8GB |
+| 13–14B | ~9–10 GB | RTX 3060 12GB (tight), 4070 |
+| 32B+ | ~20 GB+ | RTX 3090/4090, dual-GPU |
+
+Check what you actually have before pulling a model you can't run:
+
+```bash
+nvidia-smi --query-gpu=memory.total,memory.used --format=csv
+```
+
+### Quantization, Briefly
+
+Ollama tags like `llama3.1:8b-instruct-q4_K_M` encode the quantization. The number is the bit depth; lower means smaller and faster but slightly less accurate:
+
+- **q4_K_M** — the default sweet spot. ~4-bit, minimal quality loss, fits the most models. Start here.
+- **q5_K_M / q6_K** — closer to full precision, larger footprint. Use if you have spare VRAM.
+- **q8_0 / fp16** — near-lossless, but doubles or quadruples the size. Rarely worth it on a homelab GPU.
+
+When in doubt, the bare tag (`ollama pull llama3.1:8b`) gives you a sensible q4_K_M build.
 
 ## Step 2 — Pull Your First Model
 
@@ -118,6 +155,68 @@ tailscale serve --bg https / http://localhost:3000
 ```
 
 Now you can access `https://your-hostname.tailnet-name.ts.net` from any device on your Tailscale network — phone, laptop, anywhere.
+
+## Secure the Ollama API
+
+By default Ollama binds to `127.0.0.1:11434` — local only, which is the safe default. The moment you want LAN or remote access you have to change that, and this is where people accidentally expose an unauthenticated LLM endpoint to their whole network.
+
+The Ollama API has **no authentication of its own**. Anyone who can reach port 11434 can run inference, pull models, and read your model list. So the rule is: never bind it to `0.0.0.0` and then expose that port through a firewall or router.
+
+To allow LAN access, override the systemd service rather than editing the unit file directly:
+
+```bash
+sudo systemctl edit ollama
+```
+
+Add:
+
+```ini
+[Service]
+Environment="OLLAMA_HOST=0.0.0.0:11434"
+```
+
+Then reload and restart:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart ollama
+```
+
+For anything beyond your trusted LAN, put authentication in front of it. Two clean options:
+
+- **Tailscale (recommended)** — keep Ollama on localhost and let Open WebUI handle logins. Share the WebUI over your Tailnet (Step 5). Only devices on your Tailscale network can reach it, and WebUI enforces per-user accounts.
+- **Reverse proxy with auth** — front Ollama with Caddy or Traefik and require basic auth or an OAuth forward-auth (Authelia). This is the right pattern if other apps need direct API access.
+
+Do not open 11434 on your router. An exposed Ollama endpoint is a free GPU for whoever finds it.
+
+## Performance Tuning
+
+A few environment variables make a real difference once you're past the defaults. Set them in the same `systemctl edit ollama` override:
+
+```ini
+[Service]
+# Keep models resident in VRAM instead of unloading after 5 min
+Environment="OLLAMA_KEEP_ALIVE=-1"
+# Allow 2 models loaded at once (needs the VRAM for both)
+Environment="OLLAMA_MAX_LOADED_MODELS=2"
+# Serve multiple requests in parallel per model
+Environment="OLLAMA_NUM_PARALLEL=4"
+# Enable flash attention — lower VRAM, faster on Ampere+ GPUs
+Environment="OLLAMA_FLASH_ATTENTION=1"
+```
+
+- **`OLLAMA_KEEP_ALIVE=-1`** stops the cold-start lag where the first prompt after a pause stalls while the model reloads into VRAM. Use this on a dedicated AI box; skip it if the GPU is shared with other workloads.
+- **`OLLAMA_NUM_PARALLEL`** matters if Open WebUI, n8n, and your editor all hit the same model. Each parallel slot consumes context memory, so raise it only with VRAM to spare.
+- **Context window** is set per request, not globally. Larger `num_ctx` eats VRAM fast — a 32K context on an 8B model can add several GB. In Open WebUI, set it per model under *Advanced Params* rather than maxing it everywhere.
+
+After changing these, confirm the model is actually on the GPU:
+
+```bash
+ollama ps
+# PROCESSOR column should read 100% GPU, not CPU or a split
+```
+
+A split (e.g. `48%/52% CPU/GPU`) means the model didn't fit in VRAM and Ollama offloaded layers to the CPU — drop to a smaller quantization or a smaller model.
 
 ## Benchmarks
 
