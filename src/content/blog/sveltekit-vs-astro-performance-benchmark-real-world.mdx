@@ -17,6 +17,8 @@ faqs:
     a: "Astro. You get pre-rendered HTML with no runtime dependency, drop it behind nginx with zero config, and TTFB stays under 20ms on even modest hardware. SvelteKit's adapter-static output works fine too, but you're carrying adapter overhead you don't need for a plain blog."
 ---
 
+import Comparison from '../../components/Comparison.astro';
+
 Both frameworks will build your blog. Both will score green on Lighthouse if you're not doing anything stupid. The question is which one costs you less in build time, cold-start latency, and Friday-night debugging — and the answer genuinely depends on what you're building.
 
 I've run both on linuxcore.dev's stack: Cloudflare Pages for the public-facing site, a self-hosted nginx box for internal tooling, and a few low-traffic personal projects that don't justify a CDN bill. Here's what actually happened.
@@ -128,6 +130,21 @@ If you're on Cloudflare Pages free tier and deploying frequently, Astro gives yo
 - No meaningful difference at this scale
 
 ## What I'd Actually Pick
+
+<Comparison
+  caption="Astro vs SvelteKit for a content site"
+  options={["Astro", "SvelteKit"]}
+  rows={[
+    { label: "Build, 120 posts",       values: ["18s", "34s"], winner: 0 },
+    { label: "Lighthouse performance",  values: ["99", "94"], winner: 0 },
+    { label: "LCP (mobile)",            values: ["1.1s", "1.9s"], winner: 0 },
+    { label: "Total Blocking Time",     values: ["0ms", "120ms"], winner: 0 },
+    { label: "Zero JS by default",      values: ["yes", "no"], winner: 0 },
+    { label: "SPA / client-side router", values: ["no", "yes"], winner: 1 },
+    { label: "Best for app-style state", values: ["no", "yes"], winner: 1 },
+    { label: "Clean static nginx output", values: ["yes", "no"], winner: 0 },
+  ]}
+/>
 
 **Astro** for anything content-first: blogs, documentation, portfolios, marketing sites. The zero-JS default is the right default. You opt into complexity rather than having to opt out of it.
 

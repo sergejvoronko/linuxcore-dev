@@ -20,6 +20,7 @@ faqs:
 ---
 
 import { Image } from 'astro:assets';
+import Comparison from '../../components/Comparison.astro';
 
 You want to ditch Google Photos and host your own photo library. You've narrowed it down to two options: **Immich** and **PhotoPrism**. Both are open source, both run in Docker, both handle face recognition and map views and mobile uploads. But they're built very differently, they need very different hardware, and they suit different setups.
 
@@ -261,6 +262,22 @@ Back up the photo files (same as Immich) and the database. With MariaDB, you'd u
 This is a real operational advantage for PhotoPrism. SQLite backups are trivially simple compared to managing PostgreSQL dumps.
 
 ## Which One Should You Choose?
+
+<Comparison
+  caption="Immich vs PhotoPrism for self-hosters"
+  options={["Immich", "PhotoPrism"]}
+  rows={[
+    { label: "Idle RAM",              values: ["3–4 GB", "0.8–1.5 GB"], winner: 1 },
+    { label: "Minimum RAM",           values: ["8 GB", "2 GB"], winner: 1 },
+    { label: "Runs on Raspberry Pi 4", values: ["no", "yes"], winner: 1 },
+    { label: "Containers",            values: ["4–5", "1–2"], winner: 1 },
+    { label: "Native mobile backup app", values: ["yes", "no"], winner: 0 },
+    { label: "Multi-user & sharing",  values: ["yes", "no"], winner: 0 },
+    { label: "Semantic (CLIP) search", values: ["yes", "no"], winner: 0 },
+    { label: "Trivial SQLite backup", values: ["no", "yes"], winner: 1 },
+    { label: "Development pace",       values: ["Fast", "Stable"] },
+  ]}
+/>
 
 **Choose Immich if:**
 - You have 8+ GB of RAM on your server

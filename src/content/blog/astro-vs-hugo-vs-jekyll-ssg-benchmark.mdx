@@ -17,6 +17,8 @@ faqs:
     a: "Yes — Docker is the cleanest solution. Run Jekyll inside a container pinned to a specific Ruby version and you avoid the rbenv or rvm dependency management entirely. The Docker Compose snippet in this article covers that setup."
 ---
 
+import Comparison from '../../components/Comparison.astro';
+
 If you're running a self-hosted site on a Raspberry Pi, a Proxmox VM, or pushing deploys to Cloudflare Pages on a free tier, your SSG choice has real consequences — not philosophical ones. Build time means CI minutes or local CPU cycles. Bundle size means bandwidth and storage. This article cuts through the hype and gives you numbers to make an actual decision.
 
 ## The Benchmark Setup
@@ -140,6 +142,21 @@ const buildTime = new Date().toISOString();
 And add one interactive island without hydrating the entire page. That's genuinely useful for hybrid homelab dashboards.
 
 ## The Decision Matrix
+
+<Comparison
+  caption="Astro vs Hugo vs Jekyll at a glance"
+  options={["Astro", "Hugo", "Jekyll"]}
+  rows={[
+    { label: "Cold build, 100 pages",  values: ["~8s", "~0.3s", "~6s"], winner: 1 },
+    { label: "Cold build, 500 pages",  values: ["~52s", "~1.1s", "~38s"], winner: 1 },
+    { label: "Output size, 100 pages", values: ["4.8 MB", "2.1 MB", "3.4 MB"], winner: 1 },
+    { label: "Interactive islands / components", values: ["yes", "no", "no"], winner: 0 },
+    { label: "Zero JS by default",     values: ["yes", "yes", "yes"] },
+    { label: "Scales past 500+ pages", values: ["no", "yes", "no"], winner: 1 },
+    { label: "GitHub Pages native",    values: ["no", "no", "yes"], winner: 2 },
+    { label: "Language",               values: ["JS / TS", "Go templates", "Ruby / Liquid"] },
+  ]}
+/>
 
 **Choose Hugo if:**
 - Your site is primarily Markdown content
