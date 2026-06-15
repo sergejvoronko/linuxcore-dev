@@ -35,7 +35,7 @@ const dateStr = pubDate.toLocaleDateString('en-GB', {
 
   <div class="card-footer">
     <span class="card-date">{dateStr}</span>
-    <span class="card-read">read article →</span>
+    <span class="card-read">read article <span class="card-arrow">→</span></span>
   </div>
 </a>
 
@@ -47,17 +47,32 @@ const dateStr = pubDate.toLocaleDateString('en-GB', {
     padding: 28px;
     text-decoration: none;
     position: relative; overflow: hidden;
-    transition: border-color 0.2s, background 0.2s;
+    transition: border-color 0.2s, background 0.2s, transform 0.2s, box-shadow 0.2s;
     height: 100%;
   }
   .card-top-line {
-    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
     background: var(--card-color);
     transform: scaleX(0); transform-origin: left;
     transition: transform 0.3s;
   }
-  .post-card:hover { border-color: var(--card-color); background: var(--bg3); }
+  /* faint accent glow that fades in on hover */
+  .post-card::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(120% 80% at 100% 0%, var(--card-color) 0%, transparent 55%);
+    opacity: 0; transition: opacity 0.25s;
+  }
+  .post-card:hover {
+    border-color: var(--card-color); background: var(--bg3);
+    transform: translateY(-3px);
+    box-shadow: 0 10px 30px rgb(0 0 0 / 0.28);
+  }
   .post-card:hover .card-top-line { transform: scaleX(1); }
+  .post-card:hover::after { opacity: 0.06; }
+  @media (prefers-reduced-motion: reduce) {
+    .post-card, .card-top-line, .card-arrow { transition: none; }
+    .post-card:hover { transform: none; }
+  }
   .post-card.featured { border-color: var(--border-amber); }
 
   .card-meta-top { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -80,6 +95,7 @@ const dateStr = pubDate.toLocaleDateString('en-GB', {
     margin-top: auto; padding-top: 14px; border-top: 1px solid var(--border);
   }
   .card-date { color: var(--text-mid); font-size: 12px; letter-spacing: 0.05em; font-family: var(--mono); }
-  .card-read { color: var(--card-color); font-size: 12px; letter-spacing: 0.05em; transition: letter-spacing 0.2s; font-family: var(--mono); }
-  .post-card:hover .card-read { letter-spacing: 0.1em; }
+  .card-read { color: var(--card-color); font-size: 12px; letter-spacing: 0.05em; font-family: var(--mono); display: inline-flex; align-items: center; gap: 5px; }
+  .card-arrow { display: inline-block; transition: transform 0.2s; }
+  .post-card:hover .card-arrow { transform: translateX(4px); }
 </style>

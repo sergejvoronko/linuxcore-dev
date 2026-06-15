@@ -34,7 +34,8 @@ const {
       autocomplete="email"
     />
     <button type="submit" class="btn-primary nl-btn" id="nl-btn">
-      Subscribe →
+      <span class="nl-btn-label">Subscribe →</span>
+      <span class="nl-spinner" aria-hidden="true"></span>
     </button>
   </form>
 
@@ -81,9 +82,28 @@ const {
     color: var(--text); font-family: var(--font-mono); font-size: 13px;
     outline: none; transition: border-color .15s;
   }
-  .nl-input:focus { border-color: var(--amber); }
+  .nl-input:focus {
+    border-color: var(--amber);
+    box-shadow: 0 0 0 3px rgb(var(--amber-rgb) / 0.18);
+  }
   .nl-input::placeholder { color: var(--text-dim); }
-  .nl-btn { white-space: nowrap; }
+
+  .nl-btn { white-space: nowrap; position: relative; }
+  .nl-spinner {
+    display: none;
+    width: 14px; height: 14px;
+    border: 2px solid rgb(24 18 10 / 0.35);
+    border-top-color: var(--text-inverse);
+    border-radius: 50%;
+    animation: nl-spin 0.6s linear infinite;
+  }
+  .nl-btn.loading .nl-btn-label { visibility: hidden; }
+  .nl-btn.loading .nl-spinner {
+    display: block;
+    position: absolute; top: 50%; left: 50%;
+    margin: -7px 0 0 -7px;
+  }
+  @keyframes nl-spin { to { transform: rotate(360deg); } }
 
   .nl-status {
     margin-top: 12px; font-family: var(--font-mono); font-size: 12px;
@@ -101,6 +121,8 @@ const {
     border: 1px solid rgba(255,107,107,.25);
     color: var(--red, #ff6b6b);
   }
+  .nl-status.success, .nl-status.error { animation: nl-fade .25s ease; }
+  @keyframes nl-fade { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
 
   .nl-note { font-family: var(--font-mono); font-size: 12px; color: var(--text-mid); margin-top: 8px; }
 </style>
@@ -116,8 +138,8 @@ const {
     const email = input.value.trim();
     if (!email) return;
 
-    btn.disabled     = true;
-    btn.textContent  = 'Subscribing…';
+    btn.disabled = true;
+    btn.classList.add('loading');
     status.className = 'nl-status';
     status.textContent = '';
 
@@ -142,8 +164,8 @@ const {
       status.className   = 'nl-status error';
       status.textContent = `✕ ${err.message}`;
     } finally {
-      btn.disabled    = false;
-      btn.textContent = 'Subscribe →';
+      btn.disabled = false;
+      btn.classList.remove('loading');
     }
   });
 </script>

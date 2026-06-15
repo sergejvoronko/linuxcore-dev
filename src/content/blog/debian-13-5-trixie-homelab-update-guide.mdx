@@ -17,6 +17,8 @@ faqs:
     a: "Depends on your workload. Debian wins on predictability and lower baseline memory usage. Ubuntu wins if you need newer kernels, better Snap/hardware support, or you're running things like MicroK8s. For a NAS, DNS, or self-hosted app server, Debian is the smarter pick."
 ---
 
+import Comparison from '../../components/Comparison.astro';
+
 Debian 13.5 dropped in May 2026. It's a point release, which means no new features, no surprises - just accumulated security fixes and updated installer images. That's exactly what you want from a server OS.
 
 If you've been sitting on a Trixie install waiting to see if something breaks before you update, you can stop waiting. Here's what changed, what CVEs got patched, and how to run the update without losing a Saturday.
@@ -117,6 +119,21 @@ Most of the time they'll keep running fine. But if you applied a kernel patch th
 ## Debian Trixie vs Ubuntu 24.04 LTS for Homelab: The Honest Answer
 
 This question comes up constantly. Here's where each one actually wins:
+
+<Comparison
+  caption="Debian Trixie vs Ubuntu 24.04 LTS for homelab"
+  options={["Debian Trixie", "Ubuntu 24.04 LTS"]}
+  rows={[
+    { label: "Support window",        values: ["~5 years", "5 yr LTS / 10 w/ Pro"] },
+    { label: "Baseline RAM (minimal)", values: ["Lower", "Higher"], winner: 0 },
+    { label: "Newer mainline kernel",  values: ["no", "yes"], winner: 1 },
+    { label: "No Snap / cloud-init",   values: ["yes", "no"], winner: 0 },
+    { label: "Predictable / no surprises", values: ["yes", "no"], winner: 0 },
+    { label: "Ecosystem & docs coverage", values: ["Large", "Larger"], winner: 1 },
+    { label: "MicroK8s / Snap store",   values: ["no", "yes"], winner: 1 },
+    { label: "Best for NAS / DNS / app server", values: ["yes", "yes"] },
+  ]}
+/>
 
 **Debian Trixie wins when:**
 - You want a server that doesn't surprise you for 5 years

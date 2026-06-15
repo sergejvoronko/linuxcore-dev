@@ -1,0 +1,174 @@
+---
+// src/components/Comparison.astro
+// Interactive "X vs Y" comparison table for use inside MDX posts.
+//
+// Usage:
+//   import Comparison from '../../components/Comparison.astro';
+//   <Comparison
+//     caption="Debian Trixie vs Ubuntu 24.04 LTS"
+//     options={["Debian Trixie", "Ubuntu 24.04 LTS"]}
+//     rows={[
+//       { label: "Baseline RAM usage", values: ["Lower", "Higher"], winner: 0 },
+//       { label: "Newer kernel",       values: ["no", "yes"],       winner: 1 },
+//       { label: "5-year support",     values: ["yes", "yes"] },
+//     ]}
+//   />
+//
+// values: "yes"/"true" -> check, "no"/"false" -> cross, anything else -> text.
+// winner: optional 0-based column index to highlight as the row winner.
+
+interface Row {
+  label:   string;
+  values:  string[];
+  winner?: number;
+  note?:   string;
+}
+interface Props {
+  options:  string[];
+  rows:     Row[];
+  caption?: string;
+}
+const { options, rows, caption } = Astro.props;
+
+const id = 'cmp-' + Math.random().toString(36).slice(2, 8);
+
+const kind = (v: string): 'yes' | 'no' | 'text' => {
+  const s = v.trim().toLowerCase();
+  if (s === 'yes' || s === 'true' || s === '✓') return 'yes';
+  if (s === 'no'  || s === 'false' || s === '✕' || s === '✗') return 'no';
+  return 'text';
+};
+
+// A row is "differing" when its rendered cell values aren't all identical.
+const isDiff = (r: Row) => new Set(r.values.map(v => v.trim().toLowerCase())).size > 1;
+---
+
+<figure class="cmp" id={id} data-cmp>
+  {caption && <figcaption class="cmp-cap">{caption}</figcaption>}
+
+  <div class="cmp-controls">
+    <button type="button" class="cmp-toggle" data-only-diff aria-pressed="false">
+      Show only differences
+    </button>
+  </div>
+
+  <div class="cmp-scroll" role="region" aria-label={caption ?? 'Comparison table'} tabindex="0">
+    <table class="cmp-table">
+      <thead>
+        <tr>
+          <th scope="col" class="cmp-crit">Criteria</th>
+          {options.map(o => <th scope="col" class="cmp-opt">{o}</th>)}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map(r => (
+          <tr data-diff={isDiff(r) ? '1' : '0'}>
+            <th scope="row" class="cmp-crit">
+              {r.label}
+              {r.note && <span class="cmp-note">{r.note}</span>}
+            </th>
+            {r.values.map((v, i) => {
+              const k = kind(v);
+              return (
+                <td
+                  class:list={['cmp-cell', `is-${k}`, { 'is-winner': r.winner === i }]}
+                  data-label={options[i]}
+                >
+                  {k === 'yes' && <span class="cmp-ico cmp-yes" aria-label="Yes">✓</span>}
+                  {k === 'no'  && <span class="cmp-ico cmp-no"  aria-label="No">✕</span>}
+                  {k === 'text' && <span class="cmp-txt">{v}</span>}
+                  {r.winner === i && <span class="cmp-win" aria-label="Best in row">★</span>}
+                </td>
+              );
+            })}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</figure>
+
+<script define:vars={{ id }}>
+  const root = document.getElementById(id);
+  if (root) {
+    const btn  = root.querySelector('[data-only-diff]');
+    const rows = root.querySelectorAll('tbody tr');
+    btn?.addEventListener('click', () => {
+      const on = btn.getAttribute('aria-pressed') !== 'true';
+      btn.setAttribute('aria-pressed', String(on));
+      btn.classList.toggle('active', on);
+      rows.forEach(tr => {
+        tr.hidden = on && tr.getAttribute('data-diff') === '0';
+      });
+    });
+  }
+</script>
+
+<style>
+  .cmp { margin: 2em 0; }
+  .cmp-cap {
+    font-family: var(--mono); font-size: 12px; letter-spacing: 0.1em;
+    color: var(--amber); text-transform: uppercase; margin-bottom: 10px;
+  }
+  .cmp-controls { display: flex; justify-content: flex-end; margin-bottom: 10px; }
+  .cmp-toggle {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.05em;
+    color: var(--text-dim); background: none;
+    border: 1px solid var(--border-mid); border-radius: 100px;
+    padding: 0.3rem 0.8rem; cursor: pointer; transition: color .15s, border-color .15s, background .15s;
+  }
+  .cmp-toggle:hover { color: var(--amber); border-color: var(--border-amber); }
+  .cmp-toggle.active { color: var(--text-inverse); background: var(--amber); border-color: var(--amber); }
+
+  .cmp-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--border); }
+  .cmp-scroll:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+  .cmp-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .cmp-table th, .cmp-table td {
+    padding: 11px 14px; text-align: left; border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .cmp-table thead th {
+    position: sticky; top: 0;
+    background: var(--bg3); color: var(--amber);
+    font-family: var(--mono); font-size: 12px; font-weight: 700;
+    letter-spacing: 0.08em; border-bottom: 1px solid var(--border-amber);
+  }
+  th.cmp-crit {
+    color: var(--text-bright); font-family: var(--sans); font-weight: 600;
+    font-size: 13px; min-width: 160px;
+  }
+  thead th.cmp-crit { color: var(--amber); font-family: var(--mono); }
+  .cmp-opt { white-space: nowrap; }
+  .cmp-note { display: block; font-family: var(--mono); font-size: 11px; color: var(--text-dim); font-weight: 400; margin-top: 3px; }
+
+  .cmp-cell { color: var(--text); font-family: var(--sans); position: relative; }
+  .cmp-cell.is-winner { background: var(--amber-glow); }
+  .cmp-ico { font-weight: 700; }
+  .cmp-yes { color: var(--green); }
+  .cmp-no  { color: var(--red); opacity: 0.85; }
+  .cmp-win { margin-left: 6px; color: var(--amber); font-size: 11px; }
+
+  tbody tr:hover td, tbody tr:hover th[scope="row"] { background: rgb(var(--amber-rgb) / 0.03); }
+  .cmp-table tr:last-child th, .cmp-table tr:last-child td { border-bottom: none; }
+
+  /* Mobile: stack each row's cells under labelled headers */
+  @media (max-width: 560px) {
+    .cmp-table thead { display: none; }
+    .cmp-table, .cmp-table tbody, .cmp-table tr { display: block; }
+    .cmp-table tr { border-bottom: 1px solid var(--border-mid); padding: 6px 0; }
+    .cmp-table th.cmp-crit {
+      display: block; border: none; padding-bottom: 4px;
+      font-size: 14px; min-width: 0;
+    }
+    .cmp-cell {
+      display: flex; justify-content: space-between; gap: 1rem;
+      border: none; padding: 5px 14px;
+    }
+    .cmp-cell::before {
+      content: attr(data-label);
+      font-family: var(--mono); font-size: 11px; color: var(--text-dim);
+      letter-spacing: 0.05em;
+    }
+  }
+</style>
