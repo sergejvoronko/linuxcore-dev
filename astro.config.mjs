@@ -13,6 +13,10 @@ export default defineConfig({
   },
   adapter: cloudflare({
     platformProxy: { enabled: true },
+    // 'compile' = run Sharp at build for prerendered routes, emitting static
+    // /_astro images. Avoids the runtime /_image endpoint (this site is fully
+    // static, so no on-demand resizing is needed).
+    imageService: 'compile',
   }),
   integrations: [
     tailwind(),

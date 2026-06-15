@@ -6,7 +6,21 @@ import Comments from '../components/Comments.astro';
 import ShareButtons from '../components/ShareButtons.astro';
 import RelatedPosts from '../components/RelatedPosts.astro';
 import NewsletterForm from '../components/NewsletterForm.astro';
-import type { MarkdownHeading } from 'astro';
+import { Image, getImage } from 'astro:assets';
+import type { MarkdownHeading, ImageMetadata } from 'astro';
+
+// Post heroes live in src/assets/heroes so Astro can optimize + emit srcset.
+// heroImage frontmatter stays a "/images/<file>" string; resolve by basename.
+const heroModules = import.meta.glob<{ default: ImageMetadata }>(
+  '../assets/heroes/*.{webp,png,jpg,jpeg,avif}',
+  { eager: true },
+);
+const resolveHero = (path?: string) => {
+  if (!path) return undefined;
+  const base = path.split('/').pop();
+  const hit = Object.entries(heroModules).find(([p]) => p.endsWith('/' + base));
+  return hit?.[1].default;
+};
 
 interface Props {
   title:        string;
@@ -53,6 +67,15 @@ const sectionColor = section === 'astro' ? '#7eb8d4'
 
 const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 
+// Resolve optimized hero. ogImage is an absolute 1200x630 URL for og/twitter
+// and JSON-LD; falls back to the raw string if the file isn't in src/assets.
+const heroMeta = resolveHero(heroImage);
+let ogImage = heroImage;
+if (heroMeta) {
+  const og = await getImage({ src: heroMeta, width: 1200, height: 630, format: 'webp' });
+  ogImage = og.src;
+}
+
 const faqSchema = faqs?.length ? {
   "@context": "https://schema.org",
   "@type": "FAQPage",
@@ -81,7 +104,7 @@ const articleSchema = {
     "name": "linuxcore.dev",
     "url": "https://linuxcore.dev"
   },
-  ...(heroImage && { "image": new URL(heroImage, Astro.site).toString() }),
+  ...(ogImage && { "image": new URL(ogImage, Astro.site).toString() }),
   "mainEntityOfPage": { "@type": "WebPage", "@id": canonicalURL.toString() }
 };
 
@@ -96,7 +119,7 @@ const breadcrumbSchema = {
 };
 ---
 
-<BaseLayout title={title} description={description} heroImage={heroImage} noIndex={noIndex}>
+<BaseLayout title={title} description={description} heroImage={ogImage} noIndex={noIndex}>
   <script type="application/ld+json" set:html={JSON.stringify(articleSchema)} />
   <script type="application/ld+json" set:html={JSON.stringify(breadcrumbSchema)} />
   {faqSchema && <script type="application/ld+json" set:html={JSON.stringify(faqSchema)} />}
@@ -121,9 +144,20 @@ const breadcrumbSchema = {
       <div class="post-header-rule"></div>
     </header>
 
-    {heroImage && (
+    {heroMeta ? (
       <div class="post-hero">
-        <img src={heroImage} alt={heroImageAlt ?? title} width="1200" height="630" loading="eager" />
+        <Image
+          src={heroMeta}
+          alt={heroImageAlt ?? title}
+          widths={[480, 800, 1200]}
+          sizes="(max-width: 900px) 100vw, 1100px"
+          loading="eager"
+          fetchpriority="high"
+        />
+      </div>
+    ) : heroImage && (
+      <div class="post-hero">
+        <img src={heroImage} alt={heroImageAlt ?? title} width="1200" height="630" loading="eager" fetchpriority="high" />
       </div>
     )}
 
