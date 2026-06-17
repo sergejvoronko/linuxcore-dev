@@ -41,72 +41,72 @@ export const affiliates: AffiliateLink[] = [
   //    they earn immediately; swap each to a specific /dp/<ASIN> when chosen) ──
   {
     slug:        'beelink-eq12',
-    destination: 'https://www.amazon.com/s?k=Beelink+EQ12+Pro+N100&tag=aircom01f20-20',
+    destination: 'https://www.amazon.com/s?k=Beelink+EQ12+Pro+N100&tag=aircom01f20-20',  // TODO ASIN: swap to /dp/<ASIN>/?tag=aircom01f20-20
     label:       'Beelink EQ12 Pro (N100 mini PC)',
   },
   {
     slug:        'minisforum-ms01',
-    destination: 'https://www.amazon.com/s?k=Minisforum+MS-01&tag=aircom01f20-20',
+    destination: 'https://www.amazon.com/s?k=Minisforum+MS-01&tag=aircom01f20-20',  // TODO ASIN: swap to /dp/<ASIN>/?tag=aircom01f20-20
     label:       'Minisforum MS-01 Mini Workstation',
   },
   {
     slug:        'synology-ds224',
-    destination: 'https://www.amazon.com/s?k=Synology+DS224%2B&tag=aircom01f20-20',
+    destination: 'https://www.amazon.com/s?k=Synology+DS224%2B&tag=aircom01f20-20',  // TODO ASIN: swap to /dp/<ASIN>/?tag=aircom01f20-20
     label:       'Synology DS224+ NAS',
   },
   {
     slug:        'wd-red-plus-4tb',
-    destination: 'https://www.amazon.com/s?k=WD+Red+Plus+4TB+NAS+drive&tag=aircom01f20-20',
+    destination: 'https://www.amazon.com/s?k=WD+Red+Plus+4TB+NAS+drive&tag=aircom01f20-20',  // TODO ASIN: swap to /dp/<ASIN>/?tag=aircom01f20-20
     label:       'WD Red Plus 4TB NAS HDD',
   },
   {
     slug:        'seagate-ironwolf',
-    destination: 'https://www.amazon.com/s?k=Seagate+IronWolf+4TB+NAS&tag=aircom01f20-20',
+    destination: 'https://www.amazon.com/s?k=Seagate+IronWolf+4TB+NAS&tag=aircom01f20-20',  // TODO ASIN: swap to /dp/<ASIN>/?tag=aircom01f20-20
     label:       'Seagate IronWolf 4TB NAS HDD',
   },
   {
     slug:        'samsung-990-pro',
-    destination: 'https://www.amazon.com/s?k=Samsung+990+Pro+NVMe+SSD&tag=aircom01f20-20',
+    destination: 'https://www.amazon.com/s?k=Samsung+990+Pro+NVMe+SSD&tag=aircom01f20-20',  // TODO ASIN: swap to /dp/<ASIN>/?tag=aircom01f20-20
     label:       'Samsung 990 Pro NVMe SSD',
   },
   {
     slug:        'tplink-25gbe-switch',
-    destination: 'https://www.amazon.com/s?k=TP-Link+TL-SG3210XHP-M2&tag=aircom01f20-20',
+    destination: 'https://www.amazon.com/s?k=TP-Link+TL-SG3210XHP-M2&tag=aircom01f20-20',  // TODO ASIN: swap to /dp/<ASIN>/?tag=aircom01f20-20
     label:       'TP-Link TL-SG3210XHP-M2 2.5GbE Managed Switch',
   },
   {
     slug:        'usb-25gbe-adapter',
-    destination: 'https://www.amazon.com/s?k=2.5GbE+USB+ethernet+adapter&tag=aircom01f20-20',
+    destination: 'https://www.amazon.com/s?k=2.5GbE+USB+ethernet+adapter&tag=aircom01f20-20',  // TODO ASIN: swap to /dp/<ASIN>/?tag=aircom01f20-20
     label:       '2.5GbE USB Ethernet Adapter',
   },
   {
     slug:        'rtx-3060-12gb',
-    destination: 'https://www.amazon.com/s?k=NVIDIA+RTX+3060+12GB&tag=aircom01f20-20',
+    destination: 'https://www.amazon.com/s?k=NVIDIA+RTX+3060+12GB&tag=aircom01f20-20',  // TODO ASIN: swap to /dp/<ASIN>/?tag=aircom01f20-20
     label:       'NVIDIA RTX 3060 12GB GPU',
   },
   {
     slug:        'coral-usb-tpu',
-    destination: 'https://www.amazon.com/s?k=Google+Coral+USB+Accelerator&tag=aircom01f20-20',
+    destination: 'https://www.amazon.com/s?k=Google+Coral+USB+Accelerator&tag=aircom01f20-20',  // TODO ASIN: swap to /dp/<ASIN>/?tag=aircom01f20-20
     label:       'Google Coral USB Accelerator (TPU)',
   },
   {
     slug:        'raspberry-pi-5',
-    destination: 'https://www.amazon.com/s?k=Raspberry+Pi+5+8GB&tag=aircom01f20-20',
+    destination: 'https://www.amazon.com/s?k=Raspberry+Pi+5+8GB&tag=aircom01f20-20',  // TODO ASIN: swap to /dp/<ASIN>/?tag=aircom01f20-20
     label:       'Raspberry Pi 5 (8GB)',
   },
   {
     slug:        'samsung-pro-endurance',
-    destination: 'https://www.amazon.com/s?k=Samsung+PRO+Endurance+microSD&tag=aircom01f20-20',
+    destination: 'https://www.amazon.com/s?k=Samsung+PRO+Endurance+microSD&tag=aircom01f20-20',  // TODO ASIN: swap to /dp/<ASIN>/?tag=aircom01f20-20
     label:       'Samsung PRO Endurance microSD',
   },
   {
     slug:        'cyberpower-ups',
-    destination: 'https://www.amazon.com/s?k=CyberPower+UPS&tag=aircom01f20-20',
+    destination: 'https://www.amazon.com/s?k=CyberPower+UPS&tag=aircom01f20-20',  // TODO ASIN: swap to /dp/<ASIN>/?tag=aircom01f20-20
     label:       'CyberPower UPS (battery backup)',
   },
   {
     slug:        'opnsense-mini-pc',
-    destination: 'https://www.amazon.com/s?k=Beelink+EQ14+N100&tag=aircom01f20-20',
+    destination: 'https://www.amazon.com/s?k=Beelink+EQ14+N100&tag=aircom01f20-20',  // TODO ASIN: swap to /dp/<ASIN>/?tag=aircom01f20-20
     label:       'Beelink EQ14 (OPNsense/firewall mini PC)',
   },
 
