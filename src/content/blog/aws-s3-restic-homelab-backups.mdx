@@ -27,7 +27,7 @@ I've seen both sides of this — enterprise SAP systems with multi-region replic
 
 AWS S3 is the cheapest, most durable offsite storage available to individuals. Combined with restic — which handles encryption, deduplication, and incremental snapshots — you get a backup system that rivals enterprise setups for a fraction of the cost.
 
-This guide builds a complete production backup pipeline. If you've read the [homelab backup basics guide](/homelab/aws-s3-restic-backup), consider this the cloud-native deep dive with proper IAM, lifecycle policies, and cost optimization.
+This guide builds a complete production backup pipeline. If you've read the homelab backup basics guide, consider this the cloud-native deep dive with proper IAM, lifecycle policies, and cost optimization.
 
 ## What this setup gives you
 
@@ -352,7 +352,7 @@ echo "OK: Last backup ${AGE_HOURS} hours ago"
 exit 0
 ```
 
-If you're running Prometheus and Grafana (and if you followed the [homelab monitoring guide](/homelab/grafana-prometheus-monitoring-stack), you are), expose this as a textfile collector metric:
+If you're running Prometheus and Grafana (and if you followed the [homelab monitoring guide](/homelab/grafana-prometheus-homelab), you are), expose this as a textfile collector metric:
 
 ```bash
 # Add to cron, runs every hour
@@ -401,6 +401,6 @@ This backup setup pairs well with the rest of the AWS series:
 
 - [When to Move Your Homelab Workload to AWS](/aws/when-to-move-homelab-to-aws) — the decision framework behind this hybrid approach
 - [The €10/Month AWS Stack](/aws/ten-euro-month-aws-stack) — if you want to run compute alongside your backups
-- The [Ansible homelab automation guide](/homelab/ansible-homelab-automation) can deploy this entire backup pipeline across multiple machines with a single playbook
+- The [Ansible homelab automation guide](/homelab/ansible-homelab) can deploy this entire backup pipeline across multiple machines with a single playbook
 
 Your data is only as safe as your worst backup. For €1.23/month, there's no reason it shouldn't survive anything.

@@ -10,7 +10,7 @@ type: "PILLAR"
 tags: ["security", "linux", "ssh", "ufw", "fail2ban", "crowdsec", "hardening", "ubuntu", "debian", "homelab"]
 readingTime: 20
 featured: true
-draft: true
+draft: false
 faqs:
   - q: "Will following these steps lock me out of my server?"
     a: "Only if you disable password auth before testing key-based SSH. Always open a second SSH session before restarting the SSH daemon to verify your key works. The guide follows this order — keys first, then disable passwords."
@@ -652,7 +652,7 @@ OPTIONAL
 ## Automating All of This with Ansible
 
 Running through this checklist manually on every new machine takes an
-hour. The [Ansible guide](/homelab/ansible-homelab-guide) shows you how
+hour. The [Ansible guide](/homelab/ansible-homelab) shows you how
 to build roles — here's the skeleton of a security role that runs every
 step above:
 

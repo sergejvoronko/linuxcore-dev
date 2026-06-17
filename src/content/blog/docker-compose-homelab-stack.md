@@ -696,7 +696,7 @@ covers the network security layer that sits in front of all of this.
 
 ## Automating the Entire Deploy with Ansible
 
-This stack pairs perfectly with the [Ansible guide](/homelab/ansible-homelab-guide).
+This stack pairs perfectly with the [Ansible guide](/homelab/ansible-homelab).
 Add a `docker-compose` role that:
 
 1. Copies `docker-compose.yml` to the target machine

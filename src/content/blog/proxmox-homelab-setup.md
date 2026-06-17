@@ -598,7 +598,7 @@ a single 16GB RAM mini PC:
 | 101 | monitoring | 2048MB | Grafana + Prometheus ([guide](/homelab/grafana-prometheus-homelab)) |
 | 102 | automation | 1024MB | n8n workflows ([guide](/homelab/n8n-ollama-automation)) |
 | 103 | wireguard | 512MB | WireGuard VPN ([guide](/homelab/wireguard-tailscale-guide)) |
-| 104 | ansible | 512MB | Ansible control node ([guide](/homelab/ansible-homelab-guide)) |
+| 104 | ansible | 512MB | Ansible control node ([guide](/homelab/ansible-homelab)) |
 
 Total RAM allocation: ~12GB. Leaves 4GB for the Proxmox host and burst
 headroom. All containers on `vmbr0` for LAN access, or move Wireguard to
@@ -678,7 +678,7 @@ for maintenance while services stay running on the other.
 you can build a distributed storage cluster that survives a node failure
 without losing data.
 
-**Automate with Ansible** — the [Ansible guide](/homelab/ansible-homelab-guide)
+**Automate with Ansible** — the [Ansible guide](/homelab/ansible-homelab)
 includes everything you need to provision containers automatically.
 Combined with Proxmox, you can rebuild your entire stack from a playbook
 in under 10 minutes.

@@ -269,7 +269,7 @@ curl http://$PUBLIC_IP:11434/api/generate -d '{
 
 ### Connect Open WebUI to the remote instance
 
-If you're running [Open WebUI locally](/homelab/ollama-open-webui-local-ai), you can point it at the remote Ollama instance temporarily:
+If you're running [Open WebUI locally](/homelab/ollama-linux-setup), you can point it at the remote Ollama instance temporarily:
 
 ```bash
 # Stop your local Ollama, start Open WebUI with the remote endpoint
@@ -422,6 +422,6 @@ This pairs naturally with other guides in the series:
 
 - [When to Move Your Homelab Workload to AWS](/aws/when-to-move-homelab-to-aws) — the decision framework that led to this approach
 - [Spot Instances, Reserved Instances, and Savings Plans](/aws/aws-cost-guide-spot-reserved-savings) — deeper dive into AWS pricing strategies
-- [Ollama + Open WebUI on your homelab](/homelab/ollama-open-webui-local-ai) — the local setup that this extends
+- [Ollama + Open WebUI on your homelab](/homelab/ollama-linux-setup) — the local setup that this extends
 
 The sweet spot is owning a modest local GPU for daily use and spinning up cloud instances when you need more power. Your homelab handles the 7B and 13B models you use every day; AWS handles the occasional 70B experiment. Best of both worlds.

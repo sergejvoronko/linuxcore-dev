@@ -106,7 +106,7 @@ aws ec2 authorize-security-group-ingress \
   --cidr "0.0.0.0/0"
 ```
 
-> **Security note:** The SSH rule above allows access from any IP. For production use, replace `0.0.0.0/0` with your home IP (`curl -4 ifconfig.me`/32) or, better yet, use [Tailscale](/homelab/wireguard-tailscale-vpn) to access SSH without exposing port 22 at all.
+> **Security note:** The SSH rule above allows access from any IP. For production use, replace `0.0.0.0/0` with your home IP (`curl -4 ifconfig.me`/32) or, better yet, use [Tailscale](/homelab/wireguard-tailscale-guide) to access SSH without exposing port 22 at all.
 
 ### Launch the instance
 
@@ -464,6 +464,6 @@ You now have a cloud presence that:
 4. **Auto-recovers** — CloudWatch will migrate the instance if hardware fails
 5. **Costs under €10/month** — and under €4/month in your first year
 
-This is the foundation. From here you can add a [WireGuard tunnel back to your homelab](/aws/wireguard-tunnel-homelab-aws-vpc), run [Ollama on GPU spot instances](/aws/ollama-aws-gpu-spot-instance) for heavy AI workloads, or use this as a stepping stone to [Terraform-managed infrastructure](/aws/terraform-for-homelab-users).
+This is the foundation. From here you can add a [WireGuard tunnel back to your homelab](/aws/when-to-move-homelab-to-aws), run [Ollama on GPU spot instances](/aws/ollama-aws-gpu-spot-instance) for heavy AI workloads, or use this as a stepping stone to [Terraform-managed infrastructure](/aws/terraform-for-homelab-users).
 
 The point isn't to replace your homelab. It's to complement it with the things cloud does best: public availability, offsite redundancy, and a stable IP that doesn't change when your router reboots.

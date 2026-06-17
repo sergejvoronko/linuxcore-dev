@@ -302,7 +302,7 @@ Over three years that's a €740 difference. The mini PC pays for itself.
 | [Ollama](/homelab/ollama-linux-setup) — 7b model (CPU) | 🐢 slow | ✅ | ✅ | ✅ |
 | [Grafana + Prometheus](/homelab/grafana-prometheus-homelab) | ✅ | ✅ | ✅ | ✅ |
 | [n8n + Ollama workflows](/homelab/n8n-ollama-automation) | ✅ | ✅ | ✅ | ✅ |
-| [Ansible](/homelab/ansible-homelab-guide) (control node) | ✅ | ✅ | ✅ | ✅ |
+| [Ansible](/homelab/ansible-homelab) (control node) | ✅ | ✅ | ✅ | ✅ |
 | Proxmox — 3 VMs | ✅ | ✅ | ✅ | ✅ |
 | Proxmox — 6+ VMs | ❌ | ✅ | ✅ | ✅ |
 | Jellyfin hardware transcode | ✅ | ✅ | ✅ | ✅ |

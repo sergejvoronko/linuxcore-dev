@@ -301,18 +301,18 @@ Whichever you choose, a few things apply to both:
 
 **Store the database on an SSD.** Both apps do heavy random I/O during indexing. Running the database volume on spinning disks will make initial indexing painfully slow. Your photo library can stay on HDDs — that's sequential reads, which are fine.
 
-**Put a reverse proxy in front.** If you want HTTPS access (and you should, especially for mobile app sync), run [Traefik](/homelab/traefik-reverse-proxy) or Caddy in front and give each app a subdomain like `photos.yourdomain.com`.
+**Put a reverse proxy in front.** If you want HTTPS access (and you should, especially for mobile app sync), run Traefik or Caddy in front and give each app a subdomain like `photos.yourdomain.com`.
 
 **Back up before updating.** Both projects move fast. Dump your database before pulling new images. Immich in particular ships breaking changes occasionally since it hasn't reached a stable 1.0 release yet.
 
-**Monitor resource usage.** If you're running other services on the same machine, keep an eye on RAM with a [monitoring stack](/homelab/grafana-prometheus-monitoring-stack). The ML containers in Immich can compete with other memory-hungry services.
+**Monitor resource usage.** If you're running other services on the same machine, keep an eye on RAM with a [monitoring stack](/homelab/grafana-prometheus-homelab). The ML containers in Immich can compete with other memory-hungry services.
 
 ## What's Next
 
 - **[Docker & Docker Compose Explained](/homelab/docker-compose-explained)** — if any of the Compose concepts above were new to you, start here
-- **[Self-Hosted Google Photos with Immich](/homelab/immich-self-hosted-google-photos)** — full deployment guide with GPU acceleration and backup automation
-- **[Docker Compose Mega-Stack](/homelab/docker-compose-mega-stack)** — deploy Immich or PhotoPrism alongside Jellyfin, Vaultwarden, and more in one stack
-- **[Monitoring with Grafana & Prometheus](/homelab/grafana-prometheus-monitoring-stack)** — track resource usage across all your containers
+- **[Self-Hosted Google Photos with Immich](/homelab/immich-vs-photoprism)** — full deployment guide with GPU acceleration and backup automation
+- **[Docker Compose Mega-Stack](/homelab/docker-compose-homelab-stack)** — deploy Immich or PhotoPrism alongside Jellyfin, Vaultwarden, and more in one stack
+- **[Monitoring with Grafana & Prometheus](/homelab/grafana-prometheus-homelab)** — track resource usage across all your containers
 - **[Linux Security Hardening](/homelab/linux-security-hardening)** — lock down the host running your photo library
 
 ---

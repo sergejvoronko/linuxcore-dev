@@ -21,7 +21,7 @@ faqs:
 
 import { Image } from 'astro:assets';
 
-If you've been following the [homelab Ansible guide](/homelab/ansible-homelab-automation), you already know the power of describing your infrastructure in code and running a single command to make it real. Terraform does the same thing, but for a different layer.
+If you've been following the [homelab Ansible guide](/homelab/ansible-homelab), you already know the power of describing your infrastructure in code and running a single command to make it real. Terraform does the same thing, but for a different layer.
 
 Here's the mental model:
 
@@ -478,8 +478,8 @@ Terraform removes every resource it created, in the correct dependency order. Yo
 This foundation sets you up for the rest of the AWS series:
 
 - [The €10/Month AWS Stack](/aws/ten-euro-month-aws-stack) — the setup you've just codified in Terraform
-- [GitHub Actions + AWS: CI/CD for Your Infrastructure](/aws/github-actions-aws-cicd) — automate `terraform apply` on every push
-- The [Ansible homelab automation guide](/homelab/ansible-homelab-automation) — the configuration layer that pairs with Terraform
+- GitHub Actions + AWS: CI/CD for Your Infrastructure — automate `terraform apply` on every push
+- The [Ansible homelab automation guide](/homelab/ansible-homelab) — the configuration layer that pairs with Terraform
 - Consider the [Ansible Homelab Bundle](https://linuxcore.gumroad.com/l/ansible-homelab-bundle) if you want production-ready playbooks to run on the infrastructure Terraform creates
 
 Infrastructure as code isn't about complexity. It's about writing down what you built so you can build it again. If you already do that with Ansible for your homelab machines, extending the habit to cloud resources with Terraform is the natural progression.
