@@ -662,6 +662,14 @@ Rebuild initramfs: `update-initramfs -u -k all` and reboot. Once it shows
 
 ---
 
+## Recommended hardware
+
+What I run this on (affiliate links — they help fund the site at no extra cost to you):
+
+- [Beelink EQ12 Pro (N100 mini PC)](/go/beelink-eq12) — my main Proxmox node
+- [Samsung 990 Pro NVMe SSD](/go/samsung-990-pro) — fast VM/DB storage
+- [CyberPower UPS](/go/cyberpower-ups) — clean shutdowns, no corrupted pools
+
 ## What's Next
 
 Your Proxmox host is now the foundation your entire homelab runs on.

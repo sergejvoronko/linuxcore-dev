@@ -3,6 +3,7 @@ title: "Run Local AI on Linux: Complete Ollama + Open WebUI Setup Guide (2026)"
 description: "Install Ollama on Debian/Ubuntu, configure GPU passthrough, add Open WebUI with Docker, and expose it via Tailscale. Tested on real homelab hardware."
 pubDate: 2026-01-06
 section: "homelab"
+affiliate: true
 pillar: "Self-Hosted AI"
 type: "PILLAR"
 tags: ["ollama", "docker", "self-hosted", "llm", "linux"]
@@ -235,6 +236,13 @@ A split (e.g. `48%/52% CPU/GPU`) means the model didn't fit in VRAM and Ollama o
 **Open WebUI can't reach Ollama?** The `host.docker.internal` extra_hosts entry is the fix on Linux — Docker Desktop handles this automatically on Mac/Windows.
 
 ---
+
+## Recommended hardware
+
+For GPU-accelerated local inference (affiliate links — they help fund the site at no extra cost to you):
+
+- [NVIDIA RTX 3060 12GB](/go/rtx-3060-12gb) — the value pick for 7B–13B models
+- [Beelink EQ12 Pro (N100)](/go/beelink-eq12) — fine for CPU-only 3B models
 
 Once Ollama is running, a few natural next steps from this site:
 

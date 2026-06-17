@@ -8,6 +8,7 @@ heroImageAlt: "A budget USB 10GbE adapter plugged into a mini PC next to a homel
 section: "homelab"
 tags: ["homelab", "networking", "proxmox", "linux"]
 draft: false
+affiliate: true
 faqs:
   - q: "Do USB 10GbE adapters work out of the box on Linux?"
     a: "Most new USB 10GbE adapters based on the Realtek RTL8156 or similar chipsets are supported in Linux kernel 5.15 and later. On Ubuntu 22.04+ and Proxmox 7+ you typically get plug-and-play detection, though you may need to install firmware packages on some distros."
@@ -185,6 +186,13 @@ PCIe 10GbE cards have dropped to $30–$50 for used Intel X550-T1 or Mellanox Co
 The new generation of adapters runs meaningfully cooler than the 2023/2024 crop — but "cooler" is relative. Under sustained 10GbE load, expect the adapter body to reach 45–55°C. In an enclosed rack shelf with poor airflow, that's worth monitoring.
 
 If you're running constant high-throughput workloads, add a small fan or ensure the adapter has airflow. For burst workloads — backups, migrations, occasional large transfers — thermal throttling is not a practical concern.
+
+## Recommended hardware
+
+The gear I run for this (affiliate links — they help fund the site at no extra cost to you):
+
+- [2.5GbE USB Ethernet adapter](/go/usb-25gbe-adapter)
+- [TP-Link TL-SG3210XHP-M2 2.5GbE managed switch](/go/tplink-25gbe-switch)
 
 ## What's Next
 

@@ -352,3 +352,12 @@ have been fine.
 
 Start small. The mini PC market moves fast — what you buy in 18 months
 will be better and cheaper than what's available today.
+
+## Recommended hardware
+
+What I'd buy today (affiliate links — they help fund the site at no extra cost to you):
+
+- [Beelink EQ12 Pro (N100)](/go/beelink-eq12) — my pick for a first node
+- [Minisforum MS-01](/go/minisforum-ms01) — if you need more power/PCIe
+- [Crucial 32GB DDR5 SO-DIMM](/go/crucial-ddr5) — max out the RAM early
+- [Samsung 990 Pro NVMe SSD](/go/samsung-990-pro) — fast boot + VM storage

@@ -8,6 +8,7 @@ heroImageAlt: "Immich and PhotoPrism web interfaces side by side showing photo l
 section: "homelab"
 tags: ["immich", "photoprism", "self-hosted", "docker", "homelab", "google-photos", "photo-management", "nas"]
 draft: false
+affiliate: true
 faqs:
   - q: "Can Immich or PhotoPrism fully replace Google Photos?"
     a: "Immich is the closest match. It has automatic mobile backup via its iOS and Android apps, face recognition, on-this-day memories, and an album sharing feature — all core Google Photos features. PhotoPrism is stronger for manual curation and privacy but lacks a native mobile backup app."
@@ -307,10 +308,18 @@ Whichever you choose, a few things apply to both:
 
 **Monitor resource usage.** If you're running other services on the same machine, keep an eye on RAM with a [monitoring stack](/homelab/grafana-prometheus-homelab). The ML containers in Immich can compete with other memory-hungry services.
 
+## Recommended hardware
+
+What I'd buy to run either of these (affiliate links — they help fund the site at no extra cost to you):
+
+- [Synology DS224+ NAS](/go/synology-ds224) — turnkey, low-power
+- [Raspberry Pi 5 (8GB)](/go/raspberry-pi-5) — enough for PhotoPrism
+- [Google Coral USB Accelerator](/go/coral-usb-tpu) — speeds up ML/face detection
+
 ## What's Next
 
 - **[Docker & Docker Compose Explained](/homelab/docker-compose-explained)** — if any of the Compose concepts above were new to you, start here
-- **[Self-Hosted Google Photos with Immich](/homelab/immich-vs-photoprism)** — full deployment guide with GPU acceleration and backup automation
+- **Self-Hosted Google Photos with Immich** — full deployment guide with GPU acceleration and backup automation
 - **[Docker Compose Mega-Stack](/homelab/docker-compose-homelab-stack)** — deploy Immich or PhotoPrism alongside Jellyfin, Vaultwarden, and more in one stack
 - **[Monitoring with Grafana & Prometheus](/homelab/grafana-prometheus-homelab)** — track resource usage across all your containers
 - **[Linux Security Hardening](/homelab/linux-security-hardening)** — lock down the host running your photo library

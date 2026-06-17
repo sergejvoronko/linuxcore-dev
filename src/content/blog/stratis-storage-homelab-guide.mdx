@@ -8,6 +8,7 @@ heroImageAlt: "Terminal showing Stratis storage pool creation on a Linux server 
 section: "homelab"
 tags: ["stratis-storage-linux", "stratis-vs-zfs-homelab", "linux-storage-management", "homelab-nas"]
 draft: false
+affiliate: true
 faqs:
   - q: "Is Stratis stable enough for production homelab use?"
     a: "Stratis has been production-ready since version 2.x. Version 3.x introduced tang-based encryption and clevis integration. It ships in RHEL 8/9 and Fedora as a supported storage stack, so yes — it's stable enough for a homelab NAS or VM storage workload."
@@ -206,9 +207,17 @@ stratis blockdev list datapool
 
 There's no built-in alerting — wire it into your monitoring stack (Prometheus node exporter picks up underlying dm-thin metrics, or script a cron job parsing `stratis pool list` output).
 
+## Recommended hardware
+
+NAS drives I trust for homelab storage (affiliate links — they help fund the site at no extra cost to you):
+
+- [WD Red Plus 4TB NAS HDD](/go/wd-red-plus-4tb)
+- [Seagate IronWolf 4TB NAS HDD](/go/seagate-ironwolf)
+- [Synology DS224+ NAS](/go/synology-ds224) — if you want a turnkey enclosure
+
 ## What's Next
 
-- [/homelab/zfs-proxmox-setup](/homelab/stratis-storage-homelab-guide) — Setting up ZFS pools on Proxmox for VM storage with proper ARC tuning
-- [/homelab/proxmox-backup-server](/homelab/stratis-storage-homelab-guide) — Proxmox Backup Server setup with deduplication for homelab VM snapshots
-- [/homelab/linux-nas-build](/homelab/stratis-storage-homelab-guide) — Building a DIY NAS on Linux with drive health monitoring and SMART alerts
-- [/homelab/luks-encryption-linux](/homelab/stratis-storage-homelab-guide) — Full disk encryption on Linux servers with LUKS2 and automated unlock strategies
+- [Proxmox VE Homelab Setup](/homelab/proxmox-homelab-setup) — set up the host your storage VMs run on
+- [Grafana + Prometheus Monitoring](/homelab/grafana-prometheus-homelab) — alert on pool capacity and disk health
+- /homelab/linux-nas-build — Building a DIY NAS on Linux with drive health monitoring and SMART alerts
+- /homelab/luks-encryption-linux — Full disk encryption on Linux servers with LUKS2 and automated unlock strategies
