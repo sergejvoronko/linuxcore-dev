@@ -4,6 +4,7 @@ import mdx from '@astrojs/mdx';
 import cloudflare from '@astrojs/cloudflare';
 
 import sitemap from '@astrojs/sitemap';
+import rehypeLinks from './src/lib/rehype-links.mjs';
 
 export default defineConfig({
   site: 'https://linuxcore.dev',
@@ -34,6 +35,7 @@ export default defineConfig({
       theme: 'github-dark',
       wrap: true,
     },
+    rehypePlugins: [rehypeLinks],
   },
   vite: {
     optimizeDeps: {
