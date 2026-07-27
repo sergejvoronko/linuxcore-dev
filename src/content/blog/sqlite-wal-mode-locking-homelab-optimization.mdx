@@ -1,0 +1,173 @@
+---
+title: "Stop Fighting SQLite: Fixing WAL Mode Reader Locks in Your Homelab"
+description: "Your self-hosted apps like Uptime Kuma are slow? Learn to diagnose and fix SQLite WAL mode reader locks, a common cause of performance issues in high-concurrency homelabs."
+pubDate: 2026-07-27
+readingTime: 8
+heroImage: "/images/sqlite-wal-mode-locking-homelab-optimization.webp"
+heroImageAlt: "A diagram showing SQLite's WAL file locking mechanism causing a read query to fail."
+section: "homelab"
+tags: ["sqlite", "homelab", "docker", "performance"]
+draft: false
+faqs:
+  - q: "What is SQLite WAL mode?"
+    a: "Write-Ahead Logging (WAL) is a journaling mode for SQLite. Instead of writing changes to a temporary rollback file, it writes them to a separate `.wal` file first. This allows multiple readers to access the database even while a writer is active."
+  - q: "Why do I get 'database is locked' errors with WAL mode?"
+    a: "This often happens during a 'checkpoint' operation, where changes from the `.wal` file are written back to the main database. This process requires a brief exclusive lock that can conflict with long-running read transactions, causing new readers to be blocked."
+  - q: "Can I just switch back to the old DELETE journal mode?"
+    a: "You can, but you'll lose the concurrency benefits of WAL. In DELETE mode, any write operation locks the entire database, blocking all readers. For most self-hosted apps, fixing the WAL issue is better than reverting."
+---
+
+You've seen the error. Buried in the logs of Uptime Kuma, Home Assistant, or some other self-hosted gem is the dreaded `database is locked`. Your first instinct is to blame the app, or maybe Docker. But the problem is often more subtle. Many of these applications use SQLite, and its high-performance Write-Ahead Logging (WAL) mode has a sharp edge you can cut yourself on.
+
+If you're running services that only *read* data from these SQLite databases, like a Grafana dashboard or a custom monitoring script, you might be the cause of the problem. WAL mode is fantastic for concurrency, but its checkpoint mechanism can lead to a bizarre form of reader starvation, where your read-only tools cause the entire database to lock up.
+
+This isn't a theoretical issue. I've seen it take down monitoring dashboards and cause intermittent failures across my homelab. Here's how to identify the problem, understand why it happens, and actually fix it.
+
+## The Promise and Peril of WAL Mode
+
+For years, SQLite's default journaling mode was a simple rollback journal. When you wrote to the database, it locked the whole file, preventing anyone else from even reading it until the transaction was complete. It was simple, but slow.
+
+Then came WAL mode. It appends all new writes to a separate `-wal` file. This lets writers write and readers read at the same time. One writer, many readers. Perfect for a typical self-hosted app where one process is collecting data (like sensor readings or uptime stats) and you might have other processes looking at it. Most modern apps that use SQLite enable WAL by default, and for good reason.
+
+The catch is that the `-wal` file can't grow forever. Periodically, a process needs to "checkpoint" the changes from the `-wal` log back into the main `.db` file. This housekeeping is critical. And this is where it all falls apart.
+
+To run a checkpoint, a process needs to acquire an exclusive lock on the database. If any reader has an open transaction, the checkpoint has to wait. Worse, once a checkpoint process is *attempting* to run, it can block *new* readers from starting.
+
+The real gotcha, as detailed by Hynek Schlawack, is that **read-only connections cannot initiate a checkpoint**. So if your Grafana dashboard holds a read-only connection open for 30 seconds to refresh its data, it not only blocks an existing checkpoint but is also powerless to start one itself. This creates a deadlock scenario:
+
+1.  A writer adds data to the `-wal` file.
+2.  A long-running read-only process (your dashboard) opens a transaction.
+3.  The `-wal` file gets large enough to trigger an automatic checkpoint.
+4.  The checkpoint process tries to get an exclusive lock but can't because of the reader. It waits.
+5.  While the checkpoint is waiting, new readers are blocked. Your logs fill up with `SQLITE_BUSY` or `database is locked` errors.
+6.  The original reader finally finishes, the checkpoint runs, and things return to normal until the next dashboard refresh.
+
+## Finding the Telltale Signs
+
+Think you might have this problem? Here are a few ways to confirm.
+
+First, check if your database is even in WAL mode. You can do this by connecting to the database with the `sqlite3` CLI.
+
+```bash
+# Find your Uptime Kuma DB volume and shell into the container
+docker exec -it uptime-kuma /bin/bash
+
+# Once inside, use the sqlite3 client
+sqlite3 /app/data/kuma.db "PRAGMA journal_mode;"
+# If it returns 'wal', you're using WAL mode.
+```
+
+Second, look at the files themselves. A healthy WAL setup should have a `-wal` file that grows and shrinks. If you see a `-wal` file that is constantly large (hundreds of megabytes) and rarely goes away, it's a sign that checkpoints aren't running frequently enough.
+
+```bash
+# Check the data directory on your host
+ls -lh /path/to/your/docker/volumes/uptime-kuma/data/
+
+-rw-r--r-- 1 root root  20M Jul 27 10:30 kuma.db
+-rw-r--r-- 1 root root  32K Jul 27 10:35 kuma.db-shm
+-rw-r--r-- 1 root root 150M Jul 27 10:35 kuma.db-wal  # <-- Uh oh. That's big.
+```
+
+The final confirmation is in your application logs. If you see locking errors that seem to happen randomly and then resolve themselves, it's very likely you're hitting this checkpoint contention window.
+
+## How to Actually Fix It
+
+You can't easily change the code for a self-hosted Docker container. The most reliable solution is to force the checkpoint to happen on your own terms. We can do this with an external process that connects with read-write permissions, giving it the ability to trigger a checkpoint successfully.
+
+A simple cron job is the perfect tool for this.
+
+Create a small script, let's call it `force_sqlite_checkpoint.sh`:
+
+```bash
+#!/bin/bash
+set -euo pipefail
+
+DB_PATH="/path/to/your/docker/volumes/uptime-kuma/data/kuma.db"
+
+# Check if sqlite3 is installed
+if ! command -v sqlite3 &> /dev/null; then
+    echo "sqlite3 could not be found. Please install it."
+    exit 1
+fi
+
+# Check if the database file exists
+if [ ! -f "$DB_PATH" ]; then
+    echo "Database file not found at $DB_PATH"
+    exit 1
+fi
+
+echo "Forcing WAL checkpoint on $DB_PATH"
+sqlite3 "$DB_PATH" 'PRAGMA wal_checkpoint(TRUNCATE);'
+echo "Checkpoint complete."
+```
+
+Make it executable (`chmod +x force_sqlite_checkpoint.sh`) and then add it to your host's crontab to run every 15 minutes or so.
+
+```bash
+# crontab -e
+*/15 * * * * /path/to/your/scripts/force_sqlite_checkpoint.sh > /dev/null 2>&1
+```
+
+The magic here is `PRAGMA wal_checkpoint(TRUNCATE)`. This command does a few things:
+*   It waits for any active readers to finish.
+*   It acquires an exclusive lock.
+*   It copies all content from the `-wal` file into the main database.
+*   It then truncates the `-wal` file back to zero bytes.
+
+This is an aggressive but effective way to clean up the log and prevent it from growing out of control. By running this periodically, you create regular windows where the database is guaranteed to be in a clean state, drastically reducing the chance of a lock-up.
+
+### A Docker Compose Solution
+
+If you prefer to keep everything containerized, you can run the checkpoint command from a dedicated "maintenance" service in your Docker Compose stack.
+
+```yaml
+version: '3.8'
+
+services:
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    container_name: uptime-kuma
+    volumes:
+      - ./uptime-kuma-data:/app/data
+    ports:
+      - "3001:3001"
+    restart: unless-stopped
+
+  kuma-maintainer:
+    image: alpine:latest
+    container_name: kuma-maintainer
+    volumes:
+      - ./uptime-kuma-data:/app/data
+    command: >
+      /bin/sh -c "
+        apk add --no-cache sqlite;
+        while true; do
+          echo 'Running Uptime Kuma WAL checkpoint...';
+          sqlite3 /app/data/kuma.db 'PRAGMA wal_checkpoint(TRUNCATE);';
+          sleep 900;
+        done
+      "
+    restart: unless-stopped
+    depends_on:
+      - uptime-kuma
+
+volumes:
+  uptime-kuma-data:
+```
+This example defines a second service, `kuma-maintainer`, which mounts the same data volume. It installs `sqlite`, then enters an infinite loop to run the `wal_checkpoint` command every 900 seconds (15 minutes). It's a clean, self-contained solution.
+
+## Know When to Fold 'Em
+
+SQLite is a phenomenal piece of engineering, but it is not a client-server database like Postgres or MariaDB. Its locking is file-based, and that has inherent limitations.
+
+This checkpoint fix works great when you have one primary writer (the app) and several intermittent readers (dashboards, scripts). If you find yourself in a situation with multiple, frequent *writers* competing for the same database, you've simply outgrown SQLite. Don't fight it. Many self-hosted applications (including Gitea, Nextcloud, and Home Assistant) support switching their database backend to something more powerful. Making that switch is the right long-term solution for high-contention workloads.
+
+For the common homelab scenario, however, taming WAL mode is all you need. A simple, proactive checkpointing strategy turns SQLite from a source of frustration into the reliable, zero-maintenance database it was meant to be.
+
+## What's Next
+
+Once your databases are stable, it's time to level up other parts of your homelab.
+
+-   **Refine your Docker setup:** Dive deeper into crafting efficient and maintainable services with our [Ultimate Docker Compose Guide](/homelab/ultimate-docker-compose-guide).
+-   **Improve your monitoring:** Now that your dashboards aren't crashing the database, learn about [Self-Hosting Monitoring with Prometheus](/homelab/self-hosting-monitoring-with-prometheus).
+-   **Think about the next step:** If you truly have outgrown SQLite, understand the trade-offs of a managed database with [When to Use RDS vs. an EC2 Database](/aws/when-to-use-rds-vs-ec2-database).
