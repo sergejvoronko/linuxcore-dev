@@ -1,0 +1,210 @@
+---
+title: "Build a Lightweight Game Wiki with Astro: Fast, Ad-Free, and Self-Hosted"
+description: "Tired of ad-ridden Fandom wikis? This guide shows homelab users how to build and self-host a fast, lightweight game wiki using Astro, from setup to deployment."
+pubDate: 2026-07-30
+readingTime: 8
+heroImage: "/images/astro-game-wiki-self-hosted-guide.webp"
+heroImageAlt: "A diagram showing Astro's logo connected to a server in a homelab rack, symbolizing a self-hosted game wiki."
+section: "astro"
+tags: ["astro", "game wiki", "self-hosted", "static site", "homelab", "docker"]
+draft: false
+faqs:
+  - q: "Why Astro instead of something like WordPress or MediaWiki?"
+    a: "Performance and simplicity. Astro builds a static site of plain HTML, CSS, and JS files. It's faster, more secure, and doesn't need a database or PHP runtime. It's just files, which makes it dead simple to host and maintain in a homelab."
+  - q: "Can I host this on a Raspberry Pi?"
+    a: "Yes. The final build is just static files. Any web server like Nginx or Caddy on a Pi can serve them with minimal resources. The build process itself (`npm run build`) might be slow on a Pi, so build on a more powerful machine and copy the `dist/` folder over."
+  - q: "How do I handle images and game data?"
+    a: "Store game data (items, stats, quests) as Markdown files with YAML frontmatter in Astro's Content Collections. This keeps your data version-controlled with your code. For images, you can place them in `src/assets/` for Astro to optimize or in `public/` for direct mapping. For large collections, consider an object store like MinIO and just link to the images."
+---
+
+If you've ever tried to look up an item in a modern game, you've felt the pain. You land on a Fandom-hosted wiki that bombards you with auto-playing video ads, a screen-wide GDPR banner, and a "join our community" pop-up. The page takes ten seconds to load, and half the content is buried under junk. It's a miserable user experience, built to extract ad revenue, not to provide information.
+
+For homelabbers, this is an unacceptable state of affairs. We run our own infrastructure precisely to avoid this kind of garbage. The solution? Build and host your own game wiki. It's not as hard as you think.
+
+With a modern static site generator like Astro, you can build a wiki that's faster, cleaner, and completely under your control. No ads. No trackers. Just the content you and your community care about, served directly from your own hardware. Let's build one.
+
+## Why Astro is the Right Tool
+
+Forget about setting up a LAMP stack for MediaWiki or wrestling with a bloated WordPress instance. Those are database-driven monoliths designed for a different era. For a wiki, where content updates aren't happening every second, a static site is superior.
+
+Here's why Astro fits the bill perfectly:
+
+*   **Static First:** Astro generates plain HTML, CSS, and JavaScript during a build step. The output is a folder of files you can serve with any web server. This means incredible performance and a rock-solid security posture. No database, no server-side code execution at runtime.
+*   **Content Collections:** This is Astro's killer feature for a project like a wiki. It lets you organize your content (items, characters, quests) in a structured way using Markdown and Zod schemas for validation. It's like having a database, but your data is just text files in your Git repository.
+*   **Developer Experience:** You get to use modern tools and a component-based architecture (similar to React or Vue) but without shipping a mountain of JavaScript to the user by default.
+
+## Step 1 — Scaffold the Astro Project
+
+First, get a basic Astro project running. You'll need Node.js (v18 or newer) installed.
+
+```bash
+# Create a new project directory
+mkdir my-game-wiki && cd my-game-wiki
+
+# Scaffold a new Astro site
+npm create astro@latest .
+```
+
+The CLI will ask you a few questions. Here are the choices I recommend:
+
+*   **How would you like to start your new project?** `Empty`
+*   **Install dependencies?** `Yes`
+*   **Do you plan to write TypeScript?** `Strict`
+*   **Initialize a new git repository?** `Yes`
+
+This gives you a clean slate. The most important folders are `src/`, where your code and content live, and `public/`, for static assets like favicons that don't need processing.
+
+## Step 2 — Define Your Content Structure
+
+This is where the magic happens. We'll use Astro's Content Collections to define the "schema" for our wiki entries. Let's say we're building a wiki for an RPG and want to document in-game items.
+
+First, enable content collections by creating `src/content/config.ts`:
+
+```typescript
+// src/content/config.ts
+import { defineCollection, z } from 'astro:content';
+
+const itemsCollection = defineCollection({
+  type: 'content', // or 'data' for JSON/YAML
+  schema: z.object({
+    title: z.string(),
+    itemType: z.enum(['Weapon', 'Armor', 'Consumable']),
+    rarity: z.number().min(1).max(5),
+    description: z.string().optional(),
+    icon: z.string(), // Path to the item icon, e.g., /icons/items/sword.png
+  }),
+});
+
+export const collections = {
+  'items': itemsCollection,
+};
+```
+
+This file tells Astro that any Markdown file inside `src/content/items/` must have frontmatter that matches this Zod schema. It's a fantastic way to enforce consistency. If you forget a required field or use the wrong data type, the build will fail.
+
+Now, create your first item as a Markdown file:
+
+```markdown
+// src/content/items/steel-longsword.md
+---
+title: "Steel Longsword"
+itemType: "Weapon"
+rarity: 2
+description: "A reliable, if uninspired, longsword forged from common steel."
+icon: "/icons/items/steel_longsword.webp"
+---
+
+The Steel Longsword is a common drop from early-game bandits in the Western Reaches. It offers a decent balance of speed and power for new adventurers.
+```
+
+You now have structured, validatable content living right alongside your code.
+
+## Step 3 — Generate Pages from Content
+
+With our content defined, we need to tell Astro how to turn each entry into a web page. We do this with a dynamic route.
+
+Create a new file at `src/pages/items/[...slug].astro`:
+
+```astro
+---
+import { getCollection }llback' };
+}
+
+// Generate a page for each item in the collection
+export async function getStaticPaths() {
+  const itemEntries = await getCollection('items');
+  return itemEntries.map(entry => ({
+    params: { slug: entry.slug },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await entry.render();
+---
+
+<!-- This is a basic layout. You would create a reusable Layout component. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>{entry.data.title} | Game Wiki</title>
+</head>
+<body>
+  <main>
+    <h1>{entry.data.title}</h1>
+    <p><strong>Type:</strong> {entry.data.itemType}</p>
+    <p><strong>Rarity:</strong> {entry.data.rarity} / 5</p>
+    <img src={entry.data.icon} alt={entry.data.title} width="64" height="64">
+
+    <hr>
+
+    <!-- This renders the Markdown content from your file -->
+    <Content />
+  </main>
+</body>
+</html>
+```
+
+The `getStaticPaths` function is the core concept here. It runs at build time, fetches all entries from the `items` collection, and tells Astro to generate a unique HTML page for each one. The URL will be `/items/steel-longsword`, determined by the filename.
+
+Inside the component, `Astro.props` gives you access to the specific entry for the page being rendered. You can then pull data from its frontmatter (`entry.data`) and render the Markdown body with the `<Content />` component.
+
+## Step 4 — Build and Deploy to Your Homelab
+
+Once you've built out your pages and styles, creating the production site is a single command:
+
+```bash
+npm run build
+```
+
+This command bundles everything and outputs a complete, production-ready static site into a `dist/` directory. This folder is all you need. It contains the HTML, CSS, JS, and any processed images.
+
+Now, let's serve it from our homelab using Docker. The simplest way is with an Nginx container. Create a `docker-compose.yml` file in your project's root:
+
+```yaml
+# docker-compose.yml
+version: '3.8'
+
+services:
+  game-wiki:
+    image: nginx:1.25-alpine
+    container_name: game-wiki-web
+    restart: unless-stopped
+    ports:
+      - "8080:80" # Map container port 80 to host port 8080
+    volumes:
+      - ./dist:/usr/share/nginx/html:ro # Mount the built site as read-only
+      # Optional: Add a custom nginx config if needed
+      # - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    labels:
+      # Labels for Traefik or another reverse proxy
+      - "traefik.enable=true"
+      - "traefik.http.routers.game-wiki.rule=Host(`wiki.your.domain`)"
+      - "traefik.http.services.game-wiki.loadbalancer.server.port=80"
+```
+
+To use this:
+
+1.  Run `npm run build` to generate the `dist/` folder.
+2.  Run `docker-compose up -d` to start the Nginx container.
+
+Your wiki is now running on your server, accessible at `http://<your-server-ip>:8080`. Point your reverse proxy (like Traefik or Nginx Proxy Manager) at that address, and you're live. Updating the wiki is as simple as running `npm run build` again and restarting the container to pick up the new files.
+
+## Real-World Gotchas
+
+This setup is clean, but it's not a magical unicorn. Here are a few things I learned the hard way.
+
+*   **No Built-in Search:** Static sites have no backend, which means no server-side search. The best you can do is a client-side solution. I've had good results with [Pagefind](https://pagefind.app/), which you run after your Astro build. It creates a static search index that your front-end JS can query. It's surprisingly fast for small-to-medium sites.
+*   **Image Bloat:** If your wiki has thousands of high-resolution images, checking them into your Git repository is a terrible idea. Your repo size will explode. A better approach is to store the images on an S3-compatible object store in your homelab (like MinIO) and simply store the URL to the image in your Markdown frontmatter.
+*   **Contribution Model:** This is a developer-centric workflow. Your contributors need to be comfortable with Markdown, Git, and pull requests. If you need a WYSIWYG editor for non-technical users, this isn't the right stack. For a small, dedicated team, it's perfect.
+
+This approach gives you a lightning-fast, ad-free wiki that you truly own. The infrastructure is minimal, the performance is maximal, and you'll never have to see an auto-playing video ad on your own documentation again.
+
+## What's Next
+
+Once your wiki is up and running, you can explore more advanced topics to make your homelab and web projects even better.
+
+*   [The Ultimate Docker Compose Media Server Stack](/homelab/ultimate-docker-compose-media-server/)
+*   [A Deep Dive into Astro's Content Collections](/astro/astro-content-collections-deep-dive/)
+*   [Setting up Nginx Proxy Manager for all your Services](/homelab/setting-up-nginx-proxy-manager-for-your-services/)
+*   [Hosting Static Sites on S3 and CloudFront for Pennies](/aws/hosting-static-sites-on-s3-and-cloudfront/)
