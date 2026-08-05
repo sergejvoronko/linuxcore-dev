@@ -1,0 +1,144 @@
+---
+title: "Tame Your Linux Fleet with Bor: Self-Hosted Policy Management for the Homelab"
+description: "Tired of SSH'ing into every machine? Learn how to set up Bor, a self-hosted Linux policy management tool, on your homelab with Docker or K3s."
+pubDate: 2026-08-03
+readingTime: 8
+heroImage: "/images/bor-self-hosted-linux-policy-management-homelab.webp"
+heroImageAlt: "A diagram showing a central Bor server managing policies on multiple Linux client machines in a homelab network."
+section: "homelab"
+# section MUST be exactly one of: homelab | astro | aws
+tags: ["bor", "linux", "homelab", "docker"]
+draft: false
+faqs:
+  - q: "Does Bor support non-Debian/Ubuntu distros?"
+    a: "Officially, the agent supports Debian and Ubuntu derivatives. You can compile it from source for others like Fedora or Arch, but you're on your own for packaging and systemd service files."
+  - q: "Can I run the Bor server without a reverse proxy?"
+    a: "Yes, but you shouldn't. The server exposes gRPC over TLS. A reverse proxy like Traefik or Nginx Proxy Manager handles certificate management and routing, which is essential for secure agent communication."
+  - q: "Is Bor a replacement for Ansible or Puppet?"
+    a: "Not exactly. Bor is for continuous policy enforcement (e.g., this setting must *always* be this value). Ansible is for imperative configuration (e.g., run these steps once to set up a server). They can work together."
+---
+
+Your homelab always starts small. One VM, maybe a Raspberry Pi. Then you get a Proxmox host and suddenly you're herding a dozen virtual machines and containers. Now, a critical security patch for SSH comes out, and you need to update `sshd_config` on all ten of your Linux boxes. Your afternoon is shot, spent in a loop of `ssh`, `nano`, and `systemctl restart sshd`.
+
+This is configuration drift, and it's a security nightmare waiting to happen. You need centralized control. Commercial Mobile Device Management (MDM) solutions are overkill, expensive, and often cloud-based. You need something you can host yourself. You need Bor.
+
+Bor is a lightweight, open-source policy engine for Linux. It's a simple server-agent model that lets you define policies centrally and enforce them across your entire fleet, from a single dashboard. It's exactly the kind of focused, self-hostable tool a homelab needs.
+
+## Why Bor is Different: gRPC and mTLS
+
+Before we get into setup, let's talk about the architecture, because it's what makes Bor a solid choice. Communication between the Bor server and its agents doesn't use a typical REST API with a bearer token. It uses gRPC, a modern RPC framework, tunneled over mTLS (mutual Transport Layer Security).
+
+What does that mean for you?
+
+1.  **Efficiency:** gRPC is binary and multiplexed, making it much faster and less resource-intensive than chatty JSON over HTTP. Perfect for agents that need to check in frequently without bogging down the system.
+2.  **Security:** This is the big one. With standard TLS, only the client verifies the server's identity. With mTLS, the server *also* verifies the client's identity. Each agent gets its own unique, signed certificate during enrollment. An attacker can't just steal an API key and start talking to your server. They'd need the client's private key, which never leaves the agent machine. It's a massive security improvement.
+
+This isn't some academic feature. It's a practical defense against unauthorized machines joining your management network.
+
+## Deploying the Bor Server with Docker
+
+The easiest way to get the Bor server running is with Docker. If you're running a K3s cluster, you can adapt this `docker-compose.yml` into a Deployment and a PersistentVolumeClaim.
+
+Here's a basic `docker-compose.yml` to get you started:
+
+```yaml
+version: "3.8"
+
+services:
+  bor-server:
+    image: ghcr.io/getbor/bor-server:v0.8.0 # Check for the latest version!
+    container_name: bor-server
+    restart: unless-stopped
+    ports:
+      # Expose the UI and the gRPC endpoint
+      - "8080:8080" # Web UI
+      - "8443:8443" # gRPC API
+    volumes:
+      - ./bor-data:/data # Persists the database and certificates
+    environment:
+      # IMPORTANT: Set your server's public FQDN here.
+      # The agent needs to reach this address.
+      - BOR_SERVER_GRPC_ADVERTISE_ADDRESS=bor.your.domain:8443
+      - BOR_SERVER_LOG_LEVEL=info
+      # Optional: Configure the internal database
+      - BOR_SERVER_DB_PATH=/data/bor.db
+```
+
+A few critical things to notice here:
+
+-   **`BOR_SERVER_GRPC_ADVERTISE_ADDRESS`:** This is the most important variable. It tells agents where to connect. It *must* be the fully qualified domain name (FQDN) that your agents can resolve, and it must match the name on your TLS certificate. Don't use a bare IP address.
+-   **Volumes:** You absolutely must use a volume to persist the `/data` directory. This is where Bor stores its SQLite database, server certificates, and all your policy data. Lose this, and you lose everything.
+-   **Reverse Proxy:** While this example exposes the ports directly, you should run this behind a reverse proxy like Traefik or Caddy. The proxy can handle TLS termination for the web UI and pass through the gRPC traffic on port 8443. This simplifies certificate management with Let's Encrypt.
+
+Once it's up, you can access the web UI at `http://<your-server-ip>:8080` to create your first admin user.
+
+## Enrolling an Agent: The "Aha!" Moment
+
+Getting the server running is easy. The real magic happens when you connect your first client.
+
+1.  **Generate a Token:** In the Bor UI, go to the "Enrollment" section and create a new enrollment token. This is a short-lived, single-use token for bootstrapping the agent's identity.
+2.  **Install the Agent:** On a client machine (e.g., an Ubuntu 22.04 VM), download and install the `.deb` package from Bor's releases.
+    ```bash
+    # Check the Bor releases page for the latest version and URL
+    wget https://github.com/getbor/bor/releases/download/v0.8.0/bor-agent_0.8.0_amd64.deb
+    sudo dpkg -i bor-agent_0.8.0_amd64.deb
+    ```
+3.  **Enroll:** Run the enrollment command, pointing it at your server's advertised gRPC address.
+    ```bash
+    sudo bor-agent enroll --token <YOUR_ENROLLMENT_TOKEN> bor.your.domain:8443
+    ```
+
+If your DNS and firewall are configured correctly, the agent will connect to the server, exchange the token for a long-lived client certificate, and start its life as a managed node. It will appear in your Bor dashboard within seconds. This is the moment you realize you'll never manage a fleet with `ssh` again.
+
+**Gotcha:** The number one reason for enrollment failure is DNS or network issues. The agent *must* be able to resolve `bor.your.domain` and reach it on port 8443. Use `curl` or `netcat` from the agent machine to test connectivity before you pull your hair out.
+
+## Making Policies That Matter
+
+Now for the fun part. Let's create two simple, practical policies.
+
+### Example 1: Ensure a Package is Installed
+
+I want to make sure `tailscale` is installed on all my servers. If I forget it during provisioning or someone uninstalls it, Bor should fix it.
+
+In the Bor UI, create a new policy with the "Package Management" module.
+
+-   **Name:** `Ensure Tailscale is Installed`
+-   **Package Name:** `tailscale`
+-   **State:** `present`
+
+Assign this policy to a group of machines (or all of them). The next time the agents check in, they will receive this policy. They'll check if the `tailscale` package is installed. If it isn't, they'll run `apt install tailscale -y` to install it. If it's already there, they'll do nothing. Simple, declarative, and continuous.
+
+### Example 2: Configure Firefox for a Kiosk
+
+Imagine you have a Linux machine in the living room that acts as a dashboard or kiosk. You want Firefox to always open to your Home Assistant page and have certain features locked down.
+
+Create a new policy using the "File Management" module.
+
+-   **Name:** `Firefox Kiosk Policy`
+-   **Path:** `/usr/lib/firefox-esr/distribution/policies.json` (path may vary by distro)
+-   **Content:**
+    ```json
+    {
+      "policies": {
+        "Homepage": {
+          "URL": "http://homeassistant.local:8123",
+          "Locked": true
+        },
+        "DisablePrivateBrowsing": true,
+        "DisableFirefoxAccounts": true
+      }
+    }
+    ```
+-   **Permissions:** `0644`
+
+Assign this policy to your kiosk machine. The Bor agent will write this file to the specified path. Now, even if someone messes with the settings in the Firefox UI, they'll be reset the next time the browser restarts. This is the power of continuous enforcement.
+
+Bor isn't just a configuration tool; it's a way to enforce a baseline security posture and operational consistency across your entire homelab. It's the source of truth for how your machines *should* be configured, and it works tirelessly to correct any deviations. For a growing homelab, that's not a luxury. It's a necessity.
+
+## What's Next
+
+Now that you've got a taste of centralized policy management, you can start building a more robust and secure homelab.
+
+-   [The Ultimate K3s Homelab Setup](/homelab/ultimate-k3s-homelab-setup)
+-   [Securing Homelab Services with Traefik and CrowdSec](/homelab/securing-homelab-services-with-traefik)
+-   [Running Linux Workloads on AWS Graviton](/aws/running-linux-workloads-on-aws-graviton)
