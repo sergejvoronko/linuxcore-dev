@@ -1,5 +1,5 @@
 ---
-title: "Your Container Is Not a Sandbox: Why MicroVMs Are the Future of Homelab Isolation"
+title: "Your Container Is Not a Sandbox: Use MicroVMs Instead"
 description: "Docker containers share the host kernel — learn why that matters, and how microVMs like Firecracker give your homelab real isolation without VM overhead."
 pubDate: 2026-05-04
 readingTime: 8
@@ -99,7 +99,7 @@ services:
 
 ### Enable a Seccomp Profile
 
-Docker's default seccomp profile blocks ~44 syscalls. That's better than nothing, but you can go further with a custom profile that only allows exactly what your service needs. The Docker docs provide a [default profile](https://github.com/moby/moby/blob/master/profiles/seccomp/default.json) you can use as a starting point.
+Docker's default seccomp profile blocks ~44 syscalls. That's better than nothing, but you can go further with a custom profile that only allows exactly what your service needs. The Docker docs cover the [default seccomp profile](https://docs.docker.com/engine/security/seccomp/) you can use as a starting point.
 
 ```bash
 docker run --security-opt seccomp=/path/to/your-profile.json your-image

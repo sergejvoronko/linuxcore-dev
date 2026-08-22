@@ -130,7 +130,7 @@ export const affiliates: AffiliateLink[] = [
   // ── Digital Products ──────────────────────────────────────────────
   {
     slug:        'ansible-bundle',
-    destination: 'https://linuxcore-dev.gumroad.com/l/ansible-homelab-bundle',
+    destination: 'https://airbrushden.gumroad.com/l/linuxcore-ansible',
     label:       'Ansible Homelab Bundle (Gumroad)',
   },
 ];

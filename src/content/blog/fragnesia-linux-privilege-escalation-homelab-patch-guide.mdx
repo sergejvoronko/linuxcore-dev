@@ -1,6 +1,6 @@
 ---
-title: "Fragnesia: How to Check and Patch the Linux Privilege Escalation Exploit on Your Homelab"
-description: "Fragnesia is a Linux kernel LPE exploit hitting homelabs hard. Here's how to check your kernel, patch via apt/dnf/pacman, and apply stopgap mitigations on Proxmox, Ubuntu, and Debian."
+title: "Fragnesia: Check and Patch This Linux LPE on Your Homelab"
+description: "Fragnesia is a Linux kernel LPE exploit hitting homelabs. How to check your kernel, patch via apt/dnf/pacman, and apply stopgap mitigations on Proxmox."
 pubDate: 2026-05-14
 readingTime: 8
 heroImage: "/images/fragnesia-linux-privilege-escalation-homelab-patch-guide.webp"
@@ -50,7 +50,7 @@ apt-cache policy pve-kernel-$(uname -r | sed 's/-pve//')
 pveversion -v
 ```
 
-Proxmox packages its kernel separately. The `pveversion` output will show your kernel package version — cross-reference with the [Proxmox security list](https://forum.proxmox.com/forums/proxmox-ve-security-advisories.107/).
+Proxmox packages its kernel separately. The `pveversion` output will show your kernel package version — cross-reference with the [Proxmox VE announcements forum](https://forum.proxmox.com/forums/proxmox-ve-announcements.16/).
 
 ## Step 2: Check If Unprivileged User Namespaces Are Enabled
 

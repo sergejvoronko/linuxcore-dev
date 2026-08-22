@@ -1,5 +1,5 @@
 ---
-title: "Grafana + Prometheus Homelab Monitoring: Full Stack Setup in 30 Minutes"
+title: "Grafana + Prometheus Homelab Monitoring in 30 Minutes"
 description: "Set up Prometheus, Grafana, Node Exporter, cAdvisor, and Alertmanager with Docker Compose. Real dashboards, real alerts, zero cloud dependency."
 pubDate: 2026-04-07
 heroImage: "/images/grafana-prometheus-homelab.webp"
@@ -466,11 +466,11 @@ After 20–30 seconds, open these URLs in your browser:
 
 | Service | URL | Default login |
 |:--------|:----|:-------------|
-| Grafana | http://localhost:3001 | admin / changeme |
-| Prometheus | http://localhost:9090 | — (no login) |
-| Alertmanager | http://localhost:9093 | — (no login) |
-| Node Exporter | http://localhost:9100/metrics | — |
-| cAdvisor | http://localhost:8080 | — |
+| Grafana | `http://localhost:3001` | admin / changeme |
+| Prometheus | `http://localhost:9090` | — (no login) |
+| Alertmanager | `http://localhost:9093` | — (no login) |
+| Node Exporter | `http://localhost:9100/metrics` | — |
+| cAdvisor | `http://localhost:8080` | — |
 
 **Change the Grafana password immediately** — click your avatar bottom-left →
 Profile → Change password.

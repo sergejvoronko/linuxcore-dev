@@ -1,5 +1,5 @@
 ---
-title: "Docker Compose Homelab Mega-Stack: 20 Self-Hosted Services, One File"
+title: "Docker Compose Homelab Stack: 20 Services, One File"
 description: "Production-ready Docker Compose: AI, monitoring, security, media, and networking — 20 services configured, every port documented, ready to deploy."
 pubDate: 2026-05-12
 heroImage: "/images/docker-compose-homelab-stack.webp"
@@ -576,21 +576,21 @@ After deployment, everything is reachable on your LAN at these addresses
 
 | Service | URL | First login |
 |:--------|:----|:------------|
-| Open WebUI | http://192.168.1.50:3000 | Create account |
-| n8n | http://192.168.1.50:5678 | admin / CHANGE_ME |
-| Grafana | http://192.168.1.50:3001 | admin / CHANGE_ME |
-| Uptime Kuma | http://192.168.1.50:3002 | Create account |
-| NPM Admin | http://192.168.1.50:81 | admin@example.com / changeme |
-| Vaultwarden | http://192.168.1.50:8080 | Create account |
-| Nextcloud | http://192.168.1.50:8081 | admin / CHANGE_ME |
-| Filebrowser | http://192.168.1.50:8082 | admin / admin → change |
-| Jellyfin | http://192.168.1.50:8096 | Create account |
-| Kavita | http://192.168.1.50:5000 | Create account |
-| Portainer | https://192.168.1.50:9443 | Create account |
-| Homepage | http://192.168.1.50:3003 | No auth |
-| Dozzle | http://192.168.1.50:8083 | No auth (add auth in config) |
-| Prometheus | http://192.168.1.50:9090 | No auth |
-| Ollama API | http://192.168.1.50:11434 | No auth |
+| Open WebUI | `http://192.168.1.50:3000` | Create account |
+| n8n | `http://192.168.1.50:5678` | admin / CHANGE_ME |
+| Grafana | `http://192.168.1.50:3001` | admin / CHANGE_ME |
+| Uptime Kuma | `http://192.168.1.50:3002` | Create account |
+| NPM Admin | `http://192.168.1.50:81` | admin@example.com / changeme |
+| Vaultwarden | `http://192.168.1.50:8080` | Create account |
+| Nextcloud | `http://192.168.1.50:8081` | admin / CHANGE_ME |
+| Filebrowser | `http://192.168.1.50:8082` | admin / admin → change |
+| Jellyfin | `http://192.168.1.50:8096` | Create account |
+| Kavita | `http://192.168.1.50:5000` | Create account |
+| Portainer | `https://192.168.1.50:9443` | Create account |
+| Homepage | `http://192.168.1.50:3003` | No auth |
+| Dozzle | `http://192.168.1.50:8083` | No auth (add auth in config) |
+| Prometheus | `http://192.168.1.50:9090` | No auth |
+| Ollama API | `http://192.168.1.50:11434` | No auth |
 
 ---
 

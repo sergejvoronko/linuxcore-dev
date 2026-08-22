@@ -14,23 +14,25 @@ const featured = allPosts
 const recent = allPosts
   .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
   .slice(0, 6);
+
+const siteSchema = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "linuxcore.dev",
+  "url": "https://linuxcore.dev",
+  "description": "Practical Linux infrastructure guides — homelab automation, AWS hybrid setups, and Astro static sites. By Sergej Voronko.",
+  "author": {
+    "@type": "Person",
+    "name": "Sergej Voronko",
+    "jobTitle": "SAP Basis Senior Operations Manager",
+    "url": "https://linuxcore.dev/about"
+  }
+};
 ---
 
 <BaseLayout title="Linux Infrastructure Guides — Homelab, AWS & Astro">
   <link slot="head" rel="preload" as="image" href="/images/hero-bg.webp" fetchpriority="high" />
-  <script type="application/ld+json">{JSON.stringify({
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    "name": "linuxcore.dev",
-    "url": "https://linuxcore.dev",
-    "description": "Practical Linux infrastructure guides — homelab automation, AWS hybrid setups, and Astro static sites. By Sergej Voronko.",
-    "author": {
-      "@type": "Person",
-      "name": "Sergej Voronko",
-      "jobTitle": "SAP Basis Senior Operations Manager",
-      "url": "https://linuxcore.dev/about"
-    }
-  })}</script>
+  <script type="application/ld+json" set:html={JSON.stringify(siteSchema)} />
   <!-- Hero -->
   <section class="hero">
     <div class="hero-inner">

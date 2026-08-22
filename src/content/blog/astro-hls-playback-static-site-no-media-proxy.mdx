@@ -1,0 +1,213 @@
+---
+title: "Astro HLS Playback: Live IPTV From a Static Site"
+description: "Learn how to build a static Astro site for in-browser HLS playback of your homelab IPTV or security camera streams, completely skipping the need for a media proxy."
+pubDate: 2026-07-18
+readingTime: 8
+heroImage: "/images/astro-hls-playback-static-site-no-media-proxy.webp"
+heroImageAlt: "A network diagram showing a live video source feeding an Astro static site, which then serves HLS video directly to a browser without a media proxy."
+section: "astro"
+# section MUST be exactly one of: homelab | astro | aws
+tags: ["astro", "hls", "iptv", "homelab", "video streaming"]
+draft: false
+faqs:
+  - q: "Why not just use a media proxy like Jellyfin or Plex?"
+    a: "Complexity and resources. This method is for displaying a raw stream, not managing a media library. It has fewer moving parts, uses almost no server resources, and avoids transcoding overhead. It's a direct pipe from source to screen."
+  - q: "What about CORS issues? My browser blocks the stream."
+    a: "This is the most common problem. Your HLS source (the IPTV server, go2rtc, etc.) must be configured to send the `Access-Control-Allow-Origin` HTTP header. This is a server-side fix. Your Astro site cannot fix it for you."
+  - q: "Can this handle multiple simultaneous streams on one page?"
+    a: "Yes. The bottleneck isn't Astro, it's the client's browser and network bandwidth. Astro serves a static HTML file, and then the client's browser fetches the HLS manifests and video segments directly from your media source. Astro steps out of the way after the initial page load."
+---
+
+You have a live video stream in your homelab. Maybe it's a security camera feed from Frigate, a local channel from an HDHomeRun tuner, or a curated IPTV playlist. You want to watch it on a custom dashboard, not in a clunky app. The standard advice is to spin up a heavy media server like Jellyfin or write a custom media proxy in Node.js to handle the stream.
+
+That's usually overkill.
+
+If your source already outputs a standard HLS (HTTP Live Streaming) stream, you can play it directly in any modern browser with a few lines of JavaScript. By building your dashboard with Astro, you can create a fast, static front end that serves the video player, which then connects directly to your stream source. No media proxy, no backend server, no unnecessary resource drain.
+
+### The "No Media Proxy" Philosophy
+
+A media proxy sits between your video source and your browser. It fetches the video stream and "re-serves" it. Proxies can be useful for transcoding, authentication, or bypassing network restrictions. They also add a significant point of failure and complexity.
+
+This setup skips that layer entirely. Here’s the data flow:
+
+1.  Your browser loads a static HTML page from your Astro site.
+2.  The page contains a JavaScript video player.
+3.  The player connects *directly* to the HLS stream URL on your local network (e.g., `http://192.168.1.50:8080/stream.m3u8`).
+4.  The browser handles fetching the HLS manifest and video segments.
+
+Your Astro server's job is done after serving the initial HTML and JavaScript. It isn't involved in the video streaming itself. This is brutally efficient. The only things that matter are the client's network connection to the stream source and the source's ability to serve the stream.
+
+### Prerequisite: A Working HLS Source
+
+This whole idea depends on you having a device or service on your network that provides an HLS stream. You can't just point it at a raw video file. HLS breaks video into small `.ts` chunks and provides a `.m3u8` playlist file that tells the player where to find them.
+
+Many homelab tools can do this:
+
+*   **go2rtc:** Excellent for re-streaming RTSP camera feeds as HLS.
+*   **xTeVe:** A popular choice for proxying HDHomeRun tuners and IPTV playlists.
+*   **IPTV-Screener:** A simple Docker container that can take an IPTV playlist and generate clean HLS streams.
+
+I used `IPTV-Screener` for testing because it's so simple to deploy. Here’s a `docker-compose.yml` to get it running. You'll need to provide your own `playlist.m3u` file.
+
+```yaml
+# docker-compose.yml
+version: "3.7"
+services:
+  iptv-screener:
+    image: maltejur/iptv-screener:latest
+    container_name: iptv-screener
+    ports:
+      - "4044:4044"
+    volumes:
+      - ./playlist.m3u:/app/playlist.m3u:ro
+      - ./config.json:/app/config.json:ro
+    restart: unless-stopped
+```
+
+**The Critical Part: CORS Headers**
+
+Your browser, for security reasons, will block a script on `dashboard.your.domain` from fetching a video stream from `192.168.1.50:4044` unless the server at that IP explicitly allows it. This is Cross-Origin Resource Sharing (CORS).
+
+Your HLS source *must* be configured to send the `Access-Control-Allow-Origin` header in its HTTP responses. For `IPTV-Screener`, this is handled in its `config.json`. For other tools, you might need to configure a reverse proxy like Nginx or Caddy to add the header. A lazy but effective header is `Access-Control-Allow-Origin: *`, which allows any domain. If you don't configure this, your browser's developer console will scream about CORS errors, and nothing will work.
+
+### Building the Astro Component
+
+Now for the Astro part. This is surprisingly simple. We'll use the popular `hls.js` library because browser-native HLS support can be inconsistent, especially with error handling and recovery.
+
+Create a new component at `src/components/HlsPlayer.astro`.
+
+```astro
+---
+// src/components/HlsPlayer.astro
+export interface Props {
+  streamUrl: string;
+}
+
+const { streamUrl } = Astro.props;
+---
+
+<!-- hls.js is tiny, loading from a CDN is fine for this. -->
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+<div class="video-container">
+  <video id="hls-video" controls muted autoplay></video>
+</div>
+
+<script define:vars={{ streamUrl }}>
+  document.addEventListener('DOMContentLoaded', () => {
+    const video = document.getElementById('hls-video');
+    const hls = new Hls();
+
+    if (Hls.isSupported()) {
+      console.log(`Attaching HLS stream: ${streamUrl}`);
+      hls.loadSource(streamUrl);
+      hls.attachMedia(video);
+      hls.on(Hls.Events.MANIFEST_PARSED, function () {
+        video.play().catch(() => {
+          console.log("Autoplay was blocked by the browser. User interaction is needed.");
+        });
+      });
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      // Fallback for browsers with native HLS support (like Safari)
+      video.src = streamUrl;
+      video.addEventListener('loadedmetadata', function () {
+        video.play().catch(() => {
+          console.log("Autoplay was blocked by the browser. User interaction is needed.");
+        });
+      });
+    }
+
+    // Basic error handling
+    hls.on(Hls.Events.ERROR, function (event, data) {
+      if (data.fatal) {
+        switch (data.type) {
+          case Hls.ErrorTypes.NETWORK_ERROR:
+            console.error('Fatal network error encountered, trying to recover');
+            hls.startLoad();
+            break;
+          case Hls.ErrorTypes.MEDIA_ERROR:
+            console.error('Fatal media error encountered, trying to recover');
+            hls.recoverMediaError();
+            break;
+          default:
+            // Cannot recover
+            console.error('Unrecoverable HLS error. Destroying HLS instance.');
+            hls.destroy();
+            break;
+        }
+      }
+    });
+  });
+</script>
+
+<style>
+  .video-container {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background-color: #000;
+  }
+  #hls-video {
+    width: 100%;
+    height: 100%;
+  }
+</style>
+```
+
+Here's what this component does:
+1.  It accepts a `streamUrl` prop.
+2.  It pulls in the `hls.js` library from a CDN.
+3.  It defines a standard HTML `<video>` element. The `autoplay` and `muted` attributes are important; most browsers block un-muted autoplay.
+4.  The client-side `<script>` tag (not processed by Astro) initializes `hls.js`, attaches it to the `<video>` element, and points it at your stream URL.
+5.  It includes a fallback for Safari, which has good native HLS support.
+6.  It has some basic error handling to try and recover from network hiccups.
+
+Now, you can use this component anywhere on your Astro site.
+
+```astro
+---
+// src/pages/dashboard.astro
+import HlsPlayer from '../components/HlsPlayer.astro';
+
+const securityCamFeed = "http://192.168.1.110:8083/stream.m3u8";
+const localNewsFeed = "http://192.168.1.50:4044/stream/1.m3u8";
+---
+
+<html lang="en">
+  <head>
+    <title>Homelab Dashboard</title>
+  </head>
+  <body>
+    <h1>Live Streams</h1>
+    <div class="grid">
+      <div>
+        <h2>Security Camera</h2>
+        <HlsPlayer streamUrl={securityCamFeed} />
+      </div>
+      <div>
+        <h2>Local News</h2>
+        <HlsPlayer streamUrl={localNewsFeed} />
+      </div>
+    </div>
+  </body>
+</html>
+```
+
+Build your site (`npm run build`), and the resulting static files in the `dist/` directory contain everything needed. Serve them with any static web server.
+
+### Real-World Gotchas
+
+This setup works incredibly well, but you have to respect the architecture.
+*   **Network Path is King:** The browser playing the video must have a direct network route to the `streamUrl`. If you access your Astro dashboard from outside your home network, you need a VPN like Tailscale or WireGuard to access the local stream IP. The Astro site itself can be hosted anywhere, but the stream source must be reachable by the client.
+*   **No Transcoding:** This is a raw feed. If your camera outputs a 20 Mbps 4K stream, that's what the browser will try to download. There's no server in the middle to downscale it for a slow connection. You get what the source gives you.
+*   **Authentication:** The stream URL is sitting in plain text in the HTML/JS source. This method is not suitable for streams that require robust authentication. It's designed for trusted networks.
+
+I was surprised by how little code it took. The hardest part wasn't Astro or HLS, it was digging through the documentation for my camera's firmware to figure out how to get a clean HLS stream out of it in the first place. The Astro side of things was trivial once the source was solid.
+
+## What's Next
+
+Once you have a direct HLS pipeline, you can build all sorts of interesting things on top of it.
+
+*   [Set Up a Rock-Solid Homelab Network with Tailscale](/homelab/tailscale-homelab-networking-guide/)
+*   [Build a Dynamic Data Dashboard with Astro and Squoze](/astro/astro-squoze-drizzle-turso-dashboard/)
+*   [Using Caddy as a Reverse Proxy for Docker Containers](/homelab/caddy-reverse-proxy-for-docker/)
+

@@ -1,6 +1,6 @@
 ---
-title: "AWS S3 Backups for Your Homelab: Automated, Encrypted, Under €5/Month"
-description: "Back up your homelab to AWS S3 and Glacier — Proxmox VMs, Docker volumes, Nextcloud — using restic with automated scheduling and real cost numbers."
+title: "AWS S3 Homelab Backups: Automated and Under €5/Month"
+description: "Back up your homelab to AWS S3 and Glacier (Proxmox VMs, Docker volumes, Nextcloud) using restic with automated scheduling and real cost numbers."
 pubDate: 2026-05-26
 heroImage: "/images/aws-s3-homelab-backup.webp"
 heroImageAlt: "AWS S3 console showing encrypted homelab backup buckets with Glacier lifecycle policy configured"
@@ -14,11 +14,11 @@ draft: false
 affiliate: true
 faqs:
   - q: "How much does S3 storage cost per month for a homelab?"
-    a: "S3 Standard costs approximately €0.023 per GB per month in eu-west-1. A 100 GB backup repository costs roughly €2.30/month. Adding a lifecycle policy to move data to Glacier after 30 days cuts the storage cost to €0.004 per GB — under €0.50/month for the same 100 GB."
+    a: "S3 Standard costs approximately €0.023 per GB per month in eu-west-1. A 100 GB backup repository costs roughly €2.30/month. Adding a lifecycle policy to move data to Glacier after 30 days cuts the storage cost to €0.004 per GB, under €0.50/month for the same 100 GB."
   - q: "Does restic work with Glacier?"
-    a: "Restic backs up to S3 Standard. Glacier is applied automatically via S3 lifecycle policies on the bucket — restic is not aware of it. Restoring from Glacier requires initiating a retrieval first, which takes minutes to hours depending on the tier."
+    a: "Restic backs up to S3 Standard. Glacier is applied automatically via S3 lifecycle policies on the bucket, and restic is not aware of it. Restoring from Glacier requires initiating a retrieval first, which takes minutes to hours depending on the tier."
   - q: "Is my data encrypted before it leaves my homelab?"
-    a: "Yes. restic encrypts all data client-side using AES-256 before uploading. The encryption key never leaves your machine — not even AWS can read your backup data."
+    a: "Yes. restic encrypts all data client-side using AES-256 before uploading. The encryption key never leaves your machine; not even AWS can read your backup data."
   - q: "Can I restore individual files without downloading the entire backup?"
     a: "Yes. restic supports granular restores. Use restic restore latest --target /restore/path --include /path/to/file to restore a single file or directory. You only download the relevant chunks."
 ---
@@ -30,7 +30,7 @@ location it sits in.
 House fire. Flood. Theft. Power surge that kills multiple drives
 simultaneously. These are low-probability events but not zero-probability
 events. If your homelab is your only copy of your photos, documents,
-configs, and VM data — you don't have a backup strategy, you have a
+configs, and VM data, you don't have a backup strategy. You have a
 false sense of security.
 
 The 3-2-1 backup rule: **3 copies** of data, on **2 different media**,
@@ -46,7 +46,7 @@ This guide builds a complete offsite backup pipeline using:
 - **systemd timers** — reliable scheduling without cron's failure modes
 
 A typical homelab with 100GB of important data costs under €3/month
-to back up to S3. The config files and databases that actually matter —
+to back up to S3. The config files and databases that actually matter run
 probably under €0.50/month.
 
 ---
@@ -112,7 +112,7 @@ Click **Create bucket**.
 ### Step 3 — Configure Lifecycle Rules (Save Money on Old Backups)
 
 S3 Standard costs €0.023/GB/month. S3 Glacier Instant Retrieval costs
-€0.004/GB/month — 83% cheaper for data you rarely access.
+€0.004/GB/month, 83% cheaper for data you rarely access.
 
 Set up lifecycle rules to automatically move old backups to Glacier:
 
@@ -192,7 +192,7 @@ IAM → **Users** → **Create user**:
 After creating the user → **Security credentials** tab →
 **Create access key** → select **Other** → Create.
 
-**Save the Access Key ID and Secret Access Key now** — you can't
+**Save the Access Key ID and Secret Access Key now.** You can't
 retrieve the secret key again after this screen.
 
 ---
@@ -227,7 +227,7 @@ export RESTIC_PASSWORD=YOUR_STRONG_BACKUP_PASSWORD
 ```
 
 The `RESTIC_PASSWORD` encrypts your backups. **Write this down and
-store it somewhere safe** — without it, your backups are unrecoverable.
+store it somewhere safe.** Without it, your backups are unrecoverable.
 A password manager like Vaultwarden (from the
 [Docker Compose stack](/homelab/docker-compose-homelab-stack)) is ideal.
 
@@ -261,7 +261,7 @@ restic backup ~/homelab-ansible
 restic backup /etc/pve /var/lib/pve-cluster
 ```
 
-First run will be slow — it uploads everything. Subsequent runs are
+First run will be slow, since it uploads everything. Subsequent runs are
 fast because restic only uploads new or changed chunks.
 
 **Check what was stored:**
@@ -402,7 +402,7 @@ cat /var/log/restic-backup.log
 
 ### Step 10 — Schedule with systemd Timer
 
-systemd timers are more reliable than cron — they log properly, retry
+systemd timers are more reliable than cron. They log properly, retry
 on failure, and handle machines that were off at the scheduled time.
 
 Create the service unit:
@@ -528,7 +528,7 @@ echo "Proxmox backup to S3 complete"
 sudo chmod +x /usr/local/bin/proxmox-backup-s3.sh
 ```
 
-Run this weekly (VM backups are large — daily is expensive):
+Run this weekly (VM backups are large, so daily is expensive):
 
 ```bash
 sudo nano /etc/systemd/system/proxmox-backup-s3.timer
@@ -550,7 +550,7 @@ WantedBy=timers.target
 
 ## Part 4 — Restoring from Backup
 
-A backup you haven't tested is not a backup. Test restores regularly —
+A backup you haven't tested is not a backup. Test restores regularly:
 at minimum, once after initial setup and once every few months.
 
 **List all snapshots:**
@@ -622,8 +622,8 @@ scenario, that's irrelevant.
 
 ## Monitoring Your Backups
 
-The backup that silently fails for three months and you only discover
-it when you need to restore — that's the worst outcome. Monitor it.
+The backup that silently fails for three months, then surfaces only when
+you need to restore, is the worst outcome. Monitor it.
 
 **Check last successful backup:**
 
@@ -643,10 +643,10 @@ journalctl -u restic-backup.service --since "7 days ago"
 
 Create a workflow: **Schedule Trigger** (daily, 9am) →
 **Execute Command** (`systemctl is-active restic-backup.service`) →
-**IF** (last run failed) → **Telegram** ("⚠️ Backup failed — check logs").
+**IF** (last run failed) → **Telegram** ("⚠️ Backup failed, check logs").
 
 Or add the notification directly to the backup script (lines are already
-commented out in the script above — uncomment and fill in your token).
+commented out in the script above; uncomment and fill in your token).
 
 ---
 
@@ -655,7 +655,7 @@ commented out in the script above — uncomment and fill in your token).
 This is the right question to ask. If an attacker gets your IAM
 credentials they can:
 
-- Read your backups (they're encrypted — useless without your restic password)
+- Read your backups (they're encrypted, useless without your restic password)
 - Upload data to your bucket (costs you money, but can be blocked with budget alerts)
 - Delete your backups (this is the real risk)
 
@@ -664,14 +664,14 @@ credentials they can:
 In your S3 bucket settings → **Object Lock** → Enable.
 Set a retention period of 30 days in Governance mode.
 
-With Object Lock enabled, no credentials — even root — can delete
+With Object Lock enabled, no credentials, not even root, can delete
 objects before the retention period expires. Your backups are protected
 even from a fully compromised AWS account.
 
 **Set a billing alert:**
 
 AWS Console → **Billing** → **Budgets** → Create budget.
-Set an alert at €10/month — any unexpected spike in S3 usage will
+Set an alert at €10/month, so any unexpected spike in S3 usage will
 notify you before it costs much.
 
 **The restic encryption is your last line of defence:**

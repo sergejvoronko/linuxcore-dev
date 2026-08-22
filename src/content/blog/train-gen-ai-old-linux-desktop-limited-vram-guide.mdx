@@ -1,0 +1,142 @@
+---
+title: "Train a Gen AI Model on an Old Linux Desktop (Low VRAM)"
+description: "Stop just running models. Learn to train and fine-tune your own generative AI on a Linux desktop with limited VRAM. A practical guide for your homelab."
+pubDate: 2026-07-18
+readingTime: 8
+heroImage: "/images/train-gen-ai-old-linux-desktop-limited-vram-guide.webp"
+heroImageAlt: "A person working on a Linux desktop computer with code on the screen, surrounded by server hardware, symbolizing a local machine learning homelab."
+section: "homelab"
+tags: ["local ai", "machine learning", "homelab", "nvidia", "docker"]
+draft: false
+faqs:
+  - q: "How much VRAM do I need to start training?"
+    a: "For fine-tuning modern models, 8GB is a workable minimum, but 12GB+ is much better. With 8GB, you'll be limited to smaller models (under 7B parameters) and aggressive optimization. With 24GB (like a 3090/4090), you can tackle most common fine-tuning tasks comfortably."
+  - q: "Can I do this with an AMD GPU?"
+    a: "Yes, but it's a world of pain. ROCm is AMD's answer to CUDA, but library support is inconsistent and community help is scarce. Unless you enjoy debugging compiler issues more than training models, stick with NVIDIA for now. It's the path of least resistance."
+  - q: "Why use Docker? Isn't it slower?"
+    a: "The performance overhead is negligible for GPU-bound tasks. The benefit is massive: you get a clean, reproducible environment with matching CUDA, cuDNN, and Python library versions. It saves you from destroying your host OS's NVIDIA drivers, a mistake you only make once."
+---
+
+Running models with Ollama on your homelab is a great start. But the real fun begins when you stop using other people's models and start training your own. Whether it's fine-tuning a language model on your personal notes or training a diffusion model to generate kick drum samples, customization is where local AI gets interesting.
+
+Your old Linux gaming rig with that dusty GTX 1080 Ti or RTX 2070 is more capable than you think. The biggest roadblock isn't raw compute power; it's VRAM. Training models consumes an order of magnitude more VRAM than running inference. This guide shows you how to work around that limitation without buying an H100.
+
+## VRAM Is King (and You're a Pauper)
+
+During inference, a model's weights are loaded into VRAM, and that's most of the memory cost. During training, it's a different story. The GPU has to hold:
+
+*   The model weights.
+*   The gradients (how the weights should change).
+*   The optimizer state (like momentum from previous steps).
+*   The actual data batch you're training on.
+
+For a 7-billion-parameter model, the weights alone might take 14-28GB. The optimizer states can easily double that. Suddenly, your 8GB or 12GB card feels tiny. Our goal isn't to brute-force the problem. It's to be clever about memory management.
+
+## A Sane, Reproducible Environment with Docker
+
+Before you `pip install` a hundred packages and inevitably break your NVIDIA drivers, stop. The AI/ML ecosystem is a fragile mess of version dependencies. PyTorch needs a specific CUDA version, which needs a specific NVIDIA driver version.
+
+Don't manage this on your host OS. Use Docker. The NVIDIA Container Toolkit lets containers access your GPU directly with minimal overhead. This isolates your projects and makes your work reproducible.
+
+Here’s a `docker-compose.yml` to get you started. It uses an official PyTorch image from NVIDIA's NGC catalog, which comes with all the CUDA and cuDNN baggage pre-configured.
+
+```yaml
+# docker-compose.yml
+version: '3.8'
+services:
+  pytorch:
+    image: nvcr.io/nvidia/pytorch:24.05-py3 # Find the latest tag on NGC
+    container_name: ml-lab
+    volumes:
+      - ./project:/workspace # Mount your project folder
+    shm_size: '16gb' # Important: Increase shared memory for data loaders
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    stdin_open: true # Keep container running
+    tty: true
+```
+
+Save this file, create a `./project` directory for your code and data, and run `docker-compose up -d`. You now have a shell inside a perfectly configured environment: `docker exec -it ml-lab /bin/bash`.
+
+## Your Toolkit for Low-VRAM Training
+
+You can't shrink the model, but you can change how you load and process it. The Hugging Face ecosystem provides some excellent tools for this. You'll want to get familiar with `transformers`, `accelerate`, and `bitsandbytes`.
+
+### 1. Quantization (QLoRA)
+
+Quantization reduces the precision of the model's weights. Instead of using 32-bit floating-point numbers (FP32), you can use 16-bit (FP16), 8-bit (int8), or even 4-bit (NF4). This drastically cuts the memory required for the model weights.
+
+**QLoRA (Quantized Low-Rank Adaptation)** is the technique you should be using. It freezes the bulk of the model in a quantized 4-bit state and only trains small, efficient "adapter" layers. The result: you can fine-tune a 7B model on as little as 6GB of VRAM. It feels like magic, but it's just smart math.
+
+Implementing it with Hugging Face's TRL is straightforward. You define a `BitsAndBytesConfig` and pass it to your model loader.
+
+```python
+# Inside your Python training script
+import torch
+from transformers import AutoModelForCausalLM, BitsAndBytesConfig
+
+# Configure 4-bit quantization
+quantization_config = BitsAndBytesConfig(
+    load_in_4bit=True,
+    bnb_4bit_quant_type="nf4",
+    bnb_4bit_compute_dtype=torch.bfloat16,
+    bnb_4bit_use_double_quant=True,
+)
+
+# Load the model with the config
+model = AutoModelForCausalLM.from_pretrained(
+    "mistralai/Mistral-7B-v0.1",
+    quantization_config=quantization_config,
+    device_map="auto" # Let accelerate handle GPU placement
+)
+```
+
+### 2. Gradient Accumulation
+
+This is a classic trick. If you can't fit a batch size of 32 in memory, you can simulate it. You run a smaller batch (say, size 2), calculate the gradients, but *don't* update the model weights yet. You do this 16 times, accumulating the gradients from each small batch. Then, you perform a single weight update using the combined gradients.
+
+The effect is the same as using a batch size of 32, but the peak VRAM usage is based on a batch size of 2. The cost is speed; you're doing more processing for each "real" step.
+
+In the `transformers` `TrainingArguments`, you just set this:
+
+```python
+# Inside your TrainingArguments
+training_args = TrainingArguments(
+    per_device_train_batch_size=2,      # Your tiny, VRAM-friendly batch size
+    gradient_accumulation_steps=16,   # The number of steps to accumulate
+    ...
+)
+```
+
+### 3. CPU Offloading
+
+This is your last resort. If you're still running out of VRAM, you can offload parts of the model or the optimizer state to your system's RAM. The `accelerate` library can handle this automatically.
+
+It will be *slow*. Moving data back and forth between system RAM and VRAM over the PCIe bus is a massive bottleneck. But if the alternative is not running the training at all, slow is better than nothing.
+
+You enable it through an `accelerate` config file or directly in your script.
+
+## Common Pitfalls and Gotchas
+
+I've hit every one of these. You probably will, too.
+
+*   **`CUDA out of memory`**: The error you will see a thousand times. It means exactly what it says. The fix is always the same: reduce memory usage. Decrease `per_device_train_batch_size`. If it's already 1, increase `gradient_accumulation_steps`. Enable 4-bit quantization if you haven't already.
+*   **Mismatched Drivers and Toolkits**: You ran `sudo apt upgrade` on your host and now Docker can't see your GPU. This is why you use Docker. It isolates you, but you still need a stable NVIDIA driver on the host. Pick one from a long-term support branch and don't touch it.
+*   **Unrealistic Expectations**: Fine-tuning a 7B model on a single RTX 3060 will take days, not hours. Training a model from scratch is out of the question. Your goal is to specialize an existing pre-trained model on a small, high-quality dataset. This is a marathon, not a sprint.
+*   **Data Preparation is 90% of the Work**: The model is only as good as your data. Cleaning, formatting, and curating your dataset will take far more time than writing the training script. Garbage in, garbage out.
+
+Don't be discouraged by the VRAM wall. With the right tools and techniques, that Linux machine in the corner is a surprisingly capable ML workstation. You just have to be a bit more methodical than the folks with a rack of A100s.
+
+## What's Next
+
+Once you've fine-tuned your first model, you'll want to put it to work. Here are a few places to go from here:
+
+-   [Deploy Your Own Private Docker Registry in Your Homelab](/homelab/private-docker-registry-homelab)
+-   [Build a Cost-Effective AWS GPU Instance for AI Experiments](/aws/ec2-gpu-instance-ai-cost-guide)
+-   [Self-Host Your Own GitHub Actions Runners with Proxmox](/homelab/self-hosted-github-runners-proxmox)
+-   [Building a Serverless API with Astro and AWS Lambda](/astro/serverless-api-astro-lambda)

@@ -5,4 +5,4 @@ Disallow: /thanks/
 Disallow: /shop/success/
 Disallow: /gpsr/
 
-Sitemap: https://linuxcore.dev/sitemap.xml
+Sitemap: https://linuxcore.dev/sitemap-index.xml

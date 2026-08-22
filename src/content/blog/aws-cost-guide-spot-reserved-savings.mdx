@@ -1,5 +1,5 @@
 ---
-title: "Spot Instances, Reserved Instances, and Savings Plans: A Practical Cost Guide"
+title: "AWS Spot, Reserved, and Savings Plans: Cost Guide"
 description: "AWS pricing is confusing by design. Spot, reserved, and savings plans in plain language with real examples and a decision framework for solo operators."
 pubDate: 2026-04-28
 readingTime: 11
@@ -10,20 +10,20 @@ tags: ["aws", "cost-optimization", "spot-instances", "reserved-instances", "savi
 draft: false
 faqs:
   - q: "What happens when AWS interrupts a spot instance?"
-    a: "AWS gives a 2-minute warning via instance metadata and EventBridge before terminating a spot instance. Use this window to checkpoint state, drain connections, or trigger a replacement. For stateless workloads like Ollama inference or batch jobs, interruption is a minor inconvenience — just relaunch with the same script."
+    a: "AWS gives a 2-minute warning via instance metadata and EventBridge before terminating a spot instance. Use this window to checkpoint state, drain connections, or trigger a replacement. For stateless workloads like Ollama inference or batch jobs, interruption is a minor inconvenience; just relaunch with the same script."
   - q: "Are Reserved Instances worth it for a homelab operator?"
     a: "Only if you run an instance continuously for a year or more. A 1-year All Upfront Reserved Instance saves up to 40% over on-demand. But if you stop the instance on weekends or have variable usage, a Savings Plan is more flexible and saves a similar amount without locking you to a specific instance type."
   - q: "What is the difference between a Reserved Instance and a Savings Plan?"
     a: "Reserved Instances commit you to a specific instance type, size, and region. Savings Plans commit you to a spend rate (e.g., €0.10/hour) but apply the discount across any instance type or region that matches your plan type. Savings Plans are more flexible and are generally preferred for new commitments."
   - q: "How do I avoid unexpected AWS bills?"
-    a: "Set up a billing alarm in CloudWatch to notify you when your monthly spend exceeds a threshold. Enable AWS Cost Anomaly Detection for automated unusual-spend alerts. Use the Free Tier usage dashboard to track what counts toward free limits. Never leave GPU instances or NAT Gateways running unintentionally — those are the most common sources of surprise charges."
+    a: "Set up a billing alarm in CloudWatch to notify you when your monthly spend exceeds a threshold. Enable AWS Cost Anomaly Detection for automated unusual-spend alerts. Use the Free Tier usage dashboard to track what counts toward free limits. Never leave GPU instances or NAT Gateways running unintentionally; those are the most common sources of surprise charges."
 ---
 
 import { Image } from 'astro:assets';
 
-AWS pricing is a maze on purpose. The more complicated the options, the more likely you are to give up and pay on-demand rates — which is exactly what Amazon wants.
+AWS pricing is a maze on purpose. The more complicated the options, the more likely you are to give up and pay on-demand rates, which is exactly what Amazon wants.
 
-But if you understand three pricing models — spot, reserved, and Savings Plans — you can cut your AWS bill by 40–72% without changing what you run. This guide explains all three in plain terms, with real numbers and a clear framework for deciding which to use.
+But if you understand three pricing models (spot, reserved, and Savings Plans) you can cut your AWS bill by 40–72% without changing what you run. This guide explains all three in plain terms, with real numbers and a clear framework for deciding which to use.
 
 No enterprise budgets assumed. This is for solo operators and small teams spending €10–200/month on AWS.
 
@@ -104,9 +104,7 @@ aws ec2 describe-spot-price-history \
 
 ### How they work
 
-You commit to using a specific instance type in a specific region for 1 or 3 years. In exchange, AWS gives you a significant discount. You pay whether you use the instance or not.
-
-Think of it like signing a lease. Cheaper monthly rate, but you're locked in.
+You commit to using a specific instance type in a specific region for 1 or 3 years. In exchange, AWS gives you a significant discount. You pay whether you use the instance or not. It's a lease: cheaper monthly rate, but you're locked in for the full term.
 
 ### Pricing tiers
 
@@ -143,9 +141,7 @@ For a homelab operator running a single small instance long-term, Standard is us
 
 ### How they work
 
-Savings Plans are AWS's newer, more flexible answer to reserved instances. Instead of committing to a specific instance type, you commit to a dollar amount of compute per hour. AWS applies the discount automatically to whatever instances you run.
-
-Think of it like a prepaid phone plan. You commit to spending €X/hour, and AWS gives you the best rate available for whatever compute you're actually using.
+Savings Plans are AWS's newer, more flexible answer to reserved instances. Instead of committing to a specific instance type, you commit to a dollar amount of compute per hour. AWS applies the discount automatically to whatever instances you run, giving you the best rate available for whatever compute you're actually using.
 
 ### Two flavors
 
@@ -212,12 +208,12 @@ Your AWS workloads
 
 ### Step 3: Start small
 
-If you're spending less than €20/month total, the savings from committing are small in absolute terms. A 50% discount on €20 saves you €10/month — real money, but not worth agonizing over.
+If you're spending less than €20/month total, the savings from committing are small in absolute terms. A 50% discount on €20 saves you €10/month: real money, but not worth agonizing over.
 
 **My recommendation for a typical homelab-to-cloud setup:**
 
 1. Run on-demand for the first 2–3 months while you figure out what you actually use
-2. Look at your billing dashboard — identify which instances run 24/7
+2. Look at your billing dashboard and identify which instances run 24/7
 3. Buy a 1-year EC2 Instance Savings Plan covering your baseline always-on compute
 4. Use spot for everything burst-oriented (GPU, CI/CD, batch processing)
 5. Leave everything else on-demand

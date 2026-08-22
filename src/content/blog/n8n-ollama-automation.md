@@ -1,5 +1,5 @@
 ---
-title: "n8n + Ollama: Build an AI Automation Agent on Your Own Server"
+title: "n8n + Ollama: An AI Automation Agent on Your Server"
 description: "Connect local LLMs to real workflows: auto-summarise RSS feeds, analyse logs with AI, send Telegram alerts — all self-hosted, private, and free."
 pubDate: 2026-04-14
 heroImage: "/images/n8n-ollama-automation.webp"
@@ -15,7 +15,7 @@ faqs:
   - q: "Is n8n completely free to self-host?"
     a: "The self-hosted community edition is free with no workflow or execution limits. The n8n cloud service has paid tiers, but hosting n8n yourself on Docker costs nothing beyond your server's running costs."
   - q: "Can n8n use cloud LLMs like OpenAI instead of Ollama?"
-    a: "Yes. n8n has native nodes for OpenAI, Anthropic, and other cloud AI providers. You can mix cloud and local models in the same workflow — for example, use Ollama for private log analysis and OpenAI for a public-facing chatbot."
+    a: "Yes. n8n has native nodes for OpenAI, Anthropic, and other cloud AI providers. You can mix cloud and local models in the same workflow. For example, use Ollama for private log analysis and OpenAI for a public-facing chatbot."
   - q: "How much memory does n8n use?"
     a: "n8n itself uses around 200-400 MB of RAM at idle. Active workflows that handle large payloads or many concurrent executions can push this higher. For a lightly used automation server, 1 GB allocated to the n8n container is comfortable."
   - q: "Do I need programming skills to use n8n?"
@@ -25,9 +25,9 @@ faqs:
 Running a local LLM is impressive. Having it actually do things for you is
 the point.
 
-Ollama gives you a private AI brain. n8n gives it hands — the ability to
-read files, call APIs, send messages, monitor systems, and trigger actions
-on a schedule or in response to events.
+Ollama runs the model privately. n8n is what connects it to everything else:
+reading files, calling APIs, sending messages, monitoring systems, and
+triggering actions on a schedule or in response to events.
 
 Together they form an automation stack that would cost $200–$500/month in
 cloud services. Running self-hosted, it costs nothing beyond the electricity
@@ -120,7 +120,7 @@ Start it:
 docker compose up -d
 ```
 
-Open **http://localhost:5678** — you'll see the n8n editor. Create an account
+Open **`http://localhost:5678`** — you'll see the n8n editor. Create an account
 (stored locally, not sent anywhere).
 
 > **The `extra_hosts` line is critical.** Ollama runs on your host machine.
@@ -212,7 +212,7 @@ Content: {{ $json.contentSnippet }}
 ```
 
 **Result:** Every morning at 7am, Telegram delivers a clean bullet-point
-digest of the day's tech news — each item summarised in one sentence by
+digest of the day's tech news. Each item is summarised in one sentence by
 your local LLM. No ads, no tracking, no API cost.
 
 ---
@@ -287,7 +287,7 @@ LOG:
 ```
 
 **Result:** Every morning you get either a green tick saying the system
-is clean, or a detailed summary of exactly what needs attention — written
+is clean, or a detailed summary of exactly what needs attention, written
 in plain English by your local LLM, not decoded from raw log format.
 
 ---
@@ -363,7 +363,7 @@ _{{ $now.format('HH:mm DD MMM') }}_
 ```
 
 **Result:** When a service goes down, Telegram sends you the AI diagnosis
-and restart result within 5 minutes — often before you'd notice it yourself.
+and restart result within 5 minutes, often before you'd notice it yourself.
 
 ---
 
@@ -523,7 +523,7 @@ docker exec -it n8n curl http://host.docker.internal:11434
 # Should return: Ollama is running
 ```
 
-If it times out — the `extra_hosts` entry in `docker-compose.yml` is
+If it times out, the `extra_hosts` entry in `docker-compose.yml` is
 missing or Ollama isn't running. Check `systemctl status ollama`.
 
 **Ollama node returns empty response:**
@@ -539,7 +539,7 @@ Test the bot token directly:
 curl "https://api.telegram.org/bot<YOUR_TOKEN>/getMe"
 ```
 
-Should return your bot's info. If it returns an error — the token is wrong.
+Should return your bot's info. If it returns an error, the token is wrong.
 
 **Workflow runs but does nothing:**
 
@@ -553,7 +553,7 @@ fastest way to debug.
 ## What's Next
 
 You now have an automation layer that connects your local AI to real
-actions. The four workflows above are starting points — n8n has 400+
+actions. The four workflows above are starting points, and n8n has 400+
 built-in integrations. Some directions worth exploring from here:
 
 **Proxmox integration** — use the HTTP Request node to call the Proxmox

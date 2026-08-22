@@ -1,5 +1,5 @@
 ---
-title: "Proxmox VE Homelab Setup: Complete Installation and Configuration Guide (2026)"
+title: "Proxmox VE Homelab Setup: Install and Configure (2026)"
 description: "Install Proxmox VE 8 on a mini PC, configure storage, networking, and GPU passthrough, then deploy your first VMs and LXC containers — complete 2026 guide."
 pubDate: 2026-05-05
 heroImage: "/images/proxmox-homelab-setup.webp"

@@ -1,5 +1,5 @@
 ---
-title: "WireGuard vs Tailscale for Homelab Remote Access: Full Setup Guide (2026)"
+title: "WireGuard vs Tailscale for Homelab Remote Access (2026)"
 description: "Secure remote access to your homelab without port forwarding. Set up WireGuard and Tailscale, understand when to use each, and lock down your Linux servers."
 pubDate: 2026-04-21
 heroImage: "/images/wireguard-tailscale-guide.webp"
@@ -13,11 +13,11 @@ featured: false
 draft: false
 faqs:
   - q: "Do I need to open ports in my router for WireGuard or Tailscale?"
-    a: "WireGuard requires one UDP port forwarded from your router to the server (default 51820). Tailscale requires no port forwarding at all — it uses NAT traversal to punch through firewalls, making it the simpler option for most homelab setups."
+    a: "WireGuard requires one UDP port forwarded from your router to the server (default 51820). Tailscale requires no port forwarding at all: it uses NAT traversal to punch through firewalls, making it the simpler option for most homelab setups."
   - q: "Is Tailscale free?"
     a: "Tailscale is free for personal use with up to 3 users and 100 devices. For a homelab, the free tier is more than sufficient. The paid plans add more users, RBAC, and compliance features that most homelabbers don't need."
   - q: "What is the difference between WireGuard and Tailscale?"
-    a: "WireGuard is a VPN protocol you configure yourself — you manage keys, IP addressing, routing, and peer configs. Tailscale builds on WireGuard but automates all of that: key exchange, NAT traversal, and device management happen automatically. WireGuard gives more control; Tailscale is faster to set up."
+    a: "WireGuard is a VPN protocol you configure yourself: you manage keys, IP addressing, routing, and peer configs. Tailscale builds on WireGuard but automates all of that: key exchange, NAT traversal, and device management happen automatically. WireGuard gives more control; Tailscale is faster to set up."
   - q: "Can I use WireGuard and Tailscale simultaneously on the same server?"
     a: "Yes. They use different network interfaces (wg0 for WireGuard, tailscale0 for Tailscale) and can coexist without conflict. A common pattern is to use Tailscale for everyday access and keep WireGuard as a fallback for cases where Tailscale's relay servers are unavailable."
 ---
@@ -29,7 +29,7 @@ or turned into spam relays.
 There is a better way. Two of them, actually.
 
 **WireGuard** is a modern VPN protocol built directly into the Linux kernel.
-Fast, minimal, cryptographically solid. You control everything — the server,
+Fast, minimal, cryptographically solid. You control everything: the server,
 the keys, the routing.
 
 **Tailscale** is WireGuard with a coordination layer on top. It handles key
@@ -44,8 +44,8 @@ situation in your homelab.
 
 ## The Core Problem Both Solve
 
-Your homelab sits behind your home router. To reach it from outside — from
-your phone, your work laptop, a hotel Wi-Fi — you have three options:
+Your homelab sits behind your home router. To reach it from outside (from
+your phone, your work laptop, a hotel Wi-Fi) you have three options:
 
 **Option A — Open a port on your router** (bad)
 ```
@@ -110,13 +110,13 @@ lsmod | grep wireguard
 ```
 
 WireGuard is built into the Linux kernel since 5.6. On Ubuntu 22.04+ it's
-already there — the package just adds the userspace tools.
+already there, and the package just adds the userspace tools.
 
 ---
 
 ### Step 2 — Generate Key Pairs
 
-WireGuard uses public-key cryptography. Every peer — server and client —
+WireGuard uses public-key cryptography. Every peer, server and client alike,
 needs its own keypair.
 
 ```bash
@@ -175,7 +175,7 @@ PublicKey = <phone_public_key>
 AllowedIPs = 10.10.0.3/32
 ```
 
-Replace `eth0` with your actual network interface name — check with `ip link`.
+Replace `eth0` with your actual network interface name (check with `ip link`).
 
 Enable IP forwarding permanently:
 
@@ -201,7 +201,7 @@ sudo wg show
 
 `wg show` prints every peer, their public key, their allowed IPs, and
 when they last sent a handshake. If you see `latest handshake: X seconds ago`
-after connecting a client — the tunnel is live.
+after connecting a client, the tunnel is live.
 
 Open the firewall:
 
@@ -324,7 +324,7 @@ chmod +x /usr/local/bin/duckdns-update.sh
 ```
 
 Get your token and subdomain at **duckdns.org** (free). Your WireGuard
-endpoint becomes `yoursubdomain.duckdns.org:51820` — works even when
+endpoint becomes `yoursubdomain.duckdns.org:51820`, which works even when
 your home IP changes.
 
 ---
@@ -348,7 +348,7 @@ sudo tailscale up
 ```
 
 This prints an authentication URL. Open it in a browser, log in with
-Google, GitHub, or email — your choice. The machine is now part of your
+Google, GitHub, or email, whichever you prefer. The machine is now part of your
 Tailscale network (called a **tailnet**).
 
 Check it worked:
@@ -358,15 +358,15 @@ tailscale status
 ```
 
 You'll see your machine listed with a `100.x.x.x` Tailscale IP. Every
-device on your tailnet gets a stable IP in the `100.64.0.0/10` range —
-these never change, even if your home IP does.
+device on your tailnet gets a stable IP in the `100.64.0.0/10` range.
+These never change, even if your home IP does.
 
 ---
 
 ### Step 3 — Add More Devices
 
-Install Tailscale on every device you want on the network — same one-liner
-or the app store version for phones. After `tailscale up` and
+Install Tailscale on every device you want on the network, using the same
+one-liner or the app store version for phones. After `tailscale up` and
 authentication, all devices can reach each other via their `100.x.x.x` IPs.
 
 No port forwarding. No router config. Tailscale handles NAT traversal
@@ -379,7 +379,7 @@ possible.
 
 By default, Tailscale only connects the devices that have it installed.
 **Subnet routing** lets one machine act as a gateway so you can reach
-your entire LAN — including devices that don't have Tailscale.
+your entire LAN, including devices that don't have Tailscale.
 
 On your homelab server:
 
@@ -397,8 +397,8 @@ In the **Tailscale admin console** (tailscale.com/admin):
 - Find your server → click the three dots → **Edit route settings**
 - Enable the advertised subnet
 
-Now from any Tailscale device you can reach `192.168.1.x` — your Proxmox
-web UI, your OpenMediaVault, your printers, everything — without installing
+Now from any Tailscale device you can reach `192.168.1.x`: your Proxmox
+web UI, your OpenMediaVault, your printers, everything, without installing
 Tailscale on each one.
 
 ---
@@ -425,7 +425,7 @@ anywhere on your tailnet.
 ### Step 6 — Serve a Local Service Publicly (with HTTPS)
 
 Tailscale Serve exposes a local service on your tailnet with automatic
-HTTPS — the same feature used in the Ollama guide.
+HTTPS, the same feature used in the Ollama guide.
 
 ```bash
 # Expose Open WebUI on your tailnet
@@ -448,7 +448,7 @@ For **public** exposure (outside your tailnet):
 tailscale funnel --bg https / http://localhost:3000
 ```
 
-Funnel makes the service reachable from the public internet — useful for
+Funnel makes the service reachable from the public internet, useful for
 sharing a demo or webhook endpoint temporarily. Turn it off when done:
 
 ```bash
@@ -475,14 +475,14 @@ ssh user@homelab-server
 ```
 
 Tailscale handles authentication. Access is controlled through the admin
-console — you can restrict which users can SSH into which machines, require
+console: you can restrict which users can SSH into which machines, require
 re-authentication for sensitive machines, and review SSH session logs.
 
 ---
 
 ## Part 3 — General SSH Hardening
 
-Whether you use WireGuard, Tailscale, or both — your SSH config should be
+Whether you use WireGuard, Tailscale, or both, your SSH config should be
 hardened regardless. These settings reduce your attack surface significantly.
 
 ```bash
@@ -531,7 +531,7 @@ ssh -i ~/.ssh/your_key yourusername@yourserver
 ```
 
 Always test in a new terminal. If something is misconfigured you'll lock
-yourself out — the existing session keeps you in while you fix it.
+yourself out, and the existing session keeps you in while you fix it.
 
 ---
 
@@ -644,7 +644,7 @@ tailscale ping --verbose homelab-server
 ```
 
 If stuck on relay, the devices are behind symmetric NAT. This is normal
-for some ISPs — Tailscale still works, just slightly higher latency.
+for some ISPs, and Tailscale still works, just with slightly higher latency.
 
 **Tailscale: subnet routes not working:**
 
@@ -679,7 +679,7 @@ SSH hardening
 
 With this stack in place your homelab is reachable from anywhere, locked
 down from the internet, and auditable. Your attack surface is essentially
-zero — there are no open ports for scanners to find, and no passwords to
+zero: there are no open ports for scanners to find, and no passwords to
 brute-force.
 
 That is how you run a homelab that stays yours.

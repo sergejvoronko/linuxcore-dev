@@ -82,6 +82,8 @@ body::before {
 
 a { color: var(--amber); text-decoration: none; transition: color 0.15s; }
 a:hover { color: #ffc13d; }
+/* In-text links need a non-color cue (WCAG / Lighthouse link-in-text-block) */
+.prose-content a { text-decoration: underline; text-underline-offset: 2px; }
 
 pre {
   border: 1px solid var(--border);

@@ -24,6 +24,11 @@ const {
 
 const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 const currentPath  = Astro.url.pathname;
+
+// Append the brand suffix only when the result still fits the ~60-char SERP
+// cutoff — otherwise the brand eats characters that Google truncates anyway.
+const SUFFIX     = ' | linuxcore.dev';
+const pageTitle  = title.length + SUFFIX.length <= 60 ? title + SUFFIX : title;
 ---
 
 <!doctype html>
@@ -34,20 +39,20 @@ const currentPath  = Astro.url.pathname;
   <link rel="canonical" href={canonicalURL} />
 
   <!-- Primary meta -->
-  <title>{title} | linuxcore.dev</title>
+  <title>{pageTitle}</title>
   <meta name="description" content={description} />
   {noIndex && <meta name="robots" content="noindex, nofollow" />}
 
   <!-- Open Graph -->
   <meta property="og:type"        content={ogType} />
   <meta property="og:url"         content={canonicalURL} />
-  <meta property="og:title"       content={`${title} | linuxcore.dev`} />
+  <meta property="og:title"       content={pageTitle} />
   <meta property="og:description" content={description} />
   <meta property="og:image"       content={new URL(heroImage, Astro.site)} />
 
   <!-- Twitter card -->
   <meta name="twitter:card"        content="summary_large_image" />
-  <meta name="twitter:title"       content={`${title} | linuxcore.dev`} />
+  <meta name="twitter:title"       content={pageTitle} />
   <meta name="twitter:description" content={description} />
   <meta name="twitter:image"       content={new URL(heroImage, Astro.site)} />
 
