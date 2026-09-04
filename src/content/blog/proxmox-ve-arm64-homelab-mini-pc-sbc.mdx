@@ -33,7 +33,7 @@ The appeal of ARM servers isn't raw, single-threaded performance. It's about eff
 
 ## The Hardware: What Actually Works?
 
-Not all ARM boards are created equal. Proxmox requires a 64-bit ARMv8-A CPU and a UEFI-compatible bootloader. Forget about your old Raspberry Pi 3. Here’s a rundown of the real contenders and what to watch out for.
+Not all ARM boards are created equal. Proxmox requires a 64-bit ARMv8-A CPU and a UEFI-compatible bootloader. Forget about your old Raspberry Pi 3. Here's a rundown of the real contenders and what to watch out for.
 
 *   **Raspberry Pi 5:** It works, and it's probably the first thing many will try. It's a decent entry point for a single-node setup. But its limitations become clear quickly. The single PCIe lane (shared between the NVMe and the network/USB controllers on some hats) and single 1GbE port make it a poor choice for a serious cluster node. Use it to learn, not to depend on.
 
@@ -45,9 +45,9 @@ The biggest hurdles are bootloader support and I/O. If the board can't boot a st
 
 ## Getting Started: Proxmox on an Orange Pi 5
 
-Unlike the x86 version, Proxmox doesn't provide a ready-to-flash ARM64 ISO image. You have to install a base OS first and then add the Proxmox packages. It’s a bit more hands-on.
+Unlike the x86 version, Proxmox doesn't provide a ready-to-flash ARM64 ISO image. You have to install a base OS first and then add the Proxmox packages. It's a bit more hands-on.
 
-Here’s the condensed, no-fluff process for an Orange Pi 5.
+Here's the condensed, no-fluff process for an Orange Pi 5.
 
 1.  **Get a Base OS:** Forget the official Orange Pi images. Go straight to a community-supported image like Armbian or the official Debian images. You want a clean, minimal Debian 12 (Bookworm) server install. Flash this to your NVMe drive. Don't even bother with an SD card for the OS.
 

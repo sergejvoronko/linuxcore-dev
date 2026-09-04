@@ -10,7 +10,7 @@ tags: ["astro", "sveltekit", "static-site-generator", "cloudflare-pages"]
 draft: false
 faqs:
   - q: "Is Astro faster than SvelteKit for static sites?"
-    a: "For pure SSG output — yes, consistently. Astro ships zero JS by default, which directly translates to lower TTI and better Lighthouse scores on content-heavy pages. SvelteKit closes the gap only when you need client-side interactivity or SPA-style navigation between routes."
+    a: "For pure SSG output, yes, consistently. Astro ships zero JS by default, which directly translates to lower TTI and better Lighthouse scores on content-heavy pages. SvelteKit closes the gap only when you need client-side interactivity or SPA-style navigation between routes."
   - q: "Which is cheaper to host on Cloudflare Pages?"
     a: "Both are free on Cloudflare Pages for static output. The cost difference shows up in build minutes. Astro's build is faster for large content sites, so you burn fewer build minutes on the free tier. SvelteKit with adapter-static takes longer on sites over ~200 pages."
   - q: "Should I use SvelteKit or Astro for a self-hosted blog on nginx?"
@@ -19,7 +19,7 @@ faqs:
 
 import Comparison from '../../components/Comparison.astro';
 
-Both frameworks will build your blog. Both will score green on Lighthouse if you're not doing anything stupid. The question is which one costs you less in build time, cold-start latency, and Friday-night debugging — and the answer genuinely depends on what you're building.
+Both frameworks will build your blog. Both will score green on Lighthouse if you're not doing anything stupid. The question is which one costs you less in build time, cold-start latency, and Friday-night debugging, and the answer genuinely depends on what you're building.
 
 I've run both on linuxcore.dev's stack: Cloudflare Pages for the public-facing site, a self-hosted nginx box for internal tooling, and a few low-traffic personal projects that don't justify a CDN bill. Here's what actually happened.
 
@@ -27,15 +27,15 @@ I've run both on linuxcore.dev's stack: Cloudflare Pages for the public-facing s
 
 Three scenarios, same content:
 
-- **Static blog** — 120 markdown posts, no client JS, deployed to Cloudflare Pages
-- **Self-hosted dashboard** — nginx on an Intel N100 mini-PC, mostly static with one interactive widget
-- **Low-traffic personal site** — a portfolio with a contact form, self-hosted, no CDN
+- **Static blog**: 120 markdown posts, no client JS, deployed to Cloudflare Pages
+- **Self-hosted dashboard**: nginx on an Intel N100 mini-PC, mostly static with one interactive widget
+- **Low-traffic personal site**: a portfolio with a contact form, self-hosted, no CDN
 
 Astro 4.x, SvelteKit 2.x with `adapter-static`. Both on Node 20. Lighthouse measured via CLI (`lighthouse --chrome-flags="--headless"`) from the same Frankfurt VPS so network variance is consistent.
 
 ## Build Performance: Astro Wins, Sometimes by a Lot
 
-For the 120-post blog, Astro completed in **18 seconds**. SvelteKit needed **34 seconds**. That gap widens with content volume — SvelteKit's Vite-based build does more work per page than Astro's content pipeline, and it shows around the 100-page mark.
+For the 120-post blog, Astro completed in **18 seconds**. SvelteKit needed **34 seconds**. That gap widens with content volume, SvelteKit's Vite-based build does more work per page than Astro's content pipeline, and it shows around the 100-page mark.
 
 ```bash
 # Astro build timing
@@ -49,7 +49,7 @@ time npx vite build
 
 This matters on Cloudflare Pages' free tier. You get 500 build minutes per month. If you're deploying on every git push and the build takes twice as long, you'll hit that ceiling faster than you expect with an active content site.
 
-On the self-hosted nginx machine, build time is less critical — you're not paying per minute — but faster builds mean faster feedback when you're iterating on layouts at 11pm.
+On the self-hosted nginx machine, build time is less critical, you're not paying per minute, but faster builds mean faster feedback when you're iterating on layouts at 11pm.
 
 ## Lighthouse Scores: The Honest Numbers
 
@@ -66,7 +66,7 @@ Tested on the static blog deployment, desktop and mobile, cold load from Cloudfl
 
 The Total Blocking Time difference is the one that surprised me most. SvelteKit ships its hydration runtime even with `adapter-static` and no explicit `<script>` blocks on the page. Astro ships nothing unless you opt in with a component island. On a plain blog post with zero interactivity, that's 120ms of main thread work SvelteKit does for no reason.
 
-SvelteKit's numbers aren't *bad*. A 94 is still a 94. But Astro's 99 isn't a rounding error — it reflects genuinely different architecture decisions.
+SvelteKit's numbers aren't *bad*. A 94 is still a 94. But Astro's 99 isn't a rounding error, it reflects genuinely different architecture decisions.
 
 ## TTFB: Where Hosting Actually Matters
 
@@ -101,7 +101,7 @@ SvelteKit's static output works fine behind nginx, but you will spend 20 minutes
 
 ## SPA Navigation: The One Place SvelteKit Wins
 
-SvelteKit's client-side router is legitimately good. If your site has frequent navigation between pages — a dashboard where users drill into different sections, or a docs site with lots of jumping around — SvelteKit's prefetching and instant client-side transitions are noticeably better than Astro's default behavior.
+SvelteKit's client-side router is legitimately good. If your site has frequent navigation between pages, a dashboard where users drill into different sections, or a docs site with lots of jumping around, SvelteKit's prefetching and instant client-side transitions are noticeably better than Astro's default behavior.
 
 Astro has View Transitions now, and they work well, but they're not as deeply integrated as SvelteKit's router. You feel the difference on a site with complex navigation state.
 
@@ -109,9 +109,9 @@ For a blog? Nobody cares. Readers hit a post from a search result and leave. SPA
 
 ## The Self-Hosted Dashboard Case
 
-This is the one scenario where I'd reach for SvelteKit without hesitation. The N100 dashboard I mentioned runs a few live-updating panels — system metrics, some Grafana embeds, a custom storage widget. That widget needs reactive state and WebSocket data.
+This is the one scenario where I'd reach for SvelteKit without hesitation. The N100 dashboard I mentioned runs a few live-updating panels, system metrics, some Grafana embeds, a custom storage widget. That widget needs reactive state and WebSocket data.
 
-With Astro, you'd use a Svelte (or React) island for that component. With SvelteKit, the whole page is already Svelte — state management, stores, and the component lifecycle are right there without the mental context switch of "this part is an island, this part is static."
+With Astro, you'd use a Svelte (or React) island for that component. With SvelteKit, the whole page is already Svelte, state management, stores, and the component lifecycle are right there without the mental context switch of "this part is an island, this part is static."
 
 The Lighthouse scores on the dashboard don't matter much because it's on my LAN. What matters is developer experience for something I'll be debugging in a terminal at 7am. SvelteKit wins there.
 
@@ -148,11 +148,11 @@ If you're on Cloudflare Pages free tier and deploying frequently, Astro gives yo
 
 **Astro** for anything content-first: blogs, documentation, portfolios, marketing sites. The zero-JS default is the right default. You opt into complexity rather than having to opt out of it.
 
-**SvelteKit** when you need a real application that happens to have some static pages — dashboards, authenticated tools, anything with significant client-side state. The static adapter works, but you're using SvelteKit *despite* its SSR capabilities, not because of them.
+**SvelteKit** when you need a real application that happens to have some static pages, dashboards, authenticated tools, anything with significant client-side state. The static adapter works, but you're using SvelteKit *despite* its SSR capabilities, not because of them.
 
 The framing of "which is better" is the wrong question. Astro is a content framework that added some application features. SvelteKit is an application framework that added static output. Pick the one that matches your center of gravity.
 
-For linuxcore.dev's use case — static content, Cloudflare Pages, occasional self-hosted tooling — Astro is the right default and SvelteKit is the right exception.
+For linuxcore.dev's use case, static content, Cloudflare Pages, occasional self-hosted tooling, Astro is the right default and SvelteKit is the right exception.
 
 ## What's Next
 

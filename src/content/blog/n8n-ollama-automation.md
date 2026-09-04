@@ -1,6 +1,6 @@
 ---
 title: "n8n + Ollama: An AI Automation Agent on Your Server"
-description: "Connect local LLMs to real workflows: auto-summarise RSS feeds, analyse logs with AI, send Telegram alerts — all self-hosted, private, and free."
+description: "Connect local LLMs to real workflows: auto-summarise RSS feeds, analyse logs with AI, send Telegram alerts, all self-hosted, private, and free."
 pubDate: 2026-04-14
 heroImage: "/images/n8n-ollama-automation.webp"
 heroImageAlt: "n8n workflow editor showing an AI automation pipeline connecting Ollama LLM to RSS feeds and Telegram alerts"
@@ -35,10 +35,10 @@ your homelab already uses.
 
 This guide builds four real workflows from scratch:
 
-1. **Daily RSS digest** — summarise the day's tech news with Ollama, delivered to Telegram every morning
-2. **Linux log analyser** — pipe syslog through Ollama, get plain-English summaries of what happened overnight
-3. **Self-healing alert** — detect a down service, ask Ollama what to check, send the diagnosis to Telegram
-4. **Personal AI assistant** — a Telegram bot that answers questions using your local LLM, from anywhere
+1. **Daily RSS digest**: summarise the day's tech news with Ollama, delivered to Telegram every morning
+2. **Linux log analyser**: pipe syslog through Ollama, get plain-English summaries of what happened overnight
+3. **Self-healing alert**: detect a down service, ask Ollama what to check, send the diagnosis to Telegram
+4. **Personal AI assistant**: a Telegram bot that answers questions using your local LLM, from anywhere
 
 All four run on your own hardware. Nothing leaves your network except the
 final message to Telegram.
@@ -47,19 +47,19 @@ final message to Telegram.
 
 ## What n8n Actually Is
 
-n8n is a **workflow automation tool** — the self-hosted equivalent of Zapier
+n8n is a **workflow automation tool**, the self-hosted equivalent of Zapier
 or Make. You build workflows visually by connecting nodes. Each node does one
 thing: fetch a URL, run a query, call an API, send a message, execute a
 shell command.
 
 What makes it exceptional for homelab use:
 
-- **Runs entirely in Docker** — one container, no external dependencies
-- **Ollama node built-in** — direct integration, no API key required
-- **Cron scheduler** — run any workflow on any schedule
-- **Webhook trigger** — other services can kick off workflows via HTTP
-- **SSH node** — run commands on remote machines directly from a workflow
-- **Free community edition** — unlimited workflows, unlimited executions
+- **Runs entirely in Docker**: one container, no external dependencies
+- **Ollama node built-in**: direct integration, no API key required
+- **Cron scheduler**: run any workflow on any schedule
+- **Webhook trigger**: other services can kick off workflows via HTTP
+- **SSH node**: run commands on remote machines directly from a workflow
+- **Free community edition**: unlimited workflows, unlimited executions
 
 ---
 
@@ -72,7 +72,7 @@ What makes it exceptional for homelab use:
 
 ---
 
-## Step 1 — Deploy n8n with Docker Compose
+## Step 1, Deploy n8n with Docker Compose
 
 Create a project folder:
 
@@ -120,7 +120,7 @@ Start it:
 docker compose up -d
 ```
 
-Open **`http://localhost:5678`** — you'll see the n8n editor. Create an account
+Open **`http://localhost:5678`**. You'll see the n8n editor. Create an account
 (stored locally, not sent anywhere).
 
 > **The `extra_hosts` line is critical.** Ollama runs on your host machine.
@@ -128,7 +128,7 @@ Open **`http://localhost:5678`** — you'll see the n8n editor. Create an accoun
 
 ---
 
-## Step 2 — Set Up Telegram
+## Step 2, Set Up Telegram
 
 Every workflow in this guide sends output to Telegram. It's free, instant,
 and works perfectly as a notification layer for homelab automation.
@@ -137,13 +137,13 @@ and works perfectly as a notification layer for homelab automation.
 
 1. Open Telegram → search **@BotFather** → send `/newbot`
 2. Give it a name and username
-3. BotFather gives you a **bot token** — copy it, you'll need it repeatedly
+3. BotFather gives you a **bot token**: copy it, you'll need it repeatedly
 
 **Get your chat ID:**
 
 1. Send any message to your new bot
 2. Visit: `https://api.telegram.org/bot<YOUR_TOKEN>/getUpdates`
-3. Find `"chat":{"id":` — that number is your chat ID
+3. Find `"chat":{"id":`, that number is your chat ID
 
 **Add Telegram credentials in n8n:**
 
@@ -151,13 +151,13 @@ and works perfectly as a notification layer for homelab automation.
 2. Search for **Telegram** → paste your bot token → Save
 3. Name it something memorable like `homelab-bot`
 
-Test it immediately — create a simple workflow with a **Manual Trigger** →
+Test it immediately, create a simple workflow with a **Manual Trigger** →
 **Telegram** node → set chat ID → send "n8n is connected" → run it.
 If a message appears in Telegram, everything is wired up correctly.
 
 ---
 
-## Workflow 1 — Daily RSS Digest with AI Summary
+## Workflow 1, Daily RSS Digest with AI Summary
 
 This workflow runs every morning at 7am, fetches the latest posts from your
 chosen RSS feeds, sends each one to Ollama for a one-sentence summary, and
@@ -173,19 +173,19 @@ Schedule Trigger → RSS Feed → Split In Batches → Ollama → Aggregate → 
 
 In n8n → **New Workflow** → add nodes:
 
-**Node 1 — Schedule Trigger:**
+**Node 1, Schedule Trigger:**
 - Trigger: Cron
 - Expression: `0 7 * * *` (7am daily)
 
-**Node 2 — RSS Feed Read:**
+**Node 2, RSS Feed Read:**
 - URL: `https://www.phoronix.com/rss.php` (or any feed you follow)
 - Add multiple RSS nodes for multiple feeds, merge them with a **Merge** node
 
-**Node 3 — Split In Batches:**
+**Node 3, Split In Batches:**
 - Batch Size: 1
 - This processes each article one at a time through Ollama
 
-**Node 4 — Ollama (AI summarisation):**
+**Node 4, Ollama (AI summarisation):**
 - Model: `llama3.2` or `mistral`
 - Base URL: `http://host.docker.internal:11434`
 - Prompt:
@@ -198,10 +198,10 @@ Title: {{ $json.title }}
 Content: {{ $json.contentSnippet }}
 ```
 
-**Node 5 — Aggregate:**
+**Node 5, Aggregate:**
 - Combine all summaries into a single item for the Telegram message
 
-**Node 6 — Telegram:**
+**Node 6, Telegram:**
 - Chat ID: your chat ID
 - Message:
 
@@ -217,10 +217,10 @@ your local LLM. No ads, no tracking, no API cost.
 
 ---
 
-## Workflow 2 — Linux Log Analyser
+## Workflow 2, Linux Log Analyser
 
 This workflow runs nightly, reads your system log, sends it to Ollama, and
-delivers a plain-English summary of anything notable — errors, warnings,
+delivers a plain-English summary of anything notable, errors, warnings,
 unusual SSH activity, failed services.
 
 **Nodes in order:**
@@ -229,10 +229,10 @@ unusual SSH activity, failed services.
 Schedule Trigger → Execute Command → Ollama → IF (issues found?) → Telegram
 ```
 
-**Node 1 — Schedule Trigger:**
-- Cron: `0 8 * * *` (8am daily — review last night's logs)
+**Node 1, Schedule Trigger:**
+- Cron: `0 8 * * *` (8am daily, review last night's logs)
 
-**Node 2 — Execute Command:**
+**Node 2, Execute Command:**
 - Command:
 ```bash
 journalctl --since "yesterday" --until "today" \
@@ -245,7 +245,7 @@ journalctl --since "yesterday" --until "today" \
 This pulls the last 24 hours of log entries at warning level or above,
 capped at 200 lines so the context stays manageable.
 
-**Node 3 — Ollama:**
+**Node 3, Ollama:**
 - Model: `mistral` or `llama3.1:8b` (better at analysis than 3b)
 - Base URL: `http://host.docker.internal:11434`
 - Prompt:
@@ -267,7 +267,7 @@ LOG:
 {{ $json.stdout }}
 ```
 
-**Node 4 — IF node:**
+**Node 4, IF node:**
 - Condition: `{{ $json.message }}` contains `WARNING` or `CRITICAL`
 - True branch → Telegram (send immediately)
 - False branch → Telegram (send a brief "all clear" summary)
@@ -292,7 +292,7 @@ in plain English by your local LLM, not decoded from raw log format.
 
 ---
 
-## Workflow 3 — Self-Healing Service Monitor
+## Workflow 3, Self-Healing Service Monitor
 
 This workflow checks if a critical service is running every 5 minutes. If
 it finds a service down, it asks Ollama to diagnose the likely cause based
@@ -308,10 +308,10 @@ Schedule Trigger → Execute Command (check service) → IF (running?) →
   [up branch] → (nothing — no noise when healthy)
 ```
 
-**Node 1 — Schedule Trigger:**
+**Node 1, Schedule Trigger:**
 - Cron: `*/5 * * * *` (every 5 minutes)
 
-**Node 2 — Execute Command (health check):**
+**Node 2, Execute Command (health check):**
 ```bash
 systemctl is-active ollama && echo "running" || echo "stopped"
 ```
@@ -319,17 +319,17 @@ systemctl is-active ollama && echo "running" || echo "stopped"
 Replace `ollama` with whatever service you want to monitor. You can
 duplicate this workflow for multiple services.
 
-**Node 3 — IF:**
+**Node 3, IF:**
 - Condition: `{{ $json.stdout.trim() }}` equals `stopped`
 - True → service is down, continue to diagnosis
 - False → do nothing (stop the workflow quietly)
 
-**Node 4 — Execute Command (gather context):**
+**Node 4, Execute Command (gather context):**
 ```bash
 journalctl -u ollama -n 50 --no-pager --output=short
 ```
 
-**Node 5 — Ollama (diagnosis):**
+**Node 5, Ollama (diagnosis):**
 - Prompt:
 ```
 A Linux systemd service named "ollama" has stopped unexpectedly.
@@ -345,12 +345,12 @@ Based on these logs, provide:
 Be concise and direct.
 ```
 
-**Node 6 — Execute Command (attempt restart):**
+**Node 6, Execute Command (attempt restart):**
 ```bash
 sudo systemctl restart ollama && sleep 3 && systemctl is-active ollama
 ```
 
-**Node 7 — Telegram:**
+**Node 7, Telegram:**
 ```
 🔴 *Service Alert: ollama stopped*
 
@@ -367,7 +367,7 @@ and restart result within 5 minutes, often before you'd notice it yourself.
 
 ---
 
-## Workflow 4 — Personal AI Assistant via Telegram
+## Workflow 4, Personal AI Assistant via Telegram
 
 This is the most useful workflow day-to-day. A Telegram bot that forwards
 your messages to Ollama and sends back the response. Your private ChatGPT,
@@ -379,11 +379,11 @@ accessible from any device, at any time.
 Telegram Trigger → Ollama → Telegram (reply)
 ```
 
-**Node 1 — Telegram Trigger:**
+**Node 1, Telegram Trigger:**
 - Trigger on: Message
 - This fires every time you send a message to your bot
 
-**Node 2 — Ollama:**
+**Node 2, Ollama:**
 - Model: your best model (e.g. `mistral` or `llama3.1:8b`)
 - Base URL: `http://host.docker.internal:11434`
 - Prompt:
@@ -407,18 +407,18 @@ Be concise and practical. When showing commands, use code blocks.
 User message: {{ $json.message.text }}
 ```
 
-**Node 3 — Telegram (reply):**
-- Chat ID: `{{ $json.message.chat.id }}` (dynamic — replies to whoever messaged)
+**Node 3, Telegram (reply):**
+- Chat ID: `{{ $json.message.chat.id }}` (dynamic, replies to whoever messaged)
 - Message: `{{ $('Ollama').item.json.message }}`
 - Parse mode: Markdown (Ollama often formats responses with markdown)
 
 **Deploy it:** Save and activate the workflow. Now open Telegram, send your
-bot any question — "How do I check which process is using port 3000?" — and
+bot any question, "How do I check which process is using port 3000?", and
 get a response from your local LLM within a few seconds.
 
 **Improving conversation context:**
 
-The basic workflow above has no memory — each message is treated
+The basic workflow above has no memory, each message is treated
 independently. For multi-turn conversations, add a **Redis** node to store
 chat history, or use n8n's built-in **Static Data** to maintain a rolling
 window of the last N messages per chat ID.
@@ -462,18 +462,18 @@ GET http://host.docker.internal:11434/api/ps
 ```
 
 This is useful for building a workflow that automatically selects a model
-based on the task — use a fast 3b model for simple summaries, route complex
+based on the task, use a fast 3b model for simple summaries, route complex
 analysis to a 7b+ model.
 
 ---
 
 ## Useful n8n Patterns
 
-**Retry on failure** — wrap any Ollama node in an error handler and retry
+**Retry on failure**, wrap any Ollama node in an error handler and retry
 up to 3 times before sending a failure alert. Useful when a model is still
 loading.
 
-**Rate limiting** — add a **Wait** node between items when processing
+**Rate limiting**, add a **Wait** node between items when processing
 batches. Ollama can queue requests but a short 2-second wait between
 articles prevents timeout issues on slower hardware.
 
@@ -484,7 +484,7 @@ const wordCount = $input.item.json.content.length;
 return { model: wordCount > 2000 ? 'mistral' : 'llama3.2' };
 ```
 
-**Logging workflow runs** — add a final **Write Binary File** node to
+**Logging workflow runs**, add a final **Write Binary File** node to
 append a summary of each run to a log file. Useful for reviewing what
 the automation did overnight.
 
@@ -509,7 +509,7 @@ docker run --rm -v n8n_n8n-data:/data -v $(pwd):/backup \
 ```
 
 Workflows are stored in the `n8n-data` Docker volume. Back it up before
-updating — n8n occasionally has breaking changes between major versions.
+updating, n8n occasionally has breaking changes between major versions.
 
 ---
 
@@ -544,7 +544,7 @@ Should return your bot's info. If it returns an error, the token is wrong.
 **Workflow runs but does nothing:**
 
 Check the execution log in n8n (left sidebar → Executions). Every run is
-logged with the data flowing through each node — click any node in an
+logged with the data flowing through each node, click any node in an
 execution to see exactly what it received and produced. This is the
 fastest way to debug.
 
@@ -556,19 +556,19 @@ You now have an automation layer that connects your local AI to real
 actions. The four workflows above are starting points, and n8n has 400+
 built-in integrations. Some directions worth exploring from here:
 
-**Proxmox integration** — use the HTTP Request node to call the Proxmox
+**Proxmox integration**, use the HTTP Request node to call the Proxmox
 API. Build a workflow that checks VM health, snapshots before updates,
 and reports status to Telegram.
 
-**Grafana webhook** — when Prometheus fires an alert, Grafana sends a
+**Grafana webhook**, when Prometheus fires an alert, Grafana sends a
 webhook to n8n. n8n queries Ollama with the alert context and sends a
 diagnosis to Telegram before you've even opened your laptop.
 
-**File processing** — drop a PDF into a watched folder on your NAS, n8n
+**File processing**, drop a PDF into a watched folder on your NAS, n8n
 detects it, sends it to Ollama for summarisation, saves the summary as
 a text file alongside the original.
 
-**Git activity digest** — poll your private Gitea or GitHub repos, summarise
+**Git activity digest**, poll your private Gitea or GitHub repos, summarise
 recent commits with Ollama, send a weekly developer digest.
 
 The pattern is always the same: trigger → gather context → Ollama →

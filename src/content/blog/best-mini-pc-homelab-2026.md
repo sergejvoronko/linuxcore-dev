@@ -1,6 +1,6 @@
 ---
 title: "Best Mini PC for a Homelab Server in 2026: Tested & Ranked"
-description: "Which mini PC runs Proxmox, Docker, Ollama, and a full homelab stack without killing your electricity bill? N100, N305, Ryzen 7, and MS-01 — honestly compared."
+description: "Which mini PC runs Proxmox, Docker, Ollama, and a full homelab stack without killing your electricity bill? N100, N305, Ryzen 7, and MS-01, honestly compared."
 pubDate: 2026-04-29
 heroImage: "/images/best-mini-pc-homelab-2026.webp"
 heroImageAlt: "Beelink and MinisForum mini PCs lined up as homelab servers, showing compact form factor compared to a rack server"
@@ -18,12 +18,12 @@ faqs:
   - q: "Can a mini PC run local AI models like Ollama?"
     a: "Yes, but results vary by model size. An N100 mini PC can run llama3.2:3b at 12-18 tokens/sec on CPU. For 7B+ models at usable speed, you need a Ryzen 7 or a model with a discrete GPU. The MS-01 with an eGPU is the most capable mini PC option for local AI."
   - q: "What is the difference between Intel N100 and N305?"
-    a: "The N100 is a 4-core/4-thread chip aimed at light workloads — good for 2-3 Docker containers or a single VM. The N305 is an 8-core/8-thread E-core design that handles Proxmox with multiple VMs, Docker stacks, and moderate transcoding without breaking a sweat."
+    a: "The N100 is a 4-core/4-thread chip aimed at light workloads, good for 2-3 Docker containers or a single VM. The N305 is an 8-core/8-thread E-core design that handles Proxmox with multiple VMs, Docker stacks, and moderate transcoding without breaking a sweat."
   - q: "How much electricity does a mini PC homelab use per year?"
-    a: "An N100 mini PC draws 8-15W at idle, costing roughly €15-25/year at European electricity rates. An N305 system draws 12-20W idle, around €25-40/year. Compare that to a used rack server at 80-150W idle — €150-280/year just sitting there."
+    a: "An N100 mini PC draws 8-15W at idle, costing roughly €15-25/year at European electricity rates. An N305 system draws 12-20W idle, around €25-40/year. Compare that to a used rack server at 80-150W idle–€150-280/year just sitting there."
 ---
 
-The era of rack servers in the spare bedroom is over — at least for most
+The era of rack servers in the spare bedroom is over, at least for most
 of us. A single 1U server idles at 80–150W and sounds like a jet engine.
 A modern mini PC idles at 6–12W, fits in a drawer, and runs the same
 workloads silently.
@@ -33,7 +33,7 @@ and roughly €1/month in electricity. The question is no longer "can a mini PC
 do it" but "which one, and for what."
 
 This guide answers that question properly. Not with benchmark scores that
-don't reflect real homelab workloads — but with honest assessments of what
+don't reflect real homelab workloads, but with honest assessments of what
 each tier of hardware actually handles.
 
 ---
@@ -70,16 +70,16 @@ homelab disappointment comes from buying the wrong tier.
 
 ## The Hardware Tiers
 
-### Tier 1 — Under €200: The N100/N150 Sweet Spot
+### Tier 1, Under €200: The N100/N150 Sweet Spot
 
 The Intel N100 is a 6W chip with 4 efficiency cores that consistently
 surprises people. With a 6W base TDP, an N100 mini PC idles around
-6–8W — compared to older x86 homelab servers that easily drew 70W or
+6–8W, compared to older x86 homelab servers that easily drew 70W or
 more. Over a month, running at roughly 10W instead of 70W cuts electricity
 cost by about 85%.
 
 If you are buying new in 2026, you will likely end up with an N150 or
-N355 rather than the N100 itself — the N150 is the refreshed successor
+N355 rather than the N100 itself, the N150 is the refreshed successor
 shipping in current stock. Think of it as "N100 plus a little": the same
 core count and architecture with a 6–10% performance bump.
 
@@ -93,18 +93,17 @@ What you get:
 - Intel N100 or N150, 4 cores
 - 16GB DDR5 RAM (upgradeable)
 - 500GB NVMe SSD
-- Dual 2.5GbE (EQ12 — the standout spec at this price)
+- Dual 2.5GbE (EQ12, the standout spec at this price)
 - Wi-Fi 6, Bluetooth 5
 - 2× HDMI, USB 3.2
 
 On 16GB RAM, a typical N100 Proxmox host can comfortably run Pi-hole,
-Home Assistant, Nextcloud, a media server, and monitoring simultaneously
-— 6 services using roughly 2–3GB total, with headroom remaining.
+Home Assistant, Nextcloud, a media server, and monitoring simultaneously, 6 services using roughly 2–3GB total, with headroom remaining.
 
 **GMKtec G3 Plus / NucBox series** (~€120–150)
 
 The budget alternative to Beelink. The GMKtec G3 Plus with Intel N150
-is solid for basic server tasks — 16GB DDR4 RAM, 512GB NVMe SSD, 2.5GbE,
+is solid for basic server tasks, 16GB DDR4 RAM, 512GB NVMe SSD, 2.5GbE,
 and WiFi 6 at a lower price than the Beelink equivalent.
 
 Slightly lower build quality than Beelink. Fine for a dedicated
@@ -112,15 +111,14 @@ single-purpose node. Less ideal as your only machine.
 
 **The honest N100 ceiling:**
 
-For 80% of homelab users the N100 is the smarter choice. Start with it —
-you can always add a second N100 box later for less than the cost
+For 80% of homelab users the N100 is the smarter choice. Start with it. You can always add a second N100 box later for less than the cost
 difference to an N305. Where it genuinely struggles: running Ollama
 with any model above 3b parameters without a GPU, Proxmox with more
 than 3 simultaneous VMs, or anything CPU-intensive at sustained load.
 
 ---
 
-### Tier 2 — €200–350: The N305/Ryzen Performance Jump
+### Tier 2–€200–350: The N305/Ryzen Performance Jump
 
 **Beelink EQi3-N305** (~€220–250)
 
@@ -130,7 +128,7 @@ ecosystem but need more cores for Proxmox or multi-user workloads.
 
 The N305 has 8 efficiency cores vs the N100's 4. The N305 can handle
 30–40 containers without breaking a sweat. Most homelab users run fewer
-than 15 containers, making the N100 perfectly adequate — but if you're
+than 15 containers, making the N100 perfectly adequate, but if you're
 planning a Proxmox cluster or need multiple VMs running simultaneously,
 the N305's extra cores become essential.
 
@@ -140,11 +138,11 @@ efficient compared to anything with a desktop CPU.
 **Beelink SER5 / SER6 (AMD Ryzen 5000/6000 series)** (~€220–300)
 
 The AMD alternative. The Beelink with the Ryzen 5500U can be upgraded
-to 64GB of RAM inexpensively — which is why it sits at the top of many
+to 64GB of RAM inexpensively, which is why it sits at the top of many
 homelabbers' shortlists.
 
 The Ryzen 5 5500U (6 cores, 12 threads) outperforms the N305 on
-multi-threaded workloads. Better for Ollama without a GPU — the 7b
+multi-threaded workloads. Better for Ollama without a GPU, the 7b
 models become genuinely usable at useful token speeds. Slightly higher
 idle power than N-series at 15–20W.
 
@@ -154,12 +152,12 @@ building a two-node cluster and need each node to carry more weight.
 
 ---
 
-### Tier 3 — €350–600: The Power User Options
+### Tier 3–€350–600: The Power User Options
 
 **MinisForum UM790 Pro (AMD Ryzen 9 7940HS)** (~€400–450)
 
 The MinisForum UM790 Pro with AMD Ryzen 9 7940HS has 8 cores, 16
-threads, 32GB RAM, and Oculink for eGPU connectivity — a beast in a
+threads, 32GB RAM, and Oculink for eGPU connectivity, a beast in a
 small box.
 
 The Oculink port is what makes this special for AI homelabbers. Attach
@@ -170,7 +168,7 @@ Idle power around 20–25W.
 **Beelink SER9 Pro (AMD Ryzen AI 9 365)** (~€450–500)
 
 The Beelink SER9 Pro combines AMD Ryzen AI 9 365 with a 73 TOPS NPU
-for local AI workloads — designed for users who want to run AI
+for local AI workloads, designed for users who want to run AI
 applications, handle multiple 4K streams, and manage complex workloads
 simultaneously.
 
@@ -179,16 +177,15 @@ Not yet essential, but relevant if you're planning a 3–5 year machine.
 
 ---
 
-### Tier 4 — €600+: The MinisForum MS-01
+### Tier 4–€600+: The MinisForum MS-01
 
 The MinisForum MS-01 is the homelab darling. Dual 10GbE SFP+, dual
 2.5GbE, three M.2 slots, and space for a 2.5-inch drive. It's a mini
-server, not just a mini PC — and arguably the best purpose-built mini
+server, not just a mini PC, and arguably the best purpose-built mini
 homelab server available.
 
 This is the machine for a serious single-node homelab or a flagship
-node in a Proxmox cluster. The dual 10GbE is what separates it —
-internal VM and container traffic at line rate, no bottleneck between
+node in a Proxmox cluster. The dual 10GbE is what separates it, internal VM and container traffic at line rate, no bottleneck between
 storage and compute.
 
 What you pay for beyond the networking: three NVMe slots (OS + VM
@@ -255,14 +252,14 @@ The mini PC itself is rarely the bottleneck. RAM and storage are.
 | Ollama 13b+ model | 32GB | 64GB |
 
 Buy the machine with 16GB and verify it's upgradeable before purchasing.
-Most mini PCs use standard SO-DIMM slots — RAM is cheap. A €30 RAM
+Most mini PCs use standard SO-DIMM slots, RAM is cheap. A €30 RAM
 upgrade often matters more than a €100 CPU upgrade.
 
 **Storage:**
 
 Run two drives if you can:
-- **NVMe 1** (500GB–1TB) — Proxmox OS, VM storage, containers
-- **NVMe 2 or 2.5" SATA** (1–4TB) — data, backups, media
+- **NVMe 1** (500GB–1TB): Proxmox OS, VM storage, containers
+- **NVMe 2 or 2.5" SATA** (1–4TB): data, backups, media
 
 The OS drive will be read/written constantly. NVMe gives you the speed
 and endurance for this. SATA is fine for bulk storage.
@@ -289,7 +286,7 @@ electricity cost. At €0.25/kWh (EU average 2026):
 | 1U rack server (Xeon) | 120W | ~€263/yr |
 
 The N100 homelab costs roughly €15/year to run. A rack server doing the
-same job costs €263/year just in electricity — before any hardware cost.
+same job costs €263/year just in electricity, before any hardware cost.
 Over three years that's a €740 difference. The mini PC pays for itself.
 
 ---
@@ -298,13 +295,13 @@ Over three years that's a €740 difference. The mini PC pays for itself.
 
 | Guide | N100 | N305 | Ryzen 7 | MS-01 |
 |:------|:----:|:----:|:-------:|:-----:|
-| [Ollama + Open WebUI](/homelab/ollama-linux-setup) — 3b model | ✅ | ✅ | ✅ | ✅ |
-| [Ollama](/homelab/ollama-linux-setup) — 7b model (CPU) | 🐢 slow | ✅ | ✅ | ✅ |
+| [Ollama + Open WebUI](/homelab/ollama-linux-setup), 3b model | ✅ | ✅ | ✅ | ✅ |
+| [Ollama](/homelab/ollama-linux-setup), 7b model (CPU) | 🐢 slow | ✅ | ✅ | ✅ |
 | [Grafana + Prometheus](/homelab/grafana-prometheus-homelab) | ✅ | ✅ | ✅ | ✅ |
 | [n8n + Ollama workflows](/homelab/n8n-ollama-automation) | ✅ | ✅ | ✅ | ✅ |
 | [Ansible](/homelab/ansible-homelab) (control node) | ✅ | ✅ | ✅ | ✅ |
-| Proxmox — 3 VMs | ✅ | ✅ | ✅ | ✅ |
-| Proxmox — 6+ VMs | ❌ | ✅ | ✅ | ✅ |
+| Proxmox, 3 VMs | ✅ | ✅ | ✅ | ✅ |
+| Proxmox, 6+ VMs | ❌ | ✅ | ✅ | ✅ |
 | Jellyfin hardware transcode | ✅ | ✅ | ✅ | ✅ |
 | 10GbE internal networking | ❌ | ❌ | ❌ | ✅ |
 
@@ -319,7 +316,7 @@ EliteDesk (used), Lenovo ThinkCentre (used)
 specs that seem too good for the price, machines without clear RAM/storage
 upgrade paths listed
 
-Dozens of companies sell mini PCs — many are rebranded versions of the
+Dozens of companies sell mini PCs, many are rebranded versions of the
 same hardware from the same factory. Beelink is the brand most commonly
 deployed and trusted in the homelab community based on first-hand experience.
 
@@ -337,27 +334,26 @@ confirm RAM is upgradeable before ordering.
 
 Buy a **Beelink EQ14 with 16GB RAM** (~€170). Here's why:
 
-- Dual 2.5GbE at this price is exceptional — most machines at €300+ don't
+- Dual 2.5GbE at this price is exceptional, most machines at €300+ don't
   have this
 - N150 handles the full Docker stack from every guide on this site
 - 16GB runs Proxmox with 3 lightweight VMs comfortably
 - Runs Ollama with llama3.2:3b or phi3 at perfectly usable speeds
 - Fanless or near-silent under normal load
-- If you outgrow it in 12 months, add a second one for a two-node cluster
-  — still cheaper than stepping up to a Ryzen machine
+- If you outgrow it in 12 months, add a second one for a two-node cluster, still cheaper than stepping up to a Ryzen machine
 
 The worst outcome is spending €450 on a Ryzen machine on day one, then
 realising most of your containers use 200MB RAM each and an N100 would
 have been fine.
 
-Start small. The mini PC market moves fast — what you buy in 18 months
+Start small. The mini PC market moves fast, what you buy in 18 months
 will be better and cheaper than what's available today.
 
 ## Recommended hardware
 
-What I'd buy today (affiliate links — they help fund the site at no extra cost to you):
+What I'd buy today (affiliate links. They help fund the site at no extra cost to you):
 
-- [Beelink EQ12 Pro (N100)](/go/beelink-eq12) — my pick for a first node
-- [Minisforum MS-01](/go/minisforum-ms01) — if you need more power/PCIe
-- [Crucial 32GB DDR5 SO-DIMM](/go/crucial-ddr5) — max out the RAM early
-- [Samsung 990 Pro NVMe SSD](/go/samsung-990-pro) — fast boot + VM storage
+- [Beelink EQ12 Pro (N100)](/go/beelink-eq12): my pick for a first node
+- [Minisforum MS-01](/go/minisforum-ms01): if you need more power/PCIe
+- [Crucial 32GB DDR5 SO-DIMM](/go/crucial-ddr5): max out the RAM early
+- [Samsung 990 Pro NVMe SSD](/go/samsung-990-pro): fast boot + VM storage

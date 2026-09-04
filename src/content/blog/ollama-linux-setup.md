@@ -13,11 +13,11 @@ heroImage: "/images/ollama-linux-setup.webp"
 heroImageAlt: "Terminal showing Ollama pulling a Llama 3 model on Linux with GPU acceleration active and Open WebUI running"
 faqs:
   - q: "Can Ollama run without a GPU?"
-    a: "Yes. Ollama falls back to CPU inference automatically if no GPU is detected. Smaller models like llama3.2:3b run at 12-18 tokens/sec on a modern CPU, which is usable for most tasks. Larger 7B+ models are slow on CPU — plan for 2-4 tokens/sec without GPU acceleration."
+    a: "Yes. Ollama falls back to CPU inference automatically if no GPU is detected. Smaller models like llama3.2:3b run at 12-18 tokens/sec on a modern CPU, which is usable for most tasks. Larger 7B+ models are slow on CPU, plan for 2-4 tokens/sec without GPU acceleration."
   - q: "What is Open WebUI?"
-    a: "Open WebUI is a self-hosted web interface for Ollama that works like ChatGPT — conversation history, model switching, system prompts, and file uploads. It runs as a Docker container and connects to your local Ollama instance over its API."
+    a: "Open WebUI is a self-hosted web interface for Ollama that works like ChatGPT, conversation history, model switching, system prompts, and file uploads. It runs as a Docker container and connects to your local Ollama instance over its API."
   - q: "Which Ollama models work best without a GPU?"
-    a: "llama3.2:3b is the best starting point for CPU-only setups — fast enough for interactive use and capable enough for most tasks. phi3:mini is another good CPU option. Avoid 7B+ models on CPU unless you're willing to wait 10-30 seconds per response."
+    a: "llama3.2:3b is the best starting point for CPU-only setups, fast enough for interactive use and capable enough for most tasks. phi3:mini is another good CPU option. Avoid 7B+ models on CPU unless you're willing to wait 10-30 seconds per response."
   - q: "Can multiple users access my Ollama instance?"
     a: "Yes, if you expose it over the network. By default Ollama listens on localhost only. Set OLLAMA_HOST=0.0.0.0 in the systemd service to expose it on your LAN, then use Tailscale or WireGuard to share secure access with other users without opening firewall ports."
 ---
@@ -27,7 +27,7 @@ faqs:
 ## Why Run AI Locally?
 
 You don't need OpenAI's API. You don't need a $200/month cloud bill.
-A single machine in your home lab can run large language models — all without
+A single machine in your home lab can run large language models, all without
 sending a byte of data to someone else's server.
 
 Three reasons it's worth the setup over a hosted API:
@@ -36,7 +36,7 @@ Three reasons it's worth the setup over a hosted API:
 - **Cost.** After the hardware, inference is free. A used RTX 3060 12GB pays for itself fast if you'd otherwise run a paid API daily, and there's no per-token meter making you ration requests.
 - **Control.** You pick the model, the quantization, the context window, and the uptime. No surprise deprecations, no rate limits, no model swapped out from under your prompts.
 
-The trade-off is quality at the top end — a local 8B model is not GPT-class — but for summarization, classification, code completion, RAG over your own docs, and automation glue, an 8B–14B model on a mid-range GPU is more than enough.
+The trade-off is quality at the top end, a local 8B model is not GPT-class, but for summarization, classification, code completion, RAG over your own docs, and automation glue, an 8B–14B model on a mid-range GPU is more than enough.
 
 ## Prerequisites
 
@@ -45,7 +45,7 @@ The trade-off is quality at the top end — a local 8B model is not GPT-class �
 - NVIDIA GPU with 6 GB+ VRAM (optional but strongly recommended)
 - Docker + Docker Compose installed
 
-## Step 1 — Install Ollama
+## Step 1, Install Ollama
 
 ```bash
 # One-liner install (installs to /usr/local/bin/ollama)
@@ -78,13 +78,13 @@ nvidia-smi --query-gpu=memory.total,memory.used --format=csv
 
 Ollama tags like `llama3.1:8b-instruct-q4_K_M` encode the quantization. The number is the bit depth; lower means smaller and faster but slightly less accurate:
 
-- **q4_K_M** — the default sweet spot. ~4-bit, minimal quality loss, fits the most models. Start here.
-- **q5_K_M / q6_K** — closer to full precision, larger footprint. Use if you have spare VRAM.
-- **q8_0 / fp16** — near-lossless, but doubles or quadruples the size. Rarely worth it on a homelab GPU.
+- **q4_K_M**: the default sweet spot. ~4-bit, minimal quality loss, fits the most models. Start here.
+- **q5_K_M / q6_K**: closer to full precision, larger footprint. Use if you have spare VRAM.
+- **q8_0 / fp16**: near-lossless, but doubles or quadruples the size. Rarely worth it on a homelab GPU.
 
 When in doubt, the bare tag (`ollama pull llama3.1:8b`) gives you a sensible q4_K_M build.
 
-## Step 2 — Pull Your First Model
+## Step 2, Pull Your First Model
 
 ```bash
 # Pull Llama 3.2 (3B — fast, runs on CPU)
@@ -97,7 +97,7 @@ ollama pull mistral
 ollama run llama3.2 "Explain Linux runlevels in 3 sentences"
 ```
 
-## Step 3 — Add Open WebUI with Docker
+## Step 3, Add Open WebUI with Docker
 
 Create a `docker-compose.yml`:
 
@@ -125,7 +125,7 @@ docker compose up -d
 # Access at http://localhost:3000
 ```
 
-## Step 4 — GPU Passthrough (NVIDIA)
+## Step 4, GPU Passthrough (NVIDIA)
 
 ```bash
 # Install NVIDIA Container Toolkit
@@ -144,7 +144,7 @@ Verify GPU is accessible inside containers:
 docker run --rm --gpus all nvidia/cuda:12.0-base nvidia-smi
 ```
 
-## Step 5 — Expose via Tailscale (Remote Access)
+## Step 5, Expose via Tailscale (Remote Access)
 
 ```bash
 # Install Tailscale
@@ -155,11 +155,11 @@ sudo tailscale up
 tailscale serve --bg https / http://localhost:3000
 ```
 
-Now you can access `https://your-hostname.tailnet-name.ts.net` from any device on your Tailscale network — phone, laptop, anywhere.
+Now you can access `https://your-hostname.tailnet-name.ts.net` from any device on your Tailscale network, phone, laptop, anywhere.
 
 ## Secure the Ollama API
 
-By default Ollama binds to `127.0.0.1:11434` — local only, which is the safe default. The moment you want LAN or remote access you have to change that, and this is where people accidentally expose an unauthenticated LLM endpoint to their whole network.
+By default Ollama binds to `127.0.0.1:11434`, local only, which is the safe default. The moment you want LAN or remote access you have to change that, and this is where people accidentally expose an unauthenticated LLM endpoint to their whole network.
 
 The Ollama API has **no authentication of its own**. Anyone who can reach port 11434 can run inference, pull models, and read your model list. So the rule is: never bind it to `0.0.0.0` and then expose that port through a firewall or router.
 
@@ -185,8 +185,8 @@ sudo systemctl restart ollama
 
 For anything beyond your trusted LAN, put authentication in front of it. Two clean options:
 
-- **Tailscale (recommended)** — keep Ollama on localhost and let Open WebUI handle logins. Share the WebUI over your Tailnet (Step 5). Only devices on your Tailscale network can reach it, and WebUI enforces per-user accounts.
-- **Reverse proxy with auth** — front Ollama with Caddy or Traefik and require basic auth or an OAuth forward-auth (Authelia). This is the right pattern if other apps need direct API access.
+- **Tailscale (recommended)**: keep Ollama on localhost and let Open WebUI handle logins. Share the WebUI over your Tailnet (Step 5). Only devices on your Tailscale network can reach it, and WebUI enforces per-user accounts.
+- **Reverse proxy with auth**: front Ollama with Caddy or Traefik and require basic auth or an OAuth forward-auth (Authelia). This is the right pattern if other apps need direct API access.
 
 Do not open 11434 on your router. An exposed Ollama endpoint is a free GPU for whoever finds it.
 
@@ -208,7 +208,7 @@ Environment="OLLAMA_FLASH_ATTENTION=1"
 
 - **`OLLAMA_KEEP_ALIVE=-1`** stops the cold-start lag where the first prompt after a pause stalls while the model reloads into VRAM. Use this on a dedicated AI box; skip it if the GPU is shared with other workloads.
 - **`OLLAMA_NUM_PARALLEL`** matters if Open WebUI, n8n, and your editor all hit the same model. Each parallel slot consumes context memory, so raise it only with VRAM to spare.
-- **Context window** is set per request, not globally. Larger `num_ctx` eats VRAM fast — a 32K context on an 8B model can add several GB. In Open WebUI, set it per model under *Advanced Params* rather than maxing it everywhere.
+- **Context window** is set per request, not globally. Larger `num_ctx` eats VRAM fast, a 32K context on an 8B model can add several GB. In Open WebUI, set it per model under *Advanced Params* rather than maxing it everywhere.
 
 After changing these, confirm the model is actually on the GPU:
 
@@ -217,7 +217,7 @@ ollama ps
 # PROCESSOR column should read 100% GPU, not CPU or a split
 ```
 
-A split (e.g. `48%/52% CPU/GPU`) means the model didn't fit in VRAM and Ollama offloaded layers to the CPU — drop to a smaller quantization or a smaller model.
+A split (e.g. `48%/52% CPU/GPU`) means the model didn't fit in VRAM and Ollama offloaded layers to the CPU, drop to a smaller quantization or a smaller model.
 
 ## Benchmarks
 
@@ -231,21 +231,21 @@ A split (e.g. `48%/52% CPU/GPU`) means the model didn't fit in VRAM and Ollama o
 
 **Ollama not starting?** Check `journalctl -u ollama -f`
 
-**GPU not detected?** Run `nvidia-smi` — if that works but Ollama doesn't use GPU, restart the ollama service after installing the NVIDIA toolkit.
+**GPU not detected?** Run `nvidia-smi`, if that works but Ollama doesn't use GPU, restart the ollama service after installing the NVIDIA toolkit.
 
-**Open WebUI can't reach Ollama?** The `host.docker.internal` extra_hosts entry is the fix on Linux — Docker Desktop handles this automatically on Mac/Windows.
+**Open WebUI can't reach Ollama?** The `host.docker.internal` extra_hosts entry is the fix on Linux, Docker Desktop handles this automatically on Mac/Windows.
 
 ---
 
 ## Recommended hardware
 
-For GPU-accelerated local inference (affiliate links — they help fund the site at no extra cost to you):
+For GPU-accelerated local inference (affiliate links. They help fund the site at no extra cost to you):
 
-- [NVIDIA RTX 3060 12GB](/go/rtx-3060-12gb) — the value pick for 7B–13B models
-- [Beelink EQ12 Pro (N100)](/go/beelink-eq12) — fine for CPU-only 3B models
+- [NVIDIA RTX 3060 12GB](/go/rtx-3060-12gb): the value pick for 7B–13B models
+- [Beelink EQ12 Pro (N100)](/go/beelink-eq12): fine for CPU-only 3B models
 
 Once Ollama is running, a few natural next steps from this site:
 
-- **[n8n + Ollama: Build an AI Automation Agent](/homelab/n8n-ollama-automation)** — connect your local models to real workflows (RSS summaries, log analysis, Telegram alerts)
-- **[Grafana + Prometheus monitoring](/homelab/grafana-prometheus-homelab)** — add metrics and alerting to track GPU usage and container health
-- **[Best mini PC for a homelab server](/homelab/best-mini-pc-homelab-2026)** — hardware recommendations if you're choosing hardware for running local AI
+- **[n8n + Ollama: Build an AI Automation Agent](/homelab/n8n-ollama-automation)**: connect your local models to real workflows (RSS summaries, log analysis, Telegram alerts)
+- **[Grafana + Prometheus monitoring](/homelab/grafana-prometheus-homelab)**: add metrics and alerting to track GPU usage and container health
+- **[Best mini PC for a homelab server](/homelab/best-mini-pc-homelab-2026)**: hardware recommendations if you're choosing hardware for running local AI

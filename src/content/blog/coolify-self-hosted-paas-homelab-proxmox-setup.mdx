@@ -19,13 +19,13 @@ faqs:
 
 Vercel is genuinely good at what it does, which makes the pricing conversation awkward the moment you have more than a hobby project. Heroku hasn't been the same since Salesforce decided free dynos were too generous. If you're already running a homelab with spare compute, paying either of them to host a Node app or a static site feels like renting a storage unit when you have a garage.
 
-Coolify is the self-hosted answer. It's a PaaS that runs on your hardware, wraps Docker under a clean UI, handles push-to-deploy webhooks, provisions SSL certs, and manages multiple servers from one dashboard. It won't do everything Vercel does — edge functions at 200 PoPs isn't on the menu — but for most real apps it's more than enough.
+Coolify is the self-hosted answer. It's a PaaS that runs on your hardware, wraps Docker under a clean UI, handles push-to-deploy webhooks, provisions SSL certs, and manages multiple servers from one dashboard. It won't do everything Vercel does, edge functions at 200 PoPs isn't on the menu, but for most real apps it's more than enough.
 
 Here's how to actually get it running.
 
 ## What You Need Before You Start
 
-- A Linux server or Proxmox VM with a public IP (or a Cloudflare Tunnel if you're behind NAT — more on that later)
+- A Linux server or Proxmox VM with a public IP (or a Cloudflare Tunnel if you're behind NAT, more on that later)
 - Ubuntu 22.04 or Debian 12 recommended. The installer script assumes one of these.
 - Ports 80, 443, and 8000 reachable from the internet (8000 is the Coolify UI)
 - A domain you control
@@ -42,7 +42,7 @@ curl -fsSL https://cdn.coollabs.io/coolify/install.sh | bash
 
 That script installs Docker, pulls the Coolify stack (it's a Docker Compose setup itself), and starts everything. On a clean Ubuntu 22.04 VM it takes about three minutes. When it finishes, Coolify is listening on port 8000.
 
-Hit `http://your-server-ip:8000` in a browser. You'll land on the onboarding wizard — create your admin account, name your instance, done. There's no "click through twelve config screens" nonsense here. The defaults are sensible.
+Hit `http://your-server-ip:8000` in a browser. You'll land on the onboarding wizard, create your admin account, name your instance, done. There's no "click through twelve config screens" nonsense here. The defaults are sensible.
 
 One thing that bit me on first setup: if your server has a firewall (it should), you need to explicitly open 8000 or you'll stare at a timeout and wonder if the install failed.
 
@@ -55,13 +55,13 @@ ufw reload
 
 ## Connecting a Source Repository
 
-Go to **Sources** in the sidebar and add your Git provider. The GitHub App integration is the cleanest option — it installs a webhook automatically on each repo you connect, so Coolify gets notified on every push without you configuring anything manually.
+Go to **Sources** in the sidebar and add your Git provider. The GitHub App integration is the cleanest option, it installs a webhook automatically on each repo you connect, so Coolify gets notified on every push without you configuring anything manually.
 
 If you're self-hosting Gitea, add it as a custom Git source. You'll need to create a Gitea OAuth application and paste the credentials in. Takes five minutes, works well.
 
 ## Deploying Your First App
 
-Create a new **Resource**, pick **Application**, and select your repo. Coolify will inspect the repo and try to detect the build pack — Node, Python, static site, Dockerfile, Docker Compose. The detection is decent but not magic. If it guesses wrong, override it manually.
+Create a new **Resource**, pick **Application**, and select your repo. Coolify will inspect the repo and try to detect the build pack, Node, Python, static site, Dockerfile, Docker Compose. The detection is decent but not magic. If it guesses wrong, override it manually.
 
 For a Next.js app, for example:
 
@@ -70,7 +70,7 @@ For a Next.js app, for example:
 - Start command: `npm run start`
 - Port: `3000`
 
-Hit **Deploy**. Coolify pulls the repo, builds a Docker image, and starts the container. Build logs stream in real time in the UI. The first build takes longer because it's pulling base images — subsequent builds are faster.
+Hit **Deploy**. Coolify pulls the repo, builds a Docker image, and starts the container. Build logs stream in real time in the UI. The first build takes longer because it's pulling base images, subsequent builds are faster.
 
 The push-to-deploy webhook fires on every push to your configured branch. No additional setup needed if you used the GitHub App integration.
 
@@ -91,9 +91,9 @@ app.yourdomain.com {
 }
 ```
 
-You'll need to map Coolify's container port to a stable host port — do that in the app's **Network** settings in Coolify. Set a fixed host port and don't let Docker randomize it.
+You'll need to map Coolify's container port to a stable host port, do that in the app's **Network** settings in Coolify. Set a fixed host port and don't let Docker randomize it.
 
-**Option C: Cloudflare Tunnel.** If your homelab is behind CGNAT or a residential connection without a static IP, Cloudflare Tunnel is the cleanest solution. Install `cloudflared` on the server, create a tunnel, and route DNS through Cloudflare. Zero open inbound ports required. Coolify doesn't know or care — it just sees traffic arriving.
+**Option C: Cloudflare Tunnel.** If your homelab is behind CGNAT or a residential connection without a static IP, Cloudflare Tunnel is the cleanest solution. Install `cloudflared` on the server, create a tunnel, and route DNS through Cloudflare. Zero open inbound ports required. Coolify doesn't know or care, it just sees traffic arriving.
 
 ## Environment Variables and Secrets
 
@@ -131,7 +131,7 @@ volumes:
   pgdata:
 ```
 
-Coolify manages the volumes and networking. The `db` service isn't exposed publicly — only the `app` port gets routed through Traefik.
+Coolify manages the volumes and networking. The `db` service isn't exposed publicly, only the `app` port gets routed through Traefik.
 
 ## A Few Things That Surprised Me
 

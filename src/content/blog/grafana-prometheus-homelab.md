@@ -3,7 +3,7 @@ title: "Grafana + Prometheus Homelab Monitoring in 30 Minutes"
 description: "Set up Prometheus, Grafana, Node Exporter, cAdvisor, and Alertmanager with Docker Compose. Real dashboards, real alerts, zero cloud dependency."
 pubDate: 2026-04-07
 heroImage: "/images/grafana-prometheus-homelab.webp"
-heroImageAlt: "Grafana dashboard showing Prometheus metrics for a homelab — CPU, memory, network, and container stats"
+heroImageAlt: "Grafana dashboard showing Prometheus metrics for a homelab, CPU, memory, network, and container stats"
 section: "homelab"
 pillar: "Monitoring"
 type: "PILLAR"
@@ -13,31 +13,31 @@ featured: false
 draft: false
 faqs:
   - q: "Can Prometheus monitor hosts that are not running Docker?"
-    a: "Yes. Install node_exporter directly on the bare-metal or VM host you want to monitor, then add its IP and port (default: 9100) to your prometheus.yml scrape config. Prometheus does not require Docker — it just needs to reach the exporter's HTTP endpoint."
+    a: "Yes. Install node_exporter directly on the bare-metal or VM host you want to monitor, then add its IP and port (default: 9100) to your prometheus.yml scrape config. Prometheus does not require Docker. It just needs to reach the exporter's HTTP endpoint."
   - q: "How much disk space does Prometheus use?"
     a: "Prometheus compresses time-series data efficiently. A typical homelab setup with 5-10 hosts and 15-day retention uses 2-5 GB. Set the --storage.tsdb.retention.time flag in your Docker Compose command to control how long data is kept."
   - q: "Can Grafana send alerts to Telegram or a phone?"
     a: "Yes. Grafana supports alert contact points including Telegram, Slack, email, PagerDuty, and webhook. For Telegram, create a bot via @BotFather, add the bot token and chat ID to Grafana's contact point configuration, and alerts will arrive as Telegram messages."
   - q: "Do I need Alertmanager if I'm using Grafana alerts?"
-    a: "Not necessarily. Grafana has its own built-in alerting system that handles basic alert routing without Alertmanager. Alertmanager is useful when you need advanced grouping, silencing, or routing rules — particularly if you're sending alerts from multiple Prometheus instances."
+    a: "Not necessarily. Grafana has its own built-in alerting system that handles basic alert routing without Alertmanager. Alertmanager is useful when you need advanced grouping, silencing, or routing rules, particularly if you're sending alerts from multiple Prometheus instances."
 ---
 
-Flying blind is fine — until something breaks at 2am and you have no idea
+Flying blind is fine, until something breaks at 2am and you have no idea
 what happened, when it started, or which machine is responsible.
 
 A proper monitoring stack gives you three things: **visibility** into what
 your systems are doing right now, **history** so you can see trends and
 spot problems before they bite, and **alerts** that tell you when something
-needs attention — before your users do.
+needs attention, before your users do.
 
 This guide builds a complete monitoring stack for your homelab using
 industry-standard tools:
 
-- **Prometheus** — collects and stores metrics from all your machines
-- **Grafana** — turns those metrics into dashboards you can actually read
-- **Node Exporter** — exposes Linux system metrics (CPU, RAM, disk, network)
-- **cAdvisor** — exposes Docker container metrics
-- **Alertmanager** — sends alerts to email, Telegram, or Slack when things go wrong
+- **Prometheus**: collects and stores metrics from all your machines
+- **Grafana**: turns those metrics into dashboards you can actually read
+- **Node Exporter**: exposes Linux system metrics (CPU, RAM, disk, network)
+- **cAdvisor**: exposes Docker container metrics
+- **Alertmanager**: sends alerts to email, Telegram, or Slack when things go wrong
 
 Everything runs in Docker Compose. One file, one command, full observability.
 
@@ -67,8 +67,8 @@ Grafana
   └── renders dashboards in your browser
 ```
 
-Prometheus is the brain — it pulls data from everything and stores it.
-Grafana is the eyes — it reads from Prometheus and shows you what's happening.
+Prometheus is the brain, it pulls data from everything and stores it.
+Grafana is the eyes, it reads from Prometheus and shows you what's happening.
 
 ---
 
@@ -81,7 +81,7 @@ Grafana is the eyes — it reads from Prometheus and shows you what's happening.
 
 ---
 
-## Step 1 — Create the Project Structure
+## Step 1, Create the Project Structure
 
 ```bash
 mkdir -p ~/monitoring/{prometheus,grafana/provisioning/{datasources,dashboards},alertmanager}
@@ -108,7 +108,7 @@ monitoring/
 
 ---
 
-## Step 2 — Prometheus Configuration
+## Step 2, Prometheus Configuration
 
 Prometheus needs to know what to scrape. Create the main config:
 
@@ -159,11 +159,11 @@ scrape_configs:
 ```
 
 Replace the IP addresses with your actual machine IPs. Add or remove targets
-as needed — Prometheus will scrape whatever you list here.
+as needed, Prometheus will scrape whatever you list here.
 
 ---
 
-## Step 3 — Alert Rules
+## Step 3, Alert Rules
 
 Alerts are evaluated by Prometheus against the stored metrics. When a rule
 fires, Prometheus sends the alert to Alertmanager.
@@ -236,11 +236,11 @@ groups:
 ```
 
 These rules cover the most common homelab failure modes. You can add more
-later — Prometheus's query language (PromQL) is powerful once you get used to it.
+later, Prometheus's query language (PromQL) is powerful once you get used to it.
 
 ---
 
-## Step 4 — Alertmanager Configuration
+## Step 4, Alertmanager Configuration
 
 Alertmanager receives firing alerts from Prometheus and routes them to you.
 Here's a config that supports Telegram (free, instant, works great for homelabs):
@@ -301,17 +301,16 @@ inhibit_rules:
 **Setting up Telegram alerts (takes 3 minutes):**
 
 1. Open Telegram → search for **@BotFather** → send `/newbot`
-2. Follow the prompts → BotFather gives you a token — paste it into `bot_token`
+2. Follow the prompts → BotFather gives you a token, paste it into `bot_token`
 3. Send any message to your new bot, then visit:
    `https://api.telegram.org/bot<YOUR_TOKEN>/getUpdates`
-4. Find `"chat":{"id":` in the response — that number is your `chat_id`
+4. Find `"chat":{"id":` in the response, that number is your `chat_id`
 
 ---
 
-## Step 5 — Grafana Auto-Provisioning
+## Step 5, Grafana Auto-Provisioning
 
-Grafana can automatically connect to Prometheus and load dashboards on startup —
-no manual clicking required.
+Grafana can automatically connect to Prometheus and load dashboards on startup, no manual clicking required.
 
 ```yaml
 # grafana/provisioning/datasources/prometheus.yml
@@ -343,11 +342,11 @@ providers:
 
 This tells Grafana: "Prometheus is your data source, and load any JSON dashboards
 from that path." You can drop dashboard JSON files in there and they appear
-automatically — no import needed.
+automatically, no import needed.
 
 ---
 
-## Step 6 — The Docker Compose File
+## Step 6, The Docker Compose File
 
 This is the file that runs everything. One command starts the entire stack.
 
@@ -450,7 +449,7 @@ volumes:
 
 ---
 
-## Step 7 — Start the Stack
+## Step 7, Start the Stack
 
 ```bash
 cd ~/monitoring
@@ -467,17 +466,17 @@ After 20–30 seconds, open these URLs in your browser:
 | Service | URL | Default login |
 |:--------|:----|:-------------|
 | Grafana | `http://localhost:3001` | admin / changeme |
-| Prometheus | `http://localhost:9090` | — (no login) |
-| Alertmanager | `http://localhost:9093` | — (no login) |
-| Node Exporter | `http://localhost:9100/metrics` | — |
-| cAdvisor | `http://localhost:8080` | — |
+| Prometheus | `http://localhost:9090` |, (no login) |
+| Alertmanager | `http://localhost:9093` |, (no login) |
+| Node Exporter | `http://localhost:9100/metrics` |, |
+| cAdvisor | `http://localhost:8080` |, |
 
-**Change the Grafana password immediately** — click your avatar bottom-left →
+**Change the Grafana password immediately**, click your avatar bottom-left →
 Profile → Change password.
 
 ---
 
-## Step 8 — Import Dashboards
+## Step 8, Import Dashboards
 
 Grafana has a community dashboard library with thousands of pre-built dashboards.
 You don't need to build anything from scratch.
@@ -489,7 +488,7 @@ You don't need to build anything from scratch.
 3. Select **Prometheus** as the data source → **Import**
 
 You now have a full system dashboard: CPU, RAM, disk I/O, network, load average,
-and more — for every machine running Node Exporter.
+and more, for every machine running Node Exporter.
 
 **Other dashboard IDs worth importing:**
 
@@ -503,7 +502,7 @@ and more — for every machine running Node Exporter.
 
 ---
 
-## Step 9 — Install Node Exporter on Other Machines
+## Step 9, Install Node Exporter on Other Machines
 
 Prometheus can only scrape a machine if Node Exporter is running on it.
 You need to install Node Exporter on every machine you want to monitor.
@@ -547,7 +546,7 @@ That's the better long-term approach.
 
 ---
 
-## Step 10 — Open Firewall Ports
+## Step 10, Open Firewall Ports
 
 Prometheus needs to reach port 9100 on each machine it scrapes.
 On each target machine:
@@ -615,7 +614,7 @@ tuned exactly to your setup.
 
 ## Reloading Config Without Restarting
 
-Prometheus supports live config reload — you can add new scrape targets
+Prometheus supports live config reload. You can add new scrape targets
 without downtime.
 
 ```bash
@@ -676,17 +675,17 @@ Test reachability from the monitoring host:
 curl http://192.168.1.10:9100/metrics | head -5
 ```
 
-If that returns metrics — Prometheus can scrape it. If it times out — it's a
+If that returns metrics, Prometheus can scrape it. If it times out. It's a
 firewall issue.
 
 **Grafana shows "No data":**
 
 - Check Prometheus is actually scraping data: go to `http://localhost:9090`
   and run a query like `up`
-- Check the time range in Grafana — default is "last 6 hours", there might
+- Check the time range in Grafana, default is "last 6 hours", there might
   be no data yet if you just started
 - Check the datasource: Grafana → Connections → Data sources → Prometheus →
-  click **Test** — should say "Data source is working"
+  click **Test**, should say "Data source is working"
 
 **Alertmanager not sending Telegram alerts:**
 
@@ -704,7 +703,7 @@ Check the Alertmanager logs:
 docker compose logs alertmanager
 ```
 
-If you see the alert was received but Telegram shows nothing — double-check
+If you see the alert was received but Telegram shows nothing, double-check
 your `bot_token` and `chat_id`.
 
 ---
@@ -712,21 +711,21 @@ your `bot_token` and `chat_id`.
 ## What's Next
 
 Your homelab is now fully observable. You can see CPU, RAM, disk, network,
-and container health across every machine — in real time and historically.
+and container health across every machine, in real time and historically.
 
 The natural next steps from here:
 
-- **Automate the install with Ansible** — the [Ansible guide](/homelab/ansible-homelab)
+- **Automate the install with Ansible**: the [Ansible guide](/homelab/ansible-homelab)
   shows you how to deploy Node Exporter to every machine with one command
-- **Add Loki for log aggregation** — Prometheus handles metrics, Loki handles
+- **Add Loki for log aggregation**: Prometheus handles metrics, Loki handles
   logs. Together they give you the full Grafana observability stack
-- **Set up Uptime Kuma** — a simple, beautiful status page that monitors
+- **Set up Uptime Kuma**: a simple, beautiful status page that monitors
   your services and sends alerts when they go down. Pairs perfectly with
   this stack for external endpoint monitoring
-- **Connect Ollama metrics** — if you followed the [Ollama guide](/homelab/ollama-linux-setup),
-  Prometheus can scrape model inference stats — requests per second, token
+- **Connect Ollama metrics**: if you followed the [Ollama guide](/homelab/ollama-linux-setup),
+  Prometheus can scrape model inference stats, requests per second, token
   generation speed, queue depth
 
-When your lab breaks — and it will — you'll know exactly what happened,
+When your lab breaks, and it will, you'll know exactly what happened,
 when it happened, and which machine to look at first. That's what monitoring
 gives you.

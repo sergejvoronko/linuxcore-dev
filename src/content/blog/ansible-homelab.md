@@ -1,6 +1,6 @@
 ---
 title: "Ansible for Homelabbers: Automate From One Playbook"
-description: "Learn how to provision your entire homelab stack — Docker, Proxmox, monitoring, security — from a single Ansible playbook. Includes real working roles."
+description: "Learn how to provision your entire homelab stack, Docker, Proxmox, monitoring, security, from a single Ansible playbook. Includes real working roles."
 pubDate: 2026-01-13
 heroImage: "/images/ansible-homelab.webp"
 heroImageAlt: "Ansible playbook terminal output showing a PLAY RECAP with homelab nodes provisioned successfully"
@@ -16,16 +16,16 @@ faqs:
   - q: "Do I need Python installed on target hosts?"
     a: "Yes. Ansible uses Python on the remote host to execute most modules. Install it with: apt install python3. Ansible will tell you which hosts are missing Python when you run the playbook."
   - q: "Can I use Ansible with Proxmox VMs and LXC containers?"
-    a: "Yes. Ansible connects over SSH regardless of whether the target is a bare-metal machine, a Proxmox VM, or an LXC container — as long as SSH is enabled and the host is reachable, Ansible treats it the same."
+    a: "Yes. Ansible connects over SSH regardless of whether the target is a bare-metal machine, a Proxmox VM, or an LXC container, as long as SSH is enabled and the host is reachable, Ansible treats it the same."
   - q: "How do I store passwords and API keys securely in Ansible?"
-    a: "Use Ansible Vault. Run ansible-vault encrypt_string 'your-secret' to produce an encrypted value, then paste it into your vars file. The vault password is required at playbook runtime — never commit plaintext secrets to a repository."
+    a: "Use Ansible Vault. Run ansible-vault encrypt_string 'your-secret' to produce an encrypted value, then paste it into your vars file. The vault password is required at playbook runtime, never commit plaintext secrets to a repository."
   - q: "Do I need a dedicated control machine for Ansible?"
-    a: "No. Your laptop or any Linux machine with Ansible installed works as the control node. Ansible connects to target hosts over SSH at runtime — nothing is installed on the control machine permanently."
+    a: "No. Your laptop or any Linux machine with Ansible installed works as the control node. Ansible connects to target hosts over SSH at runtime, nothing is installed on the control machine permanently."
 ---
 
-The problem with setting up a homelab manually is that you have to do it again. New server, failed drive, fresh OS install — and you're back to copy-pasting commands from your notes, hoping you remember the order things need to happen in.
+The problem with setting up a homelab manually is that you have to do it again. New server, failed drive, fresh OS install, and you're back to copy-pasting commands from your notes, hoping you remember the order things need to happen in.
 
-Ansible solves this permanently. You describe what you want, and every machine converges to that state — whether it's the first run or the fifteenth.
+Ansible solves this permanently. You describe what you want, and every machine converges to that state, whether it's the first run or the fifteenth.
 
 ## Prerequisites
 
@@ -70,7 +70,7 @@ ansible/
             └── prometheus.yml.j2
 ```
 
-## Step 1 — Inventory File
+## Step 1, Inventory File
 
 ```ini
 # inventory.ini
@@ -87,7 +87,7 @@ ansible_python_interpreter=/usr/bin/python3
 
 For multiple environments (home vs. VPS vs. staging), use separate inventory files: `inventory/home.ini`, `inventory/vps.ini`. Then target with `-i inventory/home.ini`.
 
-## Step 2 — Shared Variables
+## Step 2, Shared Variables
 
 Variables shared across all roles go in `group_vars/all.yml`. Keeping them here means you change one value instead of hunting through role files.
 
@@ -123,9 +123,9 @@ base_packages:
   - rsync
 ```
 
-Secrets — passwords, API keys, tokens — go in `group_vars/all.vault.yml`, encrypted with Ansible Vault (covered below).
+Secrets, passwords, API keys, tokens, go in `group_vars/all.vault.yml`, encrypted with Ansible Vault (covered below).
 
-## Step 3 — Master Playbook
+## Step 3, Master Playbook
 
 ```yaml
 # site.yml
@@ -144,9 +144,9 @@ Secrets — passwords, API keys, tokens — go in `group_vars/all.vault.yml`, en
     - monitoring
 ```
 
-The separation into multiple plays matters: `base` and `docker` run everywhere, `monitoring` only runs on the designated monitoring host. You can extend this to target other groups — `[proxmox]`, `[nas]`, `[vpn]` — without touching existing plays.
+The separation into multiple plays matters: `base` and `docker` run everywhere, `monitoring` only runs on the designated monitoring host. You can extend this to target other groups, `[proxmox]`, `[nas]`, `[vpn]`, without touching existing plays.
 
-## Step 4 — Base Role (Hardening)
+## Step 4, Base Role (Hardening)
 
 The base role handles everything a fresh Ubuntu/Debian machine needs before anything else runs on it.
 
@@ -204,7 +204,7 @@ The base role handles everything a fresh Ubuntu/Debian machine needs before anyt
       APT::Periodic::AutocleanInterval "7";
 ```
 
-Handlers are tasks that only run when notified — here, restarting sshd only when the config actually changed:
+Handlers are tasks that only run when notified, here, restarting sshd only when the config actually changed:
 
 ```yaml
 # roles/base/handlers/main.yml
@@ -215,7 +215,7 @@ Handlers are tasks that only run when notified — here, restarting sshd only wh
     state: restarted
 ```
 
-## Step 5 — Docker Role
+## Step 5, Docker Role
 
 ```yaml
 # roles/docker/tasks/main.yml
@@ -263,7 +263,7 @@ Handlers are tasks that only run when notified — here, restarting sshd only wh
 
 After this role runs, the admin user can run `docker` commands without sudo and Docker starts automatically on boot.
 
-## Step 6 — Monitoring Role
+## Step 6, Monitoring Role
 
 The monitoring role deploys Prometheus and Grafana via Docker Compose. Using a Jinja2 template for the Prometheus config lets you inject variable values at deploy time.
 
@@ -341,9 +341,9 @@ scrape_configs:
 {% endfor %}
 ```
 
-Every host in `[homelab]` gets a Node Exporter scrape target automatically — no manual editing when you add a server.
+Every host in `[homelab]` gets a Node Exporter scrape target automatically, no manual editing when you add a server.
 
-## Step 7 — Ansible Vault for Secrets
+## Step 7, Ansible Vault for Secrets
 
 Never put passwords in plain YAML. Ansible Vault encrypts sensitive values so you can commit the file to git safely.
 
@@ -374,7 +374,7 @@ chmod 600 .vault_pass
 ansible-playbook site.yml -i inventory.ini --vault-password-file .vault_pass
 ```
 
-The vault file is encrypted on disk but the values are available as normal variables inside your roles — `{{ grafana_admin_password }}` works exactly as you'd expect.
+The vault file is encrypted on disk but the values are available as normal variables inside your roles, `{{ grafana_admin_password }}` works exactly as you'd expect.
 
 ## Running the Playbook
 
@@ -404,7 +404,7 @@ proxmox-01 : ok=12  changed=3  unreachable=0  failed=0
 monitoring : ok=18  changed=2  unreachable=0  failed=0
 ```
 
-`changed=3` tells you exactly what was modified. `ok=12` means those tasks ran and confirmed the system was already in the correct state — Ansible checked, nothing needed changing.
+`changed=3` tells you exactly what was modified. `ok=12` means those tasks ran and confirmed the system was already in the correct state, Ansible checked, nothing needed changing.
 
 ## Tags: Run Only What You Need
 
@@ -454,14 +454,14 @@ Run `ansible all -i inventory.ini -m raw -a "apt install -y python3"` to bootstr
 ```bash
 ansible-playbook site.yml -i inventory.ini -vvv
 ```
-Three `v` flags show you the full SSH conversation and module output — enough to diagnose almost any issue.
+Three `v` flags show you the full SSH conversation and module output, enough to diagnose almost any issue.
 
 ---
 
-This playbook covers the foundation. For a production-ready setup with five fully built roles — base hardening, Docker CE, SSH/kernel security with CrowdSec, Prometheus/Grafana monitoring, and Ollama with automatic GPU detection — the **[Ansible Homelab Bundle](/go/ansible-bundle)** includes 25 ready-to-run files. One command provisions a fresh Ubuntu server to a complete homelab stack in under 10 minutes.
+This playbook covers the foundation. For a production-ready setup with five fully built roles, base hardening, Docker CE, SSH/kernel security with CrowdSec, Prometheus/Grafana monitoring, and Ollama with automatic GPU detection, the **[Ansible Homelab Bundle](/go/ansible-bundle)** includes 25 ready-to-run files. One command provisions a fresh Ubuntu server to a complete homelab stack in under 10 minutes.
 
 Related guides:
 
-- **[Docker Compose Homelab Stack](/homelab/docker-compose-homelab-stack)** — the services this Ansible setup deploys
-- **[Proxmox VE Setup](/homelab/proxmox-homelab-setup)** — the infrastructure these playbooks typically run against
-- **[Linux Security Hardening](/homelab/linux-security-hardening)** — manual hardening steps that the base role automates
+- **[Docker Compose Homelab Stack](/homelab/docker-compose-homelab-stack)**: the services this Ansible setup deploys
+- **[Proxmox VE Setup](/homelab/proxmox-homelab-setup)**: the infrastructure these playbooks typically run against
+- **[Linux Security Hardening](/homelab/linux-security-hardening)**: manual hardening steps that the base role automates

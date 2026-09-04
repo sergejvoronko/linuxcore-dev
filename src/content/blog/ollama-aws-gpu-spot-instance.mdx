@@ -12,9 +12,9 @@ faqs:
   - q: "Which AWS GPU instance types work best for running LLMs with Ollama?"
     a: "The g4dn.xlarge (NVIDIA T4, 16 GB VRAM, ~€0.35/hr spot) handles 7B-13B models well. For 70B models, use the g5.2xlarge (NVIDIA A10G, 24 GB VRAM, ~€0.70/hr spot) or g5.12xlarge for multi-GPU inference. The p3.2xlarge (V100) is an older option but often cheaper than g5 at spot pricing."
   - q: "Can a spot instance be interrupted while I am actively using Ollama?"
-    a: "Yes. AWS can reclaim spot capacity with a 2-minute warning. For interactive sessions this is disruptive — your model generation stops mid-stream. The launch script in this guide handles relaunching automatically, but active sessions cannot be resumed. For long inference jobs, consider spot interruption handling in your client code."
+    a: "Yes. AWS can reclaim spot capacity with a 2-minute warning. For interactive sessions this is disruptive, your model generation stops mid-stream. The launch script in this guide handles relaunching automatically, but active sessions cannot be resumed. For long inference jobs, consider spot interruption handling in your client code."
   - q: "How much does it actually cost to run a 70B model on AWS?"
-    a: "A g5.2xlarge spot instance runs at roughly €0.60-0.85/hour depending on the region and time of day. A typical session — loading the model, running 20-30 prompts, and shutting down — takes 2-3 hours and costs €1.50-2.50. Compare that to a month of API calls to a cloud provider for the same volume of requests."
+    a: "A g5.2xlarge spot instance runs at roughly €0.60-0.85/hour depending on the region and time of day. A typical session, loading the model, running 20-30 prompts, and shutting down, takes 2-3 hours and costs €1.50-2.50. Compare that to a month of API calls to a cloud provider for the same volume of requests."
   - q: "Do I need to keep the instance running between sessions?"
     a: "No, and you should not. The termination script in this guide stops the instance after use. Ollama re-downloads models on first run if they are not cached. To avoid re-downloading, configure a persistent EBS volume or snapshot for the model cache, as described in the optional section of the guide."
 ---
@@ -25,9 +25,9 @@ Your homelab can run 7B and 13B models just fine on a decent CPU or a mid-range 
 
 You have two choices: spend €1,500+ on an RTX 4090 or A6000 that sits idle 95% of the time, or rent exactly the GPU you need for exactly as long as you need it.
 
-AWS spot instances make the second option absurdly cheap. A `g5.xlarge` with an NVIDIA A10G GPU (24GB VRAM) goes for roughly €0.30–0.45/hour on spot pricing — that's 60–80% less than on-demand. Run it for two hours, tear it down, pay less than a euro.
+AWS spot instances make the second option absurdly cheap. A `g5.xlarge` with an NVIDIA A10G GPU (24GB VRAM) goes for roughly €0.30–0.45/hour on spot pricing. That's 60–80% less than on-demand. Run it for two hours, tear it down, pay less than a euro.
 
-This guide automates the entire lifecycle: launch, configure, run Ollama, and terminate — all from a single script on your homelab machine.
+This guide automates the entire lifecycle: launch, configure, run Ollama, and terminate, all from a single script on your homelab machine.
 
 ## When this makes sense (and when it doesn't)
 
@@ -38,14 +38,14 @@ This guide automates the entire lifecycle: launch, configure, run Ollama, and te
 - Your local power costs make 24/7 GPU operation expensive
 
 **Stick with local hardware when:**
-- You use AI models multiple hours every day (the break-even is roughly 2hrs/day — see the cost comparison below)
+- You use AI models multiple hours every day (the break-even is roughly 2hrs/day, see the cost comparison below)
 - You need instant availability with no spin-up time
 - You're running models that fit in 8–16GB VRAM (a €300 RTX 4060 handles this)
 - Privacy requirements mean data can't leave your network
 
 ## GPU instance options and pricing
 
-Here's what's available for AI inference workloads on spot pricing in `eu-central-1` (Frankfurt). Prices fluctuate — these are typical ranges:
+Here's what's available for AI inference workloads on spot pricing in `eu-central-1` (Frankfurt). Prices fluctuate. These are typical ranges:
 
 | Instance | GPU | VRAM | Spot price/hr | Good for |
 |----------|-----|------|---------------|----------|
@@ -348,7 +348,7 @@ Local RTX 4070 Ti:
   €18.06 + €1.29 electricity = €19.35/month
 ```
 
-Spot instances are 2.5× cheaper if you only use GPU compute a few hours per week. The card would take over 7 years to break even — by which point it's obsolete.
+Spot instances are 2.5× cheaper if you only use GPU compute a few hours per week. The card would take over 7 years to break even, by which point it's obsolete.
 
 ### Scenario: heavy daily use (6+ hours/day)
 
@@ -364,13 +364,13 @@ If you're running models 6+ hours daily, buy the GPU. Local hardware wins decisi
 
 ### The VRAM argument
 
-The cost math above ignores a critical factor: VRAM. A `g5.xlarge` gives you an A10G with 24GB VRAM. Getting 24GB of VRAM locally means an RTX 4090 (€1,600+) or an A5000 (€2,500+). For `g5.12xlarge` you get 96GB across 4 GPUs — there's no reasonable local equivalent.
+The cost math above ignores a critical factor: VRAM. A `g5.xlarge` gives you an A10G with 24GB VRAM. Getting 24GB of VRAM locally means an RTX 4090 (€1,600+) or an A5000 (€2,500+). For `g5.12xlarge` you get 96GB across 4 GPUs. There's no reasonable local equivalent.
 
 If you need more than 16GB VRAM and use it less than 4 hours daily, spot instances are the clear winner.
 
 ## Handling spot interruptions
 
-Spot instances can be reclaimed by AWS with 2 minutes notice. For inference workloads this isn't a big deal — you lose the current prompt, not data. But you should be aware of it.
+Spot instances can be reclaimed by AWS with 2 minutes notice. For inference workloads this isn't a big deal, you lose the current prompt, not data. But you should be aware of it.
 
 ### Check for interruption warnings
 
@@ -390,7 +390,7 @@ done
 
 ### Interruption rates
 
-In practice, `g5.xlarge` spot instances in `eu-central-1` have an interruption rate under 5%. For a 2-hour inference session, the chance of being interrupted is very low. If it does happen, just re-run the launch script — it takes 5–10 minutes to get back up.
+In practice, `g5.xlarge` spot instances in `eu-central-1` have an interruption rate under 5%. For a 2-hour inference session, the chance of being interrupted is very low. If it does happen, just re-run the launch script. It takes 5–10 minutes to get back up.
 
 ## Persistent model cache (optional)
 
@@ -420,8 +420,8 @@ Then modify the launch script to use this snapshot as the root volume. Startup t
 
 This pairs naturally with other guides in the series:
 
-- [When to Move Your Homelab Workload to AWS](/aws/when-to-move-homelab-to-aws) — the decision framework that led to this approach
-- [Spot Instances, Reserved Instances, and Savings Plans](/aws/aws-cost-guide-spot-reserved-savings) — deeper dive into AWS pricing strategies
-- [Ollama + Open WebUI on your homelab](/homelab/ollama-linux-setup) — the local setup that this extends
+- [When to Move Your Homelab Workload to AWS](/aws/when-to-move-homelab-to-aws): the decision framework that led to this approach
+- [Spot Instances, Reserved Instances, and Savings Plans](/aws/aws-cost-guide-spot-reserved-savings): deeper dive into AWS pricing strategies
+- [Ollama + Open WebUI on your homelab](/homelab/ollama-linux-setup): the local setup that this extends
 
 The sweet spot is owning a modest local GPU for daily use and spinning up cloud instances when you need more power. Your homelab handles the 7B and 13B models you use every day; AWS handles the occasional 70B experiment. Best of both worlds.

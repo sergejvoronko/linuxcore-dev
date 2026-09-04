@@ -1,42 +1,42 @@
 ---
 title: "AWS S3 + Restic: Homelab Backups Under €2/Month"
-description: "Encrypted, deduplicated homelab backups to AWS S3 with lifecycle policies, least-privilege IAM, and Glacier tiering — full walkthrough under €2/month."
+description: "Encrypted, deduplicated homelab backups to AWS S3 with lifecycle policies, least-privilege IAM, and Glacier tiering, full walkthrough under €2/month."
 pubDate: 2026-04-16
 readingTime: 9
 section: "aws"
 heroImage: "/images/aws-s3-restic-homelab-backups.webp"
-heroImageAlt: "Terminal showing restic backup to AWS S3 with encryption and deduplication stats — under 2 euros per month"
+heroImageAlt: "Terminal showing restic backup to AWS S3 with encryption and deduplication stats, under 2 euros per month"
 tags: ["aws", "s3", "restic", "backup", "homelab", "disaster-recovery"]
 draft: false
 faqs:
   - q: "How does restic handle deduplication?"
-    a: "restic splits files into variable-length chunks using content-defined chunking, then stores only chunks that are not already in the repository. If you back up a file that has only changed in one section, only the new chunks are uploaded — not the entire file. This makes incremental backups fast and storage-efficient."
+    a: "restic splits files into variable-length chunks using content-defined chunking, then stores only chunks that are not already in the repository. If you back up a file that has only changed in one section, only the new chunks are uploaded, not the entire file. This makes incremental backups fast and storage-efficient."
   - q: "Is backup data encrypted before it leaves my server?"
     a: "Yes. restic encrypts all data client-side using AES-256-CTR before uploading to S3. The encryption key is derived from your repository password and never leaves your machine. AWS stores only ciphertext and cannot read your backup data."
   - q: "Can I restore individual files without downloading the full backup?"
     a: "Yes. Use restic restore latest --target /restore/path --include /specific/file to restore a single file or directory. restic only downloads the chunks needed for that file, not the entire repository."
   - q: "How much does S3 Standard storage cost per GB?"
-    a: "In eu-west-1 (Ireland), S3 Standard costs approximately €0.023 per GB per month. A 50 GB backup repository costs around €1.15/month. Adding a lifecycle policy to move data to S3 Glacier Instant Retrieval after 30 days cuts the cost to roughly €0.004/GB — under €0.25/month for the same 50 GB."
+    a: "In eu-west-1 (Ireland), S3 Standard costs approximately €0.023 per GB per month. A 50 GB backup repository costs around €1.15/month. Adding a lifecycle policy to move data to S3 Glacier Instant Retrieval after 30 days cuts the cost to roughly €0.004/GB, under €0.25/month for the same 50 GB."
 ---
 
 import { Image } from 'astro:assets';
 
 Local backups are good. Local backups plus offsite backups are what separate "inconvenient hardware failure" from "catastrophic data loss."
 
-I've seen both sides of this — enterprise SAP systems with multi-region replication and homelabbers who lost years of data because their backup drive was sitting next to the NAS it was protecting. When the power supply blew, it took both with it.
+I've seen both sides of this, enterprise SAP systems with multi-region replication and homelabbers who lost years of data because their backup drive was sitting next to the NAS it was protecting. When the power supply blew, it took both with it.
 
-AWS S3 is the cheapest, most durable offsite storage available to individuals. Combined with restic — which handles encryption, deduplication, and incremental snapshots — you get a backup system that rivals enterprise setups for a fraction of the cost.
+AWS S3 is the cheapest, most durable offsite storage available to individuals. Combined with restic, which handles encryption, deduplication, and incremental snapshots, you get a backup system that rivals enterprise setups for a fraction of the cost.
 
 This guide builds a complete production backup pipeline. If you've read the homelab backup basics guide, consider this the cloud-native deep dive with proper IAM, lifecycle policies, and cost optimization.
 
 ## What this setup gives you
 
-- **Encrypted at rest and in transit** — restic encrypts before upload, S3 encrypts at the bucket level
-- **Deduplicated** — restic only uploads changed blocks, keeping transfer and storage costs minimal
-- **Versioned** — point-in-time recovery from any snapshot
-- **Tiered storage** — recent backups in S3 Standard, older ones automatically moved to Glacier
-- **Least-privilege access** — IAM policy scoped to exactly one bucket with no delete permission for the backup user
-- **Total cost** — under €2/month for 50–100GB of deduplicated data
+- **Encrypted at rest and in transit**: restic encrypts before upload, S3 encrypts at the bucket level
+- **Deduplicated**: restic only uploads changed blocks, keeping transfer and storage costs minimal
+- **Versioned**: point-in-time recovery from any snapshot
+- **Tiered storage**: recent backups in S3 Standard, older ones automatically moved to Glacier
+- **Least-privilege access**: IAM policy scoped to exactly one bucket with no delete permission for the backup user
+- **Total cost**: under €2/month for 50–100GB of deduplicated data
 
 ## Prerequisites
 
@@ -91,7 +91,7 @@ aws s3api put-bucket-encryption \
   }'
 ```
 
-Using `BucketKeyEnabled` reduces KMS request costs by up to 99% — important when restic writes many small objects.
+Using `BucketKeyEnabled` reduces KMS request costs by up to 99%, important when restic writes many small objects.
 
 ## Step 2: Set up lifecycle policies
 
@@ -137,7 +137,7 @@ What this does:
 | 0–30 days | S3 Standard | €0.0245 | Instant |
 | 30–90 days | Glacier Instant Retrieval | €0.004 | Milliseconds |
 | 90+ days | Glacier Deep Archive | €0.00099 | 12–48 hours |
-| Old versions > 180 days | Deleted | Free | — |
+| Old versions > 180 days | Deleted | Free |, |
 
 For 100GB of data, your steady-state monthly cost lands around €0.50–1.50 depending on the age distribution of your snapshots.
 
@@ -157,7 +157,7 @@ echo "Access Key: $(jq -r '.AccessKey.AccessKeyId' /tmp/backup-keys.json)"
 echo "Secret Key: $(jq -r '.AccessKey.SecretAccessKey' /tmp/backup-keys.json)"
 ```
 
-Now attach a policy that only allows access to this one bucket. Critically, this policy does **not** include `s3:DeleteObject` — a compromised server can add new backups but can't delete existing ones:
+Now attach a policy that only allows access to this one bucket. Critically, this policy does **not** include `s3:DeleteObject`, a compromised server can add new backups but can't delete existing ones:
 
 ```bash
 cat > /tmp/backup-policy.json << 'EOF'
@@ -197,7 +197,7 @@ rm /tmp/backup-keys.json /tmp/backup-policy.json
 
 ### Why no delete permission matters
 
-If ransomware or an attacker compromises your homelab server, they can encrypt your local data — but they can't delete your S3 backups. The backup user physically cannot issue delete commands. To prune old snapshots, you'll use a separate admin credential manually or via a locked-down CI/CD pipeline.
+If ransomware or an attacker compromises your homelab server, they can encrypt your local data, but they can't delete your S3 backups. The backup user physically cannot issue delete commands. To prune old snapshots, you'll use a separate admin credential manually or via a locked-down CI/CD pipeline.
 
 ## Step 4: Initialize the restic repository
 
@@ -219,7 +219,7 @@ source ~/.restic-env
 restic init
 ```
 
-**Store the restic password somewhere safe outside your homelab** — a password manager, a printed sheet in a safe, anywhere that survives a total homelab loss. Without this password, your backups are unrecoverable by design.
+**Store the restic password somewhere safe outside your homelab**, a password manager, a printed sheet in a safe, anywhere that survives a total homelab loss. Without this password, your backups are unrecoverable by design.
 
 ## Step 5: Run your first backup
 
@@ -240,7 +240,7 @@ restic backup \
   --verbose
 ```
 
-The first backup uploads everything. Subsequent runs only upload changed blocks — a typical daily backup of a homelab server transfers 50–200MB even if you have 100GB+ of total data.
+The first backup uploads everything. Subsequent runs only upload changed blocks, a typical daily backup of a homelab server transfers 50–200MB even if you have 100GB+ of total data.
 
 ## Step 6: Automate with systemd
 
@@ -298,7 +298,7 @@ A few details worth noting:
 - `Nice=19` and `IOSchedulingClass=idle` ensure backups don't compete with your services
 - `RandomizedDelaySec=1800` adds up to 30 minutes of jitter so multiple machines don't all hit S3 at the same time
 - `Persistent=true` means if the machine was off at 2:30 AM, the backup runs as soon as it boots
-- The `forget` command with `--prune` keeps 7 daily, 4 weekly, and 6 monthly snapshots — roughly 6 months of recovery points
+- The `forget` command with `--prune` keeps 7 daily, 4 weekly, and 6 monthly snapshots, roughly 6 months of recovery points
 
 ### A note on the forget command and delete permissions
 
@@ -306,7 +306,7 @@ The `restic forget --prune` command needs to delete objects from S3. Since our b
 
 **Option A (recommended for most homelabs):** Create a second IAM user with delete permission, and run `forget --prune` manually once a month from a separate machine or your desktop.
 
-**Option B (convenience trade-off):** Add `s3:DeleteObject` to the backup policy. This is less secure — a compromised server could delete backups — but it's simpler for a single-person setup. Make your own risk assessment.
+**Option B (convenience trade-off):** Add `s3:DeleteObject` to the backup policy. This is less secure, a compromised server could delete backups, but it's simpler for a single-person setup. Make your own risk assessment.
 
 ## Step 7: Verify your backups
 
@@ -393,14 +393,14 @@ restic restore latest --target /
 restic restore abc123ef --target /mnt/restore
 ```
 
-If your data has moved to Glacier Deep Archive (90+ days old), you'll need to initiate a restore request first. This takes 12–48 hours — which is why the lifecycle policy keeps the most recent 30 days in Standard storage for instant access.
+If your data has moved to Glacier Deep Archive (90+ days old), you'll need to initiate a restore request first. This takes 12–48 hours, which is why the lifecycle policy keeps the most recent 30 days in Standard storage for instant access.
 
 ## Next steps
 
 This backup setup pairs well with the rest of the AWS series:
 
-- [When to Move Your Homelab Workload to AWS](/aws/when-to-move-homelab-to-aws) — the decision framework behind this hybrid approach
-- [The €10/Month AWS Stack](/aws/ten-euro-month-aws-stack) — if you want to run compute alongside your backups
+- [When to Move Your Homelab Workload to AWS](/aws/when-to-move-homelab-to-aws): the decision framework behind this hybrid approach
+- [The €10/Month AWS Stack](/aws/ten-euro-month-aws-stack): if you want to run compute alongside your backups
 - The [Ansible homelab automation guide](/homelab/ansible-homelab) can deploy this entire backup pipeline across multiple machines with a single playbook
 
 Your data is only as safe as your worst backup. For €1.23/month, there's no reason it shouldn't survive anything.

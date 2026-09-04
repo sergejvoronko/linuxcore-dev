@@ -13,12 +13,12 @@ faqs:
   - q: "Do USB 10GbE adapters work out of the box on Linux?"
     a: "Most new USB 10GbE adapters based on the Realtek RTL8156 or similar chipsets are supported in Linux kernel 5.15 and later. On Ubuntu 22.04+ and Proxmox 7+ you typically get plug-and-play detection, though you may need to install firmware packages on some distros."
   - q: "Can I actually saturate 10GbE over USB 3.2 Gen 2?"
-    a: "USB 3.2 Gen 2 provides ~10 Gbps theoretical bandwidth, but real-world overhead limits you to roughly 8–9 Gbps of usable throughput. In practice, NFS and SMB transfers on a Proxmox host top out around 700–900 MB/s depending on CPU and storage speed — still a massive upgrade over gigabit."
+    a: "USB 3.2 Gen 2 provides ~10 Gbps theoretical bandwidth, but real-world overhead limits you to roughly 8–9 Gbps of usable throughput. In practice, NFS and SMB transfers on a Proxmox host top out around 700–900 MB/s depending on CPU and storage speed, still a massive upgrade over gigabit."
   - q: "Should I use a USB 10GbE adapter or a PCIe card for my homelab?"
     a: "PCIe cards deliver lower latency and more consistent throughput, making them the better choice for dedicated NAS or high-traffic VM hosts with an available slot. USB adapters win for small-form-factor nodes like Intel NUCs or mini PCs where PCIe isn't an option, or for temporary high-speed connections between machines."
 ---
 
-Gigabit Ethernet stopped being the bottleneck in the datacenter years ago. In the homelab, it's still quietly throttling your NFS mounts, your VM live migrations, and your backups — not because 10GbE hardware is expensive anymore, but because getting it into a small-form-factor node has always been awkward. A new wave of compact USB 10GbE adapters changes that calculus. They're small, they're cheap, and Linux support is finally solid.
+Gigabit Ethernet stopped being the bottleneck in the datacenter years ago. In the homelab, it's still quietly throttling your NFS mounts, your VM live migrations, and your backups, not because 10GbE hardware is expensive anymore, but because getting it into a small-form-factor node has always been awkward. A new wave of compact USB 10GbE adapters changes that calculus. They're small, they're cheap, and Linux support is finally solid.
 
 Here's how to actually put them to work.
 
@@ -26,8 +26,8 @@ Here's how to actually put them to work.
 
 As of early 2026, the market has consolidated around a few chipsets. The most common in budget adapters (typically $40–$70 USD) are:
 
-- **Realtek RTL8156BG** — the workhorse, broadly supported
-- **AQtion AQC111U** — slightly better performance ceiling, patchier driver history
+- **Realtek RTL8156BG**: the workhorse, broadly supported
+- **AQtion AQC111U**: slightly better performance ceiling, patchier driver history
 - **Marvell AQtion** variants appearing in newer OEM designs
 
 Jeff Geerling's hands-on coverage of [the newest batch of adapters](https://www.jeffgeerling.com/blog/2026/new-10-gbe-usb-adapters-cooler-smaller-cheaper/) confirms they run cooler and smaller than earlier generations, which matters when you're stuffing them into a rack shelf alongside four other mini PCs.
@@ -49,7 +49,7 @@ dmesg | grep -i "r8152\|usb 10g\|RTL8156"
 ip link show
 ```
 
-You should see a new interface — usually `enx<mac>` or `eth1` depending on your udev rules. If nothing shows up, install the firmware package:
+You should see a new interface, usually `enx<mac>` or `eth1` depending on your udev rules. If nothing shows up, install the firmware package:
 
 ```bash
 # Debian/Ubuntu/Proxmox
@@ -168,7 +168,7 @@ volumes:
 USB adapters aren't the right tool for every node. Here's where each makes sense:
 
 **Go USB when:**
-- Your node is a mini PC, NUC, or Raspberry Pi — no PCIe slot available
+- Your node is a mini PC, NUC, or Raspberry Pi, no PCIe slot available
 - You need temporary 10GbE for a backup run or migration
 - You're testing whether 10GbE even helps your workload before committing to a PCIe upgrade
 - Budget is tight and you need multiple nodes upgraded at once
@@ -183,20 +183,20 @@ PCIe 10GbE cards have dropped to $30–$50 for used Intel X550-T1 or Mellanox Co
 
 ## Thermal Considerations
 
-The new generation of adapters runs meaningfully cooler than the 2023/2024 crop — but "cooler" is relative. Under sustained 10GbE load, expect the adapter body to reach 45–55°C. In an enclosed rack shelf with poor airflow, that's worth monitoring.
+The new generation of adapters runs meaningfully cooler than the 2023/2024 crop, but "cooler" is relative. Under sustained 10GbE load, expect the adapter body to reach 45–55°C. In an enclosed rack shelf with poor airflow, that's worth monitoring.
 
-If you're running constant high-throughput workloads, add a small fan or ensure the adapter has airflow. For burst workloads — backups, migrations, occasional large transfers — thermal throttling is not a practical concern.
+If you're running constant high-throughput workloads, add a small fan or ensure the adapter has airflow. For burst workloads, backups, migrations, occasional large transfers, thermal throttling is not a practical concern.
 
 ## Recommended hardware
 
-The gear I run for this (affiliate links — they help fund the site at no extra cost to you):
+The gear I run for this (affiliate links. They help fund the site at no extra cost to you):
 
 - [2.5GbE USB Ethernet adapter](/go/usb-25gbe-adapter)
 - [TP-Link TL-SG3210XHP-M2 2.5GbE managed switch](/go/tplink-25gbe-switch)
 
 ## What's Next
 
-- [Proxmox VE Homelab Setup: Complete Installation and Configuration Guide (2026)](/homelab/proxmox-homelab-setup) — Segment your homelab network with VLANs on Proxmox bridges
-- [Stratis Storage on Linux: ZFS-Like Features Without the Complexity](/homelab/stratis-storage-homelab-guide) — NFS vs iSCSI for Proxmox VM storage: benchmarks and tradeoffs
-- [Best Mini PC for a Homelab Server in 2026: Tested & Ranked](/homelab/best-mini-pc-homelab-2026) — Building a Proxmox cluster from mini PCs on a budget
-- [Grafana + Prometheus Homelab Monitoring: Full Stack Setup in 30 Minutes](/homelab/grafana-prometheus-homelab) — Monitor network throughput and host metrics with Prometheus and Grafana
+- [Proxmox VE Homelab Setup: Complete Installation and Configuration Guide (2026)](/homelab/proxmox-homelab-setup): Segment your homelab network with VLANs on Proxmox bridges
+- [Stratis Storage on Linux: ZFS-Like Features Without the Complexity](/homelab/stratis-storage-homelab-guide): NFS vs iSCSI for Proxmox VM storage: benchmarks and tradeoffs
+- [Best Mini PC for a Homelab Server in 2026: Tested & Ranked](/homelab/best-mini-pc-homelab-2026): Building a Proxmox cluster from mini PCs on a budget
+- [Grafana + Prometheus Homelab Monitoring: Full Stack Setup in 30 Minutes](/homelab/grafana-prometheus-homelab): Monitor network throughput and host metrics with Prometheus and Grafana

@@ -1,6 +1,6 @@
 ---
 title: "SEO in Astro Without Plugins: Sitemaps and Schema"
-description: "Everything Yoast SEO does on WordPress, you can do in Astro: meta tags, JSON-LD structured data, XML sitemaps, Open Graph images — no plugins required."
+description: "Everything Yoast SEO does on WordPress, you can do in Astro: meta tags, JSON-LD structured data, XML sitemaps, Open Graph images, no plugins required."
 pubDate: 2026-04-15
 heroImage: "/images/astro-seo-without-plugins.webp"
 heroImageAlt: "Astro layout file showing JSON-LD structured data, Open Graph meta tags, and canonical URL configuration in the head"
@@ -16,11 +16,11 @@ draft: false
 readingTime: 11
 faqs:
   - q: "Can Astro replace all the SEO functionality of Yoast SEO?"
-    a: "For most needs, yes. Meta tags, JSON-LD structured data, XML sitemaps, Open Graph images, canonical URLs, and robots meta are all achievable natively in Astro. What Yoast adds on top — readability analysis, content scoring, and redirect management — requires separate tooling, but those are editorial aids, not technical SEO requirements."
+    a: "For most needs, yes. Meta tags, JSON-LD structured data, XML sitemaps, Open Graph images, canonical URLs, and robots meta are all achievable natively in Astro. What Yoast adds on top, readability analysis, content scoring, and redirect management, requires separate tooling, but those are editorial aids, not technical SEO requirements."
   - q: "Do I need the @astrojs/sitemap integration for sitemaps?"
     a: "It is the recommended approach. The integration auto-generates a sitemap from your routes at build time. You can also generate a sitemap manually via a dynamic src/pages/sitemap.xml.ts endpoint if you need more control over which URLs appear or want to add custom priorities."
   - q: "What is JSON-LD structured data and why does it matter for SEO?"
-    a: "JSON-LD is a format for embedding machine-readable metadata about your page directly in the HTML. Search engines read it to understand the page's content type, author, date, and relationships. It powers rich results in Google Search — star ratings, FAQ dropdowns, breadcrumbs, and article snippets — which improve click-through rates."
+    a: "JSON-LD is a format for embedding machine-readable metadata about your page directly in the HTML. Search engines read it to understand the page's content type, author, date, and relationships. It powers rich results in Google Search, star ratings, FAQ dropdowns, breadcrumbs, and article snippets, which improve click-through rates."
   - q: "How do I generate Open Graph images automatically in Astro?"
     a: "Use the @vercel/og package or Satori with a Cloudflare-compatible renderer to generate OG images at build time from a template. You pass the page title and description as parameters to a dynamic API endpoint, which returns a PNG. Alternatively, use manually created images stored in /public for predictable quality."
 ---
@@ -31,7 +31,7 @@ The question I get most from people considering a switch from WordPress to Astro
 
 It's a reasonable concern. Yoast became the default answer for WordPress SEO because WordPress itself makes it genuinely difficult to control your HTML output. There's no clean way to set a custom `<title>` per page, add JSON-LD structured data, or manage canonical URLs without a plugin layer abstracting away the complexity.
 
-Astro doesn't have that problem. Your layout files are HTML templates. You control every byte that goes into the `<head>`. Everything Yoast does — meta tags, Open Graph, structured data, sitemaps — you can do directly, and the result is often cleaner than what Yoast produces.
+Astro doesn't have that problem. Your layout files are HTML templates. You control every byte that goes into the `<head>`. Everything Yoast does, meta tags, Open Graph, structured data, sitemaps, you can do directly, and the result is often cleaner than what Yoast produces.
 
 This article covers the complete SEO setup for linuxcore.dev. You write it once, it applies to every page automatically, and you never touch it again.
 
@@ -105,14 +105,14 @@ const ogImageURL   = new URL(heroImage, Astro.site);
 The `<slot name="head" />` at the end lets individual pages inject additional structured data into the head without modifying the layout.
 
 <Callout type="tip">
-The `Astro.site` value comes from `site` in your `astro.config.mjs`. Make sure it's set to your production domain — `new URL(path, Astro.site)` will silently fail or produce wrong URLs if it's missing.
+The `Astro.site` value comes from `site` in your `astro.config.mjs`. Make sure it's set to your production domain, `new URL(path, Astro.site)` will silently fail or produce wrong URLs if it's missing.
 </Callout>
 
 ---
 
 ## Part 2: Structured Data (JSON-LD)
 
-Structured data tells search engines what your content is — an article, a person, an organisation — in a machine-readable format. Google uses it for rich results. It's what makes articles show an author, date, and breadcrumb in search results.
+Structured data tells search engines what your content is, an article, a person, an organisation, in a machine-readable format. Google uses it for rich results. It's what makes articles show an author, date, and breadcrumb in search results.
 
 ### Article Schema
 
@@ -372,16 +372,16 @@ Use the [Facebook Sharing Debugger](https://developers.facebook.com/tools/debug/
 
 With these files in place, every page on your site has:
 
-- Correct `<title>` and `<meta description>` — unique per page, pulled from frontmatter
-- Canonical URL — prevents duplicate content issues
-- Open Graph tags — proper preview cards on every platform
-- JSON-LD structured data — article schema, breadcrumbs, site-wide organisation schema
-- XML sitemap — all pages listed with priority and last modified date
-- RSS feed — updated automatically on every deploy
-- `robots.txt` — tells crawlers where to go and where not to
+- Correct `<title>` and `<meta description>`, unique per page, pulled from frontmatter
+- Canonical URL, prevents duplicate content issues
+- Open Graph tags, proper preview cards on every platform
+- JSON-LD structured data, article schema, breadcrumbs, site-wide organisation schema
+- XML sitemap, all pages listed with priority and last modified date
+- RSS feed, updated automatically on every deploy
+- `robots.txt`, tells crawlers where to go and where not to
 
 No plugin updates, no compatibility issues, no settings panel. You wrote it once and it covers the entire site.
 
 ---
 
-*Next in this series: [Newsletter Integration in Astro with MailerLite](/astro/astro-newsletter-mailerlite) — subscriber forms without a backend.*
+*Next in this series: [Newsletter Integration in Astro with MailerLite](/astro/astro-newsletter-mailerlite), subscriber forms without a backend.*

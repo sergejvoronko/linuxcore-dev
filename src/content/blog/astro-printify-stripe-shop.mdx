@@ -1,6 +1,6 @@
 ---
 title: "Print-on-Demand Shop in Astro with Printify and Stripe"
-description: "Add a merch shop to your Astro site using Printify for fulfilment and Stripe for payments — no inventory, ships worldwide."
+description: "Add a merch shop to your Astro site using Printify for fulfilment and Stripe for payments, no inventory, ships worldwide."
 pubDate: 2026-04-10
 heroImage: "/images/astro-printify-stripe-shop.webp"
 heroImageAlt: "Astro shop page displaying Printify print-on-demand products with Stripe checkout integration"
@@ -17,7 +17,7 @@ draft: false
 readingTime: 14
 faqs:
   - q: "Do I need to hold inventory for a print-on-demand shop?"
-    a: "No. With Printify, products are printed and shipped only when a customer places an order. You never handle stock, packaging, or shipping. Your role is to set up the products, pricing, and the checkout flow — Printify handles everything physical."
+    a: "No. With Printify, products are printed and shipped only when a customer places an order. You never handle stock, packaging, or shipping. Your role is to set up the products, pricing, and the checkout flow, Printify handles everything physical."
   - q: "How does Printify fulfilment work?"
     a: "When an order is placed and payment is confirmed via Stripe, your Cloudflare Function sends the order to Printify's API. Printify routes it to the nearest print provider, which prints the item and ships it directly to the customer, typically within 3-7 business days."
   - q: "What fees does Stripe charge for each transaction?"
@@ -28,11 +28,11 @@ faqs:
 
 import Callout from '../../components/Callout.astro';
 
-Adding a shop to a static site sounds like the kind of thing that breaks the entire "no server" premise. You need product data, you need to handle payments, you need order management. In the WordPress world this means WooCommerce — another database, another plugin stack, another attack surface.
+Adding a shop to a static site sounds like the kind of thing that breaks the entire "no server" premise. You need product data, you need to handle payments, you need order management. In the WordPress world this means WooCommerce, another database, another plugin stack, another attack surface.
 
 The Astro + Printify + Stripe setup works differently. Printify handles the entire fulfilment side: you design products in their dashboard, they print and ship when orders come in. Stripe handles payments. Your Astro site fetches product data from Printify's API at build time, renders static product pages, and uses a small Cloudflare Pages Function to create Stripe checkout sessions at runtime.
 
-The result is a working merch shop — products, variant selection, checkout — with no inventory, no warehouse, no order management system to run, and no changes to your hosting costs.
+The result is a working merch shop, products, variant selection, checkout, with no inventory, no warehouse, no order management system to run, and no changes to your hosting costs.
 
 ---
 
@@ -46,7 +46,7 @@ Stripe              → Handles payment, returns order ID
 Printify            → Automatically fulfils after successful payment
 ```
 
-The only dynamic piece is the checkout function — everything else is static HTML generated from Printify's API during your Cloudflare Pages build.
+The only dynamic piece is the checkout function, everything else is static HTML generated from Printify's API during your Cloudflare Pages build.
 
 ---
 
@@ -65,16 +65,16 @@ The only dynamic piece is the checkout function — everything else is static HT
 
 1. Log into Printify
 2. Go to **My Products** → **Add new product**
-3. Choose a print provider (Printify lists multiple — check shipping costs and times for your target audience)
+3. Choose a print provider (Printify lists multiple, check shipping costs and times for your target audience)
 4. Upload your design and configure variants (sizes, colours)
 5. Set pricing
-6. Click **Publish** — unpublished products won't appear via the API
+6. Click **Publish**: unpublished products won't appear via the API
 
 **Get your API credentials:**
 
 1. Go to **My Account** → **Connections** → **API**
 2. Click **Generate new token**
-3. Copy the token — you'll only see it once
+3. Copy the token. You'll only see it once
 
 **Get your Shop ID:**
 
@@ -85,7 +85,7 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
   https://api.printify.com/v1/shops.json
 ```
 
-The response gives you a numeric `id` — that's your `PRINTIFY_SHOP_ID`.
+The response gives you a numeric `id`. That's your `PRINTIFY_SHOP_ID`.
 
 ---
 
@@ -104,7 +104,7 @@ Start with Stripe's test mode (`sk_test_` key) until you've verified the full fl
 
 ## Step 3: Add Environment Variables
 
-**Local development** — create `.env` at project root:
+**Local development**, create `.env` at project root:
 
 ```bash
 PRINTIFY_API_TOKEN=your_printify_token
@@ -113,7 +113,7 @@ STRIPE_SECRET_KEY=sk_test_...
 SITE_URL=http://localhost:4321
 ```
 
-**Cloudflare Pages production** — add all four under **Settings** → **Environment Variables**.
+**Cloudflare Pages production**, add all four under **Settings** → **Environment Variables**.
 
 ---
 
@@ -188,7 +188,7 @@ export function getEnabledVariants(product: any): any[] {
 
 ## Step 5: Build the Shop Pages
 
-**Shop index** — `src/pages/shop/index.astro`:
+**Shop index**, `src/pages/shop/index.astro`:
 
 ```astro
 ---
@@ -264,7 +264,7 @@ try {
 </style>
 ```
 
-**Product detail page** — `src/pages/shop/product/[id].astro`:
+**Product detail page**, `src/pages/shop/product/[id].astro`:
 
 ```astro
 ---
@@ -518,7 +518,7 @@ For orders to automatically trigger printing and shipping, Printify needs to kno
 1. In Printify: **Sales channels** → **Custom integration** → link your Stripe account
 2. Printify watches for completed Stripe payments and auto-creates orders
 
-Alternatively, set up a Stripe webhook to call Printify's Orders API — this gives you more control but requires an additional function.
+Alternatively, set up a Stripe webhook to call Printify's Orders API. This gives you more control but requires an additional function.
 
 ---
 
@@ -531,8 +531,8 @@ When you're ready to switch from test to live:
 3. Update `SITE_URL` to your production domain
 4. Deploy
 
-The product pages are static — they rebuild whenever you deploy. If you add new products in Printify, trigger a new Cloudflare Pages deployment to pick them up. You can automate this with Cloudflare's Deploy Hooks (a URL you can POST to from Printify webhooks or a cron job).
+The product pages are static, they rebuild whenever you deploy. If you add new products in Printify, trigger a new Cloudflare Pages deployment to pick them up. You can automate this with Cloudflare's Deploy Hooks (a URL you can POST to from Printify webhooks or a cron job).
 
 ---
 
-*Next in this series: [SEO in Astro Without Plugins](/astro/astro-seo-without-plugins) — sitemaps, structured data, and OG images from scratch.*
+*Next in this series: [SEO in Astro Without Plugins](/astro/astro-seo-without-plugins), sitemaps, structured data, and OG images from scratch.*

@@ -1,6 +1,6 @@
 ---
 title: "Proxmox VE Homelab Setup: Install and Configure (2026)"
-description: "Install Proxmox VE 8 on a mini PC, configure storage, networking, and GPU passthrough, then deploy your first VMs and LXC containers — complete 2026 guide."
+description: "Install Proxmox VE 8 on a mini PC, configure storage, networking, and GPU passthrough, then deploy your first VMs and LXC containers, complete 2026 guide."
 pubDate: 2026-05-05
 heroImage: "/images/proxmox-homelab-setup.webp"
 heroImageAlt: "Proxmox VE web interface showing a homelab node with multiple VMs and LXC containers running on a mini PC"
@@ -16,26 +16,26 @@ faqs:
   - q: "Is Proxmox VE free to use?"
     a: "Yes. Proxmox VE is open source and free to download, install, and use without a subscription. The paid subscription gives you access to the enterprise repository with tested, stable packages and commercial support. For a homelab, the free no-subscription repository works fine."
   - q: "What is the difference between a VM and an LXC container in Proxmox?"
-    a: "A VM runs a full kernel and can run any OS — Windows, FreeBSD, whatever you need. An LXC container shares the Proxmox host kernel, which makes it much lighter (lower RAM and CPU overhead) but limits you to Linux. For most homelab Linux services, LXC is the better choice."
+    a: "A VM runs a full kernel and can run any OS, Windows, FreeBSD, whatever you need. An LXC container shares the Proxmox host kernel, which makes it much lighter (lower RAM and CPU overhead) but limits you to Linux. For most homelab Linux services, LXC is the better choice."
   - q: "Can Proxmox run on a mini PC?"
     a: "Yes. Proxmox runs well on any x86-64 machine with VT-x/VT-d support. An N305 mini PC with 32 GB RAM can comfortably host 6-8 LXC containers and 2-3 VMs. Make sure VT-d is enabled in BIOS if you plan to use GPU passthrough."
   - q: "How do I back up Proxmox VMs automatically?"
     a: "Use Proxmox's built-in Backup function under Datacenter → Backup. Schedule it to run nightly or weekly, point it at a local storage location or NFS share, and set retention rules. Backups are stored as .vma.zst files that can be restored in a few clicks from the web UI."
   - q: "Does GPU passthrough work on Proxmox for AI workloads?"
-    a: "Yes. NVIDIA and AMD GPUs can be passed through to VMs using IOMMU/VT-d. Once configured, the VM sees the GPU as native hardware — you can install the full driver stack and run Ollama, Stable Diffusion, or any CUDA application inside the VM at near-native performance."
+    a: "Yes. NVIDIA and AMD GPUs can be passed through to VMs using IOMMU/VT-d. Once configured, the VM sees the GPU as native hardware. You can install the full driver stack and run Ollama, Stable Diffusion, or any CUDA application inside the VM at near-native performance."
 ---
 
 If you run one machine in your homelab, Proxmox VE is the single best
 decision you can make about what to put on it.
 
 Proxmox is a free, open-source Type-1 hypervisor built on Debian Linux.
-It runs directly on your hardware — no host OS underneath — and lets you
+It runs directly on your hardware, no host OS underneath, and lets you
 carve that hardware into multiple isolated virtual machines and containers.
 Your Ollama AI server, your Grafana monitoring stack, your WireGuard VPN,
 and your Nextcloud all live in separate environments, on one machine, with
 a clean web interface to manage them.
 
-When you need to rebuild something, you rebuild a container — not the
+When you need to rebuild something, you rebuild a container, not the
 whole machine. When you want to try something new, you spin up a VM, test
 it, and delete it without touching anything else. When something breaks,
 only that VM breaks.
@@ -48,8 +48,7 @@ hardening.
 
 ## What Proxmox Gives You
 
-**Virtual Machines (KVM):** Full hardware emulation. Run any OS —
-Linux, Windows, BSD. Complete isolation. Use for anything that needs its
+**Virtual Machines (KVM):** Full hardware emulation. Run any OS, Linux, Windows, BSD. Complete isolation. Use for anything that needs its
 own kernel, GPU passthrough, or strict separation.
 
 **LXC Containers:** Lightweight Linux containers. Share the host kernel.
@@ -57,7 +56,7 @@ Boot in under a second. Use a fraction of the RAM a full VM needs. Use
 for Linux services that don't need GPU passthrough or kernel-level isolation.
 
 **Web Interface:** Manage everything from a browser at `https://your-ip:8006`.
-Create VMs, take snapshots, monitor resource usage, manage storage — all
+Create VMs, take snapshots, monitor resource usage, manage storage, all
 without SSH for day-to-day tasks.
 
 **Snapshots and Backups:** Snapshot a VM before an upgrade. Roll back in
@@ -65,7 +64,7 @@ without SSH for day-to-day tasks.
 or an external drive.
 
 **ZFS Storage:** Proxmox has first-class ZFS support built in. Self-healing
-storage, instant snapshots, compression, and RAID — all in software, all
+storage, instant snapshots, compression, and RAID, all in software, all
 free, all faster than you'd expect.
 
 ---
@@ -84,7 +83,7 @@ RAM runs this entire guide comfortably. ([grab one here](/go/beelink-mini-s12))
 
 ---
 
-## Step 1 — Download and Write the ISO
+## Step 1, Download and Write the ISO
 
 Download the latest Proxmox VE ISO from **proxmox.com/downloads**.
 As of 2026, that's Proxmox VE 8.x.
@@ -103,7 +102,7 @@ Or use the graphical **Balena Etcher** app if you prefer a GUI.
 
 ---
 
-## Step 2 — Install Proxmox VE
+## Step 2, Install Proxmox VE
 
 Boot from the USB drive (usually F12 or Del to reach boot menu).
 
@@ -115,12 +114,12 @@ Boot from the USB drive (usually F12 or Del to reach boot menu).
    both here to set up ZFS RAID-1 mirroring automatically.
 
 **File system choice:**
-- **ext4** — simple, well-understood, fine for most setups
-- **ZFS (RAID-0)** — single disk, with ZFS compression and snapshots
-- **ZFS (RAID-1)** — two disks, mirrored, recommended if you have two SSDs
+- **ext4**: simple, well-understood, fine for most setups
+- **ZFS (RAID-0)**: single disk, with ZFS compression and snapshots
+- **ZFS (RAID-1)**: two disks, mirrored, recommended if you have two SSDs
 
 For a single-drive mini PC, `ext4` or `ZFS RAID-0` both work well. ZFS
-gives you snapshots which are genuinely useful — choose it unless you
+gives you snapshots which are genuinely useful, choose it unless you
 have a specific reason not to.
 
 4. **Location and timezone:** set your timezone and keyboard layout
@@ -139,11 +138,11 @@ The installation takes 5–10 minutes. The machine reboots into Proxmox.
 
 ---
 
-## Step 3 — First Login and Repository Configuration
+## Step 3, First Login and Repository Configuration
 
 Open your browser: `https://192.168.1.50:8006`
 
-You'll get a certificate warning — this is expected. The certificate
+You'll get a certificate warning. This is expected. The certificate
 is self-signed. Accept it and proceed (you can add a proper certificate
 later via Tailscale Serve or Let's Encrypt).
 
@@ -166,7 +165,7 @@ sed -i.bak "s/data.status !== 'Active'/false/g" \
 systemctl restart pveproxy
 ```
 
-Refresh your browser — no more popup.
+Refresh your browser, no more popup.
 
 **Switch to the free repository:**
 
@@ -192,7 +191,7 @@ You now have a fully updated, free Proxmox installation with no subscription nag
 
 ---
 
-## Step 4 — Storage Configuration
+## Step 4, Storage Configuration
 
 Good storage layout is the foundation of a reliable Proxmox setup.
 How you configure this depends on how many drives you have.
@@ -200,8 +199,8 @@ How you configure this depends on how many drives you have.
 **Single drive setup (most mini PCs):**
 
 The default install creates two storage pools:
-- `local` — for ISO images, container templates, backups
-- `local-lvm` — for VM disks and container volumes
+- `local`, for ISO images, container templates, backups
+- `local-lvm`, for VM disks and container volumes
 
 This works. No changes needed for a first setup.
 
@@ -243,9 +242,9 @@ pvesm add dir backup-usb --path /mnt/backup --content backup
 
 ---
 
-## Step 5 — Download Container Templates
+## Step 5, Download Container Templates
 
-LXC containers start from templates — pre-built Linux filesystem images.
+LXC containers start from templates, pre-built Linux filesystem images.
 Download the ones you'll use:
 
 ```bash
@@ -262,12 +261,12 @@ pveam download local ubuntu-22.04-standard_22.04-1_amd64.tar.zst
 pveam download local debian-12-standard_12.0-1_amd64.tar.zst
 ```
 
-Or in the web UI: **local storage → CT Templates → Templates** — browse
+Or in the web UI: **local storage → CT Templates → Templates**, browse
 and download with one click.
 
 ---
 
-## Step 6 — Create Your First LXC Container
+## Step 6, Create Your First LXC Container
 
 LXC containers are the right choice for most homelab services. They start
 in under a second, use minimal RAM, and share the host kernel.
@@ -309,7 +308,7 @@ and can be started, stopped, and snapshotted independently.
 
 ---
 
-## Step 7 — Create Your First VM
+## Step 7, Create Your First VM
 
 VMs are heavier than LXC but necessary when you need full kernel isolation,
 GPU passthrough, or a non-Linux OS.
@@ -334,7 +333,7 @@ Or upload from your laptop: **local storage → ISO Images → Upload**.
 6. **CPU:** 2–4 cores, type: `host` (passes through real CPU features)
 7. **Memory:** 2048–4096MB, enable **Ballooning** for dynamic allocation
 8. **Network:** VirtIO network model
-9. Finish and start — it boots into the ISO installer
+9. Finish and start, it boots into the ISO installer
 
 After OS install, install the QEMU guest agent for better integration:
 
@@ -348,7 +347,7 @@ Then in Proxmox UI: VM → Options → QEMU Guest Agent → Enable.
 
 ---
 
-## Step 8 — GPU Passthrough (for AI and Transcoding)
+## Step 8, GPU Passthrough (for AI and Transcoding)
 
 GPU passthrough lets a VM or container take exclusive control of a GPU.
 This is how you run Ollama with full GPU acceleration inside a Proxmox VM.
@@ -406,7 +405,7 @@ lspci -nnk | grep -i nvidia
 # 01:00.1 Audio [0403]: NVIDIA Corporation GA106 High Definition Audio [10de:228e]
 ```
 
-Note both PCI IDs — `10de:2503` and `10de:228e` in this example.
+Note both PCI IDs, `10de:2503` and `10de:228e` in this example.
 
 **Bind the GPU to VFIO:**
 
@@ -421,13 +420,13 @@ reboot
 In the Proxmox UI: VM → Hardware → Add → PCI Device → select your GPU
 → enable **All Functions** and **Primary GPU** if you want full passthrough.
 
-Inside the VM, install the NVIDIA drivers normally — the VM sees the GPU
+Inside the VM, install the NVIDIA drivers normally, the VM sees the GPU
 as real hardware and the [Ollama guide](/homelab/ollama-linux-setup) applies
 without modification.
 
 ---
 
-## Step 9 — Networking: VLANs and Bridges
+## Step 9, Networking: VLANs and Bridges
 
 Proxmox creates a Linux bridge (`vmbr0`) during install. All VMs and
 containers connect through this bridge and share the host network.
@@ -459,12 +458,12 @@ ifreload -a
 ```
 
 Containers on `vmbr1` get `10.10.10.x` addresses and can reach the
-internet through NAT but are isolated from your LAN — perfect for
+internet through NAT but are isolated from your LAN, perfect for
 testing or untrusted services.
 
 ---
 
-## Step 10 — Automated Backups
+## Step 10, Automated Backups
 
 Snapshots save state instantly. Backups save a full copy you can restore
 on different hardware.
@@ -478,7 +477,7 @@ on different hardware.
 5. Mode: **Snapshot** (non-disruptive, VM keeps running)
 6. Retention: keep last 7 backups
 
-Proxmox emails you if a backup fails — configure the email in
+Proxmox emails you if a backup fails, configure the email in
 **Datacenter → Options → Email**.
 
 **Manual snapshot before risky changes:**
@@ -504,9 +503,9 @@ pct delsnapshot 101 before-upgrade
 
 ---
 
-## Step 11 — Security Hardening
+## Step 11, Security Hardening
 
-Proxmox is powerful — a compromised Proxmox host means every VM is
+Proxmox is powerful, a compromised Proxmox host means every VM is
 compromised too. Lock it down.
 
 **Change the SSH port and restrict access:**
@@ -604,7 +603,7 @@ Total RAM allocation: ~12GB. Leaves 4GB for the Proxmox host and burst
 headroom. All containers on `vmbr0` for LAN access, or move Wireguard to
 a bridged interface for network separation.
 
-Each service is isolated — you can snapshot, rebuild, or upgrade one
+Each service is isolated. You can snapshot, rebuild, or upgrade one
 container without touching the others. That's the whole point.
 
 ---
@@ -624,7 +623,7 @@ ip addr show
 systemctl restart pveproxy
 ```
 
-**VM won't start — "TASK ERROR: start failed":**
+**VM won't start, "TASK ERROR: start failed":**
 
 Check the task log in the web UI (Task History at the bottom). Common
 causes: not enough free RAM, storage pool full, or a conflicting device
@@ -643,7 +642,7 @@ cat /etc/resolv.conf
 echo "nameserver 1.1.1.1" >> /etc/resolv.conf
 ```
 
-**GPU passthrough — VM shows generic VGA instead of NVIDIA:**
+**GPU passthrough, VM shows generic VGA instead of NVIDIA:**
 
 IOMMU isn't enabled or the GPU isn't bound to VFIO. Check:
 
@@ -664,11 +663,11 @@ Rebuild initramfs: `update-initramfs -u -k all` and reboot. Once it shows
 
 ## Recommended hardware
 
-What I run this on (affiliate links — they help fund the site at no extra cost to you):
+What I run this on (affiliate links. They help fund the site at no extra cost to you):
 
-- [Beelink EQ12 Pro (N100 mini PC)](/go/beelink-eq12) — my main Proxmox node
-- [Samsung 990 Pro NVMe SSD](/go/samsung-990-pro) — fast VM/DB storage
-- [CyberPower UPS](/go/cyberpower-ups) — clean shutdowns, no corrupted pools
+- [Beelink EQ12 Pro (N100 mini PC)](/go/beelink-eq12): my main Proxmox node
+- [Samsung 990 Pro NVMe SSD](/go/samsung-990-pro): fast VM/DB storage
+- [CyberPower UPS](/go/cyberpower-ups): clean shutdowns, no corrupted pools
 
 ## What's Next
 
@@ -678,20 +677,20 @@ or VMs managed from one web interface.
 
 Natural next steps from here:
 
-**Build a two-node cluster** — add a second mini PC, create a Proxmox
+**Build a two-node cluster**, add a second mini PC, create a Proxmox
 cluster, and enable live migration between nodes. One node can go down
 for maintenance while services stay running on the other.
 
-**Add Ceph storage** — Proxmox has native Ceph support. With three nodes
+**Add Ceph storage**, Proxmox has native Ceph support. With three nodes
 you can build a distributed storage cluster that survives a node failure
 without losing data.
 
-**Automate with Ansible** — the [Ansible guide](/homelab/ansible-homelab)
+**Automate with Ansible**, the [Ansible guide](/homelab/ansible-homelab)
 includes everything you need to provision containers automatically.
 Combined with Proxmox, you can rebuild your entire stack from a playbook
 in under 10 minutes.
 
-**Monitor everything** — connect the [Grafana + Prometheus stack](/homelab/grafana-prometheus-homelab)
+**Monitor everything**, connect the [Grafana + Prometheus stack](/homelab/grafana-prometheus-homelab)
 to Proxmox. The `pve` exporter gives you VM CPU, memory, disk I/O, and
 network graphs for every guest, all in one dashboard.
 

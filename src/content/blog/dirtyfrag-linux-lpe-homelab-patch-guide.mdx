@@ -12,16 +12,16 @@ faqs:
   - q: "What is Dirtyfrag and why is it called a universal LPE?"
     a: "Dirtyfrag is a local privilege escalation vulnerability in the Linux kernel's memory fragmentation handling. It is considered universal because it affects a wide range of kernel versions across virtually all major Linux distributions, meaning any unprivileged local user can potentially escalate to root without needing distribution-specific tricks."
   - q: "Does Dirtyfrag affect Proxmox VE hosts, or just guest VMs?"
-    a: "Dirtyfrag affects the kernel running on the Proxmox VE host itself. Any unprivileged user or process with local access to the host — including processes escaping container isolation — could exploit it. Guest VMs are only at risk if they run a vulnerable kernel version independently."
+    a: "Dirtyfrag affects the kernel running on the Proxmox VE host itself. Any unprivileged user or process with local access to the host, including processes escaping container isolation, could exploit it. Guest VMs are only at risk if they run a vulnerable kernel version independently."
   - q: "How do I verify the patch was applied successfully without rebooting again?"
-    a: "After rebooting into the patched kernel, run 'uname -r' to confirm the new kernel version is active, then cross-reference the version against your distribution's security advisory. You can also run the provided detection script again — it should report your kernel as not in the vulnerable range."
+    a: "After rebooting into the patched kernel, run 'uname -r' to confirm the new kernel version is active, then cross-reference the version against your distribution's security advisory. You can also run the provided detection script again. It should report your kernel as not in the vulnerable range."
 ---
 
 ## What Is Dirtyfrag?
 
 Dirtyfrag is a local privilege escalation (LPE) vulnerability in the Linux kernel disclosed on 2026-05-07 via the [oss-security mailing list](https://www.openwall.com/lists/oss-security/2026/05/07/8). It lives in the kernel's page cache fragmentation logic and allows any unprivileged local user to escalate to root by manipulating how the kernel handles memory fragment recombination under specific allocation patterns.
 
-What makes this one worth paying attention to is the breadth. This is not a distro-specific or hardware-specific bug. If your machine is running a vulnerable kernel version and has any unprivileged user access — interactive shell, a web app running as `www-data`, a misconfigured container — you have exposure.
+What makes this one worth paying attention to is the breadth. This is not a distro-specific or hardware-specific bug. If your machine is running a vulnerable kernel version and has any unprivileged user access, interactive shell, a web app running as `www-data`, a misconfigured container. You have exposure.
 
 For homelabs running Proxmox, Ubuntu, or Debian as hypervisors or bare metal servers, the threat model is real: LXC containers sharing the host kernel, SSH users with limited accounts, or exposed services running as non-root users are all potential exploit entry points.
 
@@ -67,7 +67,7 @@ Run it with:
 chmod +x dirtyfrag-check.sh && sudo ./dirtyfrag-check.sh
 ```
 
-Do this on every node — Proxmox hosts, Debian VMs, Ubuntu servers. Do not assume one check covers the fleet.
+Do this on every node, Proxmox hosts, Debian VMs, Ubuntu servers. Do not assume one check covers the fleet.
 
 ---
 
@@ -101,7 +101,7 @@ deb http://security.debian.org/debian-security bullseye-security main
 
 ### Proxmox VE (8.x)
 
-Proxmox ships its own kernel (`pve-kernel`). Do **not** replace it with a generic Debian kernel — use the Proxmox repository:
+Proxmox ships its own kernel (`pve-kernel`). Do **not** replace it with a generic Debian kernel, use the Proxmox repository:
 
 ```bash
 apt update
@@ -178,7 +178,7 @@ Run it against your inventory:
 ansible-playbook -i inventory/homelab dirtyfrag-patch.yml --ask-become-pass
 ```
 
-Add a `--limit proxmox_hosts` if you want to stage Proxmox nodes separately from your Ubuntu VMs — a good idea when those hosts are running production workloads.
+Add a `--limit proxmox_hosts` if you want to stage Proxmox nodes separately from your Ubuntu VMs, a good idea when those hosts are running production workloads.
 
 ---
 
@@ -197,7 +197,7 @@ Running kernel: 6.8.12-1-pve
 ✅  NOT VULNERABLE: Kernel 6.8.12-1-pve appears to be outside the affected range.
 ```
 
-Cross-reference the running kernel against your distro's published security advisory to be certain the patch commit is included in the build — version numbers alone can occasionally mislead if backports are involved.
+Cross-reference the running kernel against your distro's published security advisory to be certain the patch commit is included in the build, version numbers alone can occasionally mislead if backports are involved.
 
 ---
 
@@ -205,16 +205,16 @@ Cross-reference the running kernel against your distro's published security advi
 
 Patching is the fix, but a few practices reduce your exposure window for the next one:
 
-- **Unattended upgrades** — Enable `unattended-upgrades` on Ubuntu/Debian nodes and scope it to the `security` pocket only. This gets kernel security updates applied with minimal delay.
-- **Restrict local user accounts** — Every non-root shell account on a hypervisor host is a potential LPE vector. Audit `/etc/passwd` and remove or lock accounts that do not need interactive access.
-- **LXC privilege mode** — Never run LXC containers in privileged mode on Proxmox unless you have a hard requirement. Unprivileged containers significantly reduce the blast radius of host kernel exploits.
-- **Monitor kernel version drift** — Add a cron job or monitoring check that alerts you when any node in your fleet falls behind the current security kernel version by more than 30 days.
+- **Unattended upgrades**: Enable `unattended-upgrades` on Ubuntu/Debian nodes and scope it to the `security` pocket only. This gets kernel security updates applied with minimal delay.
+- **Restrict local user accounts**: Every non-root shell account on a hypervisor host is a potential LPE vector. Audit `/etc/passwd` and remove or lock accounts that do not need interactive access.
+- **LXC privilege mode**: Never run LXC containers in privileged mode on Proxmox unless you have a hard requirement. Unprivileged containers significantly reduce the blast radius of host kernel exploits.
+- **Monitor kernel version drift**: Add a cron job or monitoring check that alerts you when any node in your fleet falls behind the current security kernel version by more than 30 days.
 
 ---
 
 ## What's Next
 
-- [Proxmox VE Homelab Setup: Complete Installation and Configuration Guide (2026)](/homelab/proxmox-homelab-setup) — Lock down your Proxmox VE host before the next exploit drops
-- [Ansible for Homelabbers: Automate Everything from One Playbook](/homelab/ansible-homelab) — Build a full Ansible setup for managing your homelab fleet
-- [Debian 13.5 (Trixie) Released: What Homelab Admins Need to Know Before Updating](/homelab/debian-13-5-trixie-homelab-update-guide) — Automate security patching so you are never caught behind on a critical CVE
-- [Proxmox VE Homelab Setup: Complete Installation and Configuration Guide (2026)](/homelab/proxmox-homelab-setup) — Migrate to unprivileged LXC containers and reduce kernel attack surface
+- [Proxmox VE Homelab Setup: Complete Installation and Configuration Guide (2026)](/homelab/proxmox-homelab-setup): Lock down your Proxmox VE host before the next exploit drops
+- [Ansible for Homelabbers: Automate Everything from One Playbook](/homelab/ansible-homelab): Build a full Ansible setup for managing your homelab fleet
+- [Debian 13.5 (Trixie) Released: What Homelab Admins Need to Know Before Updating](/homelab/debian-13-5-trixie-homelab-update-guide): Automate security patching so you are never caught behind on a critical CVE
+- [Proxmox VE Homelab Setup: Complete Installation and Configuration Guide (2026)](/homelab/proxmox-homelab-setup): Migrate to unprivileged LXC containers and reduce kernel attack surface

@@ -1,10 +1,10 @@
 ---
 title: "Your Container Is Not a Sandbox: Use MicroVMs Instead"
-description: "Docker containers share the host kernel — learn why that matters, and how microVMs like Firecracker give your homelab real isolation without VM overhead."
+description: "Docker containers share the host kernel, learn why that matters, and how microVMs like Firecracker give your homelab real isolation without VM overhead."
 pubDate: 2026-05-04
 readingTime: 8
 heroImage: "/images/podman-rootless-copy-fail-exploit-homelab-security.webp"
-heroImageAlt: "Linux container security on a homelab server — kernel-level isolation between containers and the host"
+heroImageAlt: "Linux container security on a homelab server, kernel-level isolation between containers and the host"
 section: "homelab"
 tags: ["docker container security homelab", "microvm vs container isolation", "firecracker homelab", "proxmox security"]
 draft: false
@@ -12,14 +12,14 @@ faqs:
   - q: "Are Docker containers safe enough for homelab use?"
     a: "For low-risk, internal-only services, Docker with seccomp and AppArmor profiles is acceptable. But containers share the host kernel, so a kernel exploit or misconfigured privileged container can compromise the entire host. If you're running untrusted workloads or exposing services to the internet, microVMs or Kata Containers offer meaningfully stronger isolation."
   - q: "What is the difference between a microVM and a regular VM?"
-    a: "A microVM uses a stripped-down hypervisor (like Firecracker's KVM-based VMM) to boot a minimal Linux kernel in milliseconds with very low memory overhead — typically under 5 MB of memory per VM. A traditional VM like a QEMU/KVM guest includes a full BIOS, emulated hardware, and takes seconds to boot. MicroVMs give you VM-level kernel isolation at near-container startup speed."
+    a: "A microVM uses a stripped-down hypervisor (like Firecracker's KVM-based VMM) to boot a minimal Linux kernel in milliseconds with very low memory overhead, typically under 5 MB of memory per VM. A traditional VM like a QEMU/KVM guest includes a full BIOS, emulated hardware, and takes seconds to boot. MicroVMs give you VM-level kernel isolation at near-container startup speed."
   - q: "Can I run Firecracker directly on Proxmox?"
     a: "Firecracker requires bare-metal KVM access, which means it runs best on a dedicated host or inside a Proxmox VM with nested virtualization enabled. You cannot run Firecracker inside a Proxmox LXC container. A practical homelab approach is to dedicate one Proxmox VM with KVM passthrough for Firecracker workloads, or use Kata Containers on top of containerd on a standard VM."
 ---
 
-If you've built your homelab around Docker containers — running Home Assistant, Jellyfin, Vaultwarden, Nginx Proxy Manager, and a dozen other services — you've probably told yourself the containers are isolated. They're not. Not really.
+If you've built your homelab around Docker containers, running Home Assistant, Jellyfin, Vaultwarden, Nginx Proxy Manager, and a dozen other services. You've probably told yourself the containers are isolated. They're not. Not really.
 
-Containers are process groups with namespace and cgroup boundaries. They share your host kernel. Every container on your machine is one syscall away from the same kernel your host OS depends on. That's not a security model — it's convenience with a label on it.
+Containers are process groups with namespace and cgroup boundaries. They share your host kernel. Every container on your machine is one syscall away from the same kernel your host OS depends on. That's not a security model. It's convenience with a label on it.
 
 This article is not a scare piece. It's a practical look at what isolation actually means, where containers fall short, and what you can do about it in a real homelab without rebuilding everything from scratch.
 
@@ -27,11 +27,11 @@ This article is not a scare piece. It's a practical look at what isolation actua
 
 Docker isolates processes using three Linux primitives:
 
-- **Namespaces** — separate views of the filesystem, network, PIDs, users, and more
-- **Cgroups** — resource limits (CPU, memory, I/O)
-- **Seccomp/AppArmor/SELinux** — optional syscall filtering and MAC policies
+- **Namespaces**: separate views of the filesystem, network, PIDs, users, and more
+- **Cgroups**: resource limits (CPU, memory, I/O)
+- **Seccomp/AppArmor/SELinux**: optional syscall filtering and MAC policies
 
-What they do *not* give you: a separate kernel. Every container on your host makes syscalls directly to the same kernel your host userspace uses. If an attacker inside a container finds a kernel vulnerability — a bad `io_uring` path, a netfilter bug, a bad `runc` escape — they're talking to the same kernel that owns your disks, your network interfaces, and every other container.
+What they do *not* give you: a separate kernel. Every container on your host makes syscalls directly to the same kernel your host userspace uses. If an attacker inside a container finds a kernel vulnerability, a bad `io_uring` path, a netfilter bug, a bad `runc` escape. They're talking to the same kernel that owns your disks, your network interfaces, and every other container.
 
 Container escapes are not theoretical. CVE-2019-5736 (runc), CVE-2022-0185 (kernel), and the long tail of `io_uring` vulnerabilities have all been exploited in practice. In a corporate environment with dedicated security teams, this is managed. In a homelab running as root with bind-mounted `/var/run/docker.sock` everywhere, it is not.
 
@@ -54,7 +54,7 @@ There are three meaningful options beyond raw Docker:
 
 ### Firecracker MicroVMs
 
-[Firecracker](https://firecracker-microvm.github.io/) is Amazon's open-source VMM, built on KVM. It boots a minimal Linux kernel in under 125ms with a ~5 MB memory footprint per VM. Each microVM has its own kernel. A kernel exploit inside one VM cannot touch another VM or the host kernel directly — it has to go through the hypervisor.
+[Firecracker](https://firecracker-microvm.github.io/) is Amazon's open-source VMM, built on KVM. It boots a minimal Linux kernel in under 125ms with a ~5 MB memory footprint per VM. Each microVM has its own kernel. A kernel exploit inside one VM cannot touch another VM or the host kernel directly. It has to go through the hypervisor.
 
 Firecracker is what powers AWS Lambda and Fargate. You can run it in your homelab on any machine with KVM support.
 
@@ -151,7 +151,7 @@ If you do nothing else:
 
 If you want stronger isolation without abandoning your workflow, install `gvisor` and switch your high-risk containers to the `runsc` runtime. It's a single config change in `/etc/docker/daemon.json` and your compose files stay the same.
 
-MicroVMs are the right long-term answer for homelab services you care about protecting. Containers are fast and convenient — they're just not sandboxes.
+MicroVMs are the right long-term answer for homelab services you care about protecting. Containers are fast and convenient. They're just not sandboxes.
 
 ## What's Next
 

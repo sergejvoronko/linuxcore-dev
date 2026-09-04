@@ -1,6 +1,6 @@
 ---
 title: "Docker Compose Homelab Stack: 20 Services, One File"
-description: "Production-ready Docker Compose: AI, monitoring, security, media, and networking — 20 services configured, every port documented, ready to deploy."
+description: "Production-ready Docker Compose: AI, monitoring, security, media, and networking, 20 services configured, every port documented, ready to deploy."
 pubDate: 2026-05-12
 heroImage: "/images/docker-compose-homelab-stack.webp"
 heroImageAlt: "Docker Compose terminal output showing 20 self-hosted services starting up on a Linux homelab server"
@@ -14,13 +14,13 @@ draft: false
 affiliate: true
 faqs:
   - q: "Do I need to run all 20 services at once?"
-    a: "No. Use Compose profiles or simply comment out the services you don't need. Running everything simultaneously needs approximately 16 GB RAM. A practical starting point is 6-8 services — Traefik, Grafana, Prometheus, Nextcloud, Ollama, and n8n — which fits comfortably in 8 GB."
+    a: "No. Use Compose profiles or simply comment out the services you don't need. Running everything simultaneously needs approximately 16 GB RAM. A practical starting point is 6-8 services, Traefik, Grafana, Prometheus, Nextcloud, Ollama, and n8n, which fits comfortably in 8 GB."
   - q: "How much RAM does the full 20-service stack require?"
     a: "Approximately 14-18 GB with all services running and Ollama loaded with a 7B model. Without Ollama, the stack uses around 4-6 GB. The monitoring stack (Prometheus, Grafana, cAdvisor) alone adds roughly 800 MB."
   - q: "How do I back up Docker volumes on this stack?"
     a: "The cleanest approach is to stop the relevant container, copy the volume data to a backup location, then restart. For most services in this stack, the data lives in named volumes under /var/lib/docker/volumes/. Pair this with the restic S3 backup setup to get automated encrypted offsite backups."
   - q: "Can I add my own services to this Compose file?"
-    a: "Yes. Add a new service block following the same pattern — image, restart policy, network, and a named volume if it needs persistent data. Make sure to add it to the traefik network if you want Traefik to route traffic to it, and add a named volume entry at the bottom of the file."
+    a: "Yes. Add a new service block following the same pattern, image, restart policy, network, and a named volume if it needs persistent data. Make sure to add it to the traefik network if you want Traefik to route traffic to it, and add a named volume entry at the bottom of the file."
 ---
 
 Every homelab eventually becomes a collection of half-remembered Docker
@@ -30,7 +30,7 @@ it from scratch without an afternoon of archaeology.
 
 A single, well-organised `docker-compose.yml` solves this permanently.
 
-This article is that file — 20 self-hosted services across six categories,
+This article is that file, 20 self-hosted services across six categories,
 every environment variable documented, every volume explained, every port
 listed. Deploy the whole stack with one command, or pick out the services
 you need and ignore the rest.
@@ -72,7 +72,7 @@ mkdir -p ~/homelab/{data,config,media}
 cd ~/homelab
 ```
 
-**Create a shared network** — all containers talk to each other on this:
+**Create a shared network**, all containers talk to each other on this:
 
 ```bash
 docker network create homelab
@@ -84,7 +84,7 @@ docker network create homelab
 
 Save this as `~/homelab/docker-compose.yml`.
 
-Read through it before running — the comments explain every decision.
+Read through it before running, the comments explain every decision.
 Fill in every `CHANGE_ME` before deploying.
 
 ```yaml
@@ -564,7 +564,7 @@ docker compose logs -f
 docker compose ps
 ```
 
-The first run takes a few minutes — images download and services
+The first run takes a few minutes, images download and services
 initialise. After that, all 20 containers start in under 30 seconds.
 
 ---
@@ -647,7 +647,7 @@ docker compose up -d portainer watchtower homepage dozzle
 ```
 
 You can add and remove services at any time. `docker compose up -d`
-only starts or restarts what has changed — it doesn't touch running
+only starts or restarts what has changed, it doesn't touch running
 containers that are already correct.
 
 ---
@@ -670,7 +670,7 @@ Running the full stack on 16GB RAM:
 | Everything else combined | ~500MB | |
 | **Total** | **~3GB** | Leaves 13GB for Ollama models and OS |
 
-Ollama's model loading is the only real spike — loading a 7b model
+Ollama's model loading is the only real spike, loading a 7b model
 uses 6–8GB GPU VRAM or system RAM depending on your hardware. On CPU
 it claims that RAM for the duration of the session and releases it
 after the model unloads.
@@ -687,7 +687,7 @@ Proxy Manager or Tailscale Funnel):
 - [ ] Enable Authelia in front of any service without its own auth
 - [ ] Restrict Prometheus and the Ollama API to LAN only (not through NPM)
 - [ ] Enable UFW: `sudo ufw allow from 192.168.1.0/24 to any port 3000` etc
-- [ ] Watchtower runs weekly at minimum — keep containers patched
+- [ ] Watchtower runs weekly at minimum, keep containers patched
 
 The [WireGuard + Tailscale guide](/homelab/wireguard-tailscale-guide)
 covers the network security layer that sits in front of all of this.
@@ -703,7 +703,7 @@ Add a `docker-compose` role that:
 2. Copies the config directory
 3. Runs `docker compose up -d`
 
-Then your entire homelab — hardware to running services — is reproduced
+Then your entire homelab, hardware to running services, is reproduced
 from one `ansible-playbook site.yml` command. Full infrastructure as code.
 
 ---
@@ -712,16 +712,16 @@ from one `ansible-playbook site.yml` command. Full infrastructure as code.
 
 This stack is the foundation. The natural additions once you're running:
 
-**Immich** — self-hosted Google Photos with ML face recognition and
+**Immich**, self-hosted Google Photos with ML face recognition and
 geo-tagging. Add it as a 21st service with its own Postgres database.
 
-**Gitea or Forgejo** — self-hosted Git. Store your Ansible playbooks,
+**Gitea or Forgejo**, self-hosted Git. Store your Ansible playbooks,
 your compose file, and your configs in your own private repository.
 
-**Calibre-Web** — a better interface for your ebook library. Replaces
+**Calibre-Web**, a better interface for your ebook library. Replaces
 Kavita if you're heavily invested in the Calibre ecosystem.
 
-**Home Assistant** — the king of home automation. Integrates with
+**Home Assistant**, the king of home automation. Integrates with
 everything, connects to your n8n workflows via webhooks, and runs
 comfortably alongside this stack.
 

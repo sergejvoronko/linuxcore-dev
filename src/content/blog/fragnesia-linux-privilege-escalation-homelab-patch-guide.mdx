@@ -17,7 +17,7 @@ faqs:
     a: "Partially. You can restrict unprivileged user namespaces immediately with a sysctl command without rebooting, which closes the primary attack surface. But the full patch requires a kernel update and reboot. If your workload depends on unprivileged namespaces (Docker rootless, Podman, Flatpak), test before you apply."
 ---
 
-Fragnesia is a local privilege escalation vulnerability in the Linux kernel — a legitimate one, not a proof-of-concept that requires seventeen dependencies and a full moon. A local user with shell access can use it to get root. In a homelab that's often "just me," that sounds theoretical until you remember you're probably running a few web-facing services, maybe a VPN with port forwarding, and at least one container runtime that hands out unprivileged shells.
+Fragnesia is a local privilege escalation vulnerability in the Linux kernel, a legitimate one, not a proof-of-concept that requires seventeen dependencies and a full moon. A local user with shell access can use it to get root. In a homelab that's often "just me," that sounds theoretical until you remember you're probably running a few web-facing services, maybe a VPN with port forwarding, and at least one container runtime that hands out unprivileged shells.
 
 Let's get your exposure assessed and patched.
 
@@ -25,7 +25,7 @@ Let's get your exposure assessed and patched.
 
 The vulnerability sits in how the kernel handles user namespace creation for unprivileged users. Without getting into a full CVE writeup: an attacker with local execution can trigger a specific sequence through the namespace subsystem that results in a privilege escalation to uid 0. No SUID binary required. No kernel module. Just kernel syscalls.
 
-The attack surface is *unprivileged user namespaces* — a feature that's been on by default in Ubuntu since 2013, enabled in most container runtimes, and generally left wide open because turning it off breaks things. That's the tension here.
+The attack surface is *unprivileged user namespaces*, a feature that's been on by default in Ubuntu since 2013, enabled in most container runtimes, and generally left wide open because turning it off breaks things. That's the tension here.
 
 ## Step 1: Check Your Kernel Version
 
@@ -33,7 +33,7 @@ The attack surface is *unprivileged user namespaces* — a feature that's been o
 uname -r
 ```
 
-If you're on anything between `5.14` and `6.8.x` without a distro backport applied, you're likely exposed. That said, distro-specific backporting means the version number alone doesn't tell the whole story — Ubuntu 22.04 may be running `5.15.x` with the patch already applied.
+If you're on anything between `5.14` and `6.8.x` without a distro backport applied, you're likely exposed. That said, distro-specific backporting means the version number alone doesn't tell the whole story, Ubuntu 22.04 may be running `5.15.x` with the patch already applied.
 
 The more reliable check is against your distro's CVE tracker.
 
@@ -50,7 +50,7 @@ apt-cache policy pve-kernel-$(uname -r | sed 's/-pve//')
 pveversion -v
 ```
 
-Proxmox packages its kernel separately. The `pveversion` output will show your kernel package version — cross-reference with the [Proxmox VE announcements forum](https://forum.proxmox.com/forums/proxmox-ve-announcements.16/).
+Proxmox packages its kernel separately. The `pveversion` output will show your kernel package version, cross-reference with the [Proxmox VE announcements forum](https://forum.proxmox.com/forums/proxmox-ve-announcements.16/).
 
 ## Step 2: Check If Unprivileged User Namespaces Are Enabled
 
@@ -61,7 +61,7 @@ sysctl kernel.unprivileged_userns_clone 2>/dev/null || \
   cat /proc/sys/user/max_user_namespaces
 ```
 
-On Ubuntu/Debian, you'll see `kernel.unprivileged_userns_clone = 1` if it's enabled. On other distros, check `max_user_namespaces` — if it's `0`, you're already restricted.
+On Ubuntu/Debian, you'll see `kernel.unprivileged_userns_clone = 1` if it's enabled. On other distros, check `max_user_namespaces`, if it's `0`, you're already restricted.
 
 ## Step 3: Apply the Patch
 
@@ -113,7 +113,7 @@ sudo apt update
 sudo apt dist-upgrade
 ```
 
-Proxmox uses `dist-upgrade` because kernel updates require metapackage changes. Don't use plain `upgrade` here — I've gotten burned by that before, sitting at an old kernel wondering why the patch wasn't applying. After the upgrade, check:
+Proxmox uses `dist-upgrade` because kernel updates require metapackage changes. Don't use plain `upgrade` here, I've gotten burned by that before, sitting at an old kernel wondering why the patch wasn't applying. After the upgrade, check:
 
 ```bash
 proxmox-boot-tool status
@@ -139,7 +139,7 @@ Arch users are probably already patched given rolling release cadence, but verif
 
 ## Step 4: Stopgap If a Patch Isn't Available Yet
 
-If your distro hasn't shipped a fix yet — which happens with Debian stable or older Proxmox installations where you can't immediately reboot production — restrict unprivileged user namespaces:
+If your distro hasn't shipped a fix yet, which happens with Debian stable or older Proxmox installations where you can't immediately reboot production, restrict unprivileged user namespaces:
 
 ```bash
 # Immediate (no reboot):
@@ -198,13 +198,13 @@ If you want to actually test exploit viability: the Fragnesia PoC is publicly av
 
 ## One Thing Worth Noting About Proxmox Specifically
 
-Proxmox LXC containers by default share the host kernel. That means a privileged LXC container (not unprivileged) running a vulnerable kernel is a *direct path to the Proxmox host*. If you're running privileged containers — which is the Proxmox default unless you explicitly configured otherwise — patch the host kernel first. The containers inherit whatever kernel you're running.
+Proxmox LXC containers by default share the host kernel. That means a privileged LXC container (not unprivileged) running a vulnerable kernel is a *direct path to the Proxmox host*. If you're running privileged containers, which is the Proxmox default unless you explicitly configured otherwise, patch the host kernel first. The containers inherit whatever kernel you're running.
 
 Unprivileged LXC containers with user namespace remapping have some additional isolation, but given this specific vulnerability targets namespace handling, don't treat that as a safety net until you've patched.
 
 ## What's Next
 
-- [Proxmox VE Homelab Setup: Complete Installation and Configuration Guide (2026)](/homelab/proxmox-homelab-setup) — Lock down your Proxmox host properly after this patch scare
-- [Podman Rootless Containers and the Copy Fail Exploit: What Homelab Users Need to Know](/homelab/podman-rootless-copy-fail-exploit-homelab-security) — Understanding rootless containers and when they actually matter for security
-- [Proxmox VE Homelab Setup: Complete Installation and Configuration Guide (2026)](/homelab/proxmox-homelab-setup) — Apply kernel patches without rebooting using kpatch or livepatch
-- /homelab/homelab-network-segmentation-vlans — Defense in depth: limit blast radius from any local exploit with proper network segmentation
+- [Proxmox VE Homelab Setup: Complete Installation and Configuration Guide (2026)](/homelab/proxmox-homelab-setup): Lock down your Proxmox host properly after this patch scare
+- [Podman Rootless Containers and the Copy Fail Exploit: What Homelab Users Need to Know](/homelab/podman-rootless-copy-fail-exploit-homelab-security): Understanding rootless containers and when they actually matter for security
+- [Proxmox VE Homelab Setup: Complete Installation and Configuration Guide (2026)](/homelab/proxmox-homelab-setup): Apply kernel patches without rebooting using kpatch or livepatch
+- /homelab/homelab-network-segmentation-vlans, Defense in depth: limit blast radius from any local exploit with proper network segmentation

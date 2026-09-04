@@ -1,6 +1,6 @@
 ---
 title: "The €10/Month AWS Stack: VPS, DNS, Monitoring, and Backups"
-description: "Build a useful AWS presence for under €10/month: t3.micro with Docker, Route 53 DNS, basic monitoring, and S3 backups — minimum viable cloud for homelab."
+description: "Build a useful AWS presence for under €10/month: t3.micro with Docker, Route 53 DNS, basic monitoring, and S3 backups, minimum viable cloud for homelab."
 pubDate: 2026-04-18
 readingTime: 10
 section: "aws"
@@ -10,9 +10,9 @@ tags: ["aws", "ec2", "route53", "docker", "budget", "homelab"]
 draft: false
 faqs:
   - q: "Is a t3.micro powerful enough to run Docker containers?"
-    a: "Yes for lightweight services. A t3.micro has 1 vCPU and 1 GB RAM — enough for Caddy, a small web app, and basic monitoring. It can burst to 2 vCPUs briefly. Avoid memory-heavy containers like databases or LLMs. For a personal site, CI runner, or low-traffic API, t3.micro is a practical choice at €8-9/month."
+    a: "Yes for lightweight services. A t3.micro has 1 vCPU and 1 GB RAM, enough for Caddy, a small web app, and basic monitoring. It can burst to 2 vCPUs briefly. Avoid memory-heavy containers like databases or LLMs. For a personal site, CI runner, or low-traffic API, t3.micro is a practical choice at €8-9/month."
   - q: "Can I get a static IP for my EC2 instance for free?"
-    a: "Yes, using an Elastic IP. One Elastic IP associated with a running instance is free. You are charged €0.005/hour only when the EIP is allocated but not associated with a running instance — so release it when you stop the instance to avoid charges."
+    a: "Yes, using an Elastic IP. One Elastic IP associated with a running instance is free. You are charged €0.005/hour only when the EIP is allocated but not associated with a running instance, so release it when you stop the instance to avoid charges."
   - q: "How does a €10/month AWS stack compare to a Hetzner or DigitalOcean VPS?"
     a: "A Hetzner CX22 (2 vCPU, 4 GB RAM) costs €4.85/month and offers significantly more raw compute. The AWS stack makes sense if you want to learn AWS services (EC2, Route 53, S3, CloudWatch) or need tight integration with other AWS resources. For pure VPS value, Hetzner or Contabo are cheaper."
   - q: "What services can I realistically run on a t3.micro?"
@@ -25,19 +25,19 @@ Most AWS tutorials assume an enterprise budget. They'll casually suggest an RDS 
 
 It's not. If you're coming from a homelab background, you want to know what's actually useful in AWS for the price of two coffees a month.
 
-This guide builds a practical AWS setup that costs under €10/month. Not a toy demo — a genuinely useful stack that gives you a public-facing Docker host, proper DNS, monitoring, and offsite backups. Think of it as the cloud equivalent of your first homelab mini PC: small, but capable enough to be the foundation for everything that comes after.
+This guide builds a practical AWS setup that costs under €10/month. Not a toy demo, a genuinely useful stack that gives you a public-facing Docker host, proper DNS, monitoring, and offsite backups. Think of it as the cloud equivalent of your first homelab mini PC: small, but capable enough to be the foundation for everything that comes after.
 
 ## What you're building
 
 <figure>
-  <img src="/images/aws-stack-diagram.webp" alt="AWS stack architecture diagram: EC2 t3.micro with Docker CE and Caddy, Route 53 DNS, S3 Bucket for backups, and CloudWatch monitoring — all inside an AWS Account boundary costing approx €10/month" width="1200" height="675" loading="lazy" style="width:100%;height:auto;border:1px solid #2a2218;" />
+  <img src="/images/aws-stack-diagram.webp" alt="AWS stack architecture diagram: EC2 t3.micro with Docker CE and Caddy, Route 53 DNS, S3 Bucket for backups, and CloudWatch monitoring, all inside an AWS Account boundary costing approx €10/month" width="1200" height="675" loading="lazy" style="width:100%;height:auto;border:1px solid #2a2218;" />
 </figure>
 
 **Components:**
-- **EC2 t3.micro** — 2 vCPU, 1GB RAM, 30GB gp3 disk. Runs Docker with Caddy as a reverse proxy.
-- **Route 53** — DNS hosting for your domain. Optional but worth the €0.50/month for proper DNS management.
-- **S3** — Offsite backups of the EC2 instance config and logs.
-- **CloudWatch** — Free-tier metrics and a single alarm for CPU/disk.
+- **EC2 t3.micro**: 2 vCPU, 1GB RAM, 30GB gp3 disk. Runs Docker with Caddy as a reverse proxy.
+- **Route 53**: DNS hosting for your domain. Optional but worth the €0.50/month for proper DNS management.
+- **S3**: Offsite backups of the EC2 instance config and logs.
+- **CloudWatch**: Free-tier metrics and a single alarm for CPU/disk.
 
 ## The cost breakdown
 
@@ -73,7 +73,7 @@ chmod 600 ~/.ssh/homelab-cloud.pem
 
 ### Create a security group
 
-Open only what you need — SSH, HTTP, and HTTPS:
+Open only what you need, SSH, HTTP, and HTTPS:
 
 ```bash
 # Get the default VPC ID
@@ -261,7 +261,7 @@ After creating the hosted zone, update your domain registrar's nameservers to th
 
 ## Step 3: Deploy Caddy + your first services
 
-SSH into the instance and set up a Docker Compose stack with Caddy as the reverse proxy. Caddy handles HTTPS certificates automatically via Let's Encrypt — no configuration needed:
+SSH into the instance and set up a Docker Compose stack with Caddy as the reverse proxy. Caddy handles HTTPS certificates automatically via Let's Encrypt, no configuration needed:
 
 ```bash
 ssh -i ~/.ssh/homelab-cloud.pem ubuntu@$ELASTIC_IP
@@ -333,9 +333,9 @@ docker compose up -d
 
 Within a minute, Caddy will obtain TLS certificates and your services will be live at:
 
-- `https://cloud.yourdomain.com` — health check endpoint
-- `https://status.cloud.yourdomain.com` — Uptime Kuma (set this up to monitor your homelab services!)
-- `https://whoami.cloud.yourdomain.com` — debugging / request inspector
+- `https://cloud.yourdomain.com`, health check endpoint
+- `https://status.cloud.yourdomain.com`, Uptime Kuma (set this up to monitor your homelab services!)
+- `https://whoami.cloud.yourdomain.com`, debugging / request inspector
 
 Uptime Kuma is the killer app here. Point it at your homelab services and you'll know within seconds when your home internet drops or a container dies. Free, self-hosted monitoring with notifications to Telegram, Discord, Slack, or email.
 
@@ -377,7 +377,7 @@ The `ec2:recover` action migrates your instance to new hardware if the underlyin
 
 ## Step 5: Instance backup to S3
 
-Back up your Docker Compose configs and volumes nightly. This is lightweight — we're not backing up the OS (you can rebuild that in minutes with the user data script), just the state:
+Back up your Docker Compose configs and volumes nightly. This is lightweight. We're not backing up the OS (you can rebuild that in minutes with the user data script), just the state:
 
 ```bash
 # On the EC2 instance
@@ -427,9 +427,9 @@ With 1GB of RAM (plus 1GB swap), you need to be selective. Here's what fits comf
 
 **Good fit (total ~600–800MB RAM):**
 - Caddy reverse proxy (~15MB)
-- Uptime Kuma (~80MB) — monitor your homelab from the outside
+- Uptime Kuma (~80MB): monitor your homelab from the outside
 - A lightweight static site or API (~50MB)
-- WireGuard endpoint (~5MB) — public entry point tunneled to homelab
+- WireGuard endpoint (~5MB): public entry point tunneled to homelab
 - Healthchecks.io alternative like Gatus (~30MB)
 
 **Too heavy for t3.micro:**
@@ -458,11 +458,11 @@ Before you call this production-ready, verify:
 
 You now have a cloud presence that:
 
-1. **Stays up when your home internet doesn't** — Uptime Kuma monitors your homelab and alerts you
-2. **Gives you a public endpoint** — HTTPS services with automatic certificates
-3. **Backs itself up** — nightly snapshots to S3
-4. **Auto-recovers** — CloudWatch will migrate the instance if hardware fails
-5. **Costs under €10/month** — and under €4/month in your first year
+1. **Stays up when your home internet doesn't**: Uptime Kuma monitors your homelab and alerts you
+2. **Gives you a public endpoint**: HTTPS services with automatic certificates
+3. **Backs itself up**: nightly snapshots to S3
+4. **Auto-recovers**: CloudWatch will migrate the instance if hardware fails
+5. **Costs under €10/month**: and under €4/month in your first year
 
 This is the foundation. From here you can add a [WireGuard tunnel back to your homelab](/aws/when-to-move-homelab-to-aws), run [Ollama on GPU spot instances](/aws/ollama-aws-gpu-spot-instance) for heavy AI workloads, or use this as a stepping stone to [Terraform-managed infrastructure](/aws/terraform-for-homelab-users).
 

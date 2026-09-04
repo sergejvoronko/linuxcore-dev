@@ -1,6 +1,6 @@
 ---
 title: "Linux Homelab Security Hardening: Complete Checklist (2026)"
-description: "Harden any Ubuntu or Debian server in under an hour: SSH lockdown, UFW, fail2ban, CrowdSec, and automatic updates — every command tested, reason explained."
+description: "Harden any Ubuntu or Debian server in under an hour: SSH lockdown, UFW, fail2ban, CrowdSec, and automatic updates, every command tested, reason explained."
 pubDate: 2026-05-19
 heroImage: "/images/linux-security-hardening.webp"
 heroImageAlt: "Linux terminal showing UFW firewall rules, fail2ban status, and SSH hardening configuration on a Debian server"
@@ -13,11 +13,11 @@ featured: true
 draft: false
 faqs:
   - q: "Will following these steps lock me out of my server?"
-    a: "Only if you disable password auth before testing key-based SSH. Always open a second SSH session before restarting the SSH daemon to verify your key works. The guide follows this order — keys first, then disable passwords."
+    a: "Only if you disable password auth before testing key-based SSH. Always open a second SSH session before restarting the SSH daemon to verify your key works. The guide follows this order, keys first, then disable passwords."
   - q: "Do I need all 12 steps or can I pick the most important ones?"
     a: "Steps 1-6 (updates, non-root user, SSH keys, SSH hardening, UFW, fail2ban) are the essential baseline that covers the vast majority of real-world threats. Steps 7-12 add defence-in-depth and are recommended but can be phased in over time."
   - q: "What is CrowdSec and how does it differ from fail2ban?"
-    a: "Both block IPs that show malicious behaviour. fail2ban works locally — it only blocks attackers based on your own logs. CrowdSec uses a collaborative threat intelligence network: when one server blocks an IP, that intelligence is shared across all CrowdSec users, so you benefit from blocks triggered by other people's servers too."
+    a: "Both block IPs that show malicious behaviour. fail2ban works locally, it only blocks attackers based on your own logs. CrowdSec uses a collaborative threat intelligence network: when one server blocks an IP, that intelligence is shared across all CrowdSec users, so you benefit from blocks triggered by other people's servers too."
   - q: "How do I check if my Linux server has already been compromised?"
     a: "Run lynis audit system for a broad security audit. Check /var/log/auth.log for unexpected successful logins, run last to see recent login history, and check netstat -tulpn or ss -tulpn for unexpected listening services. Unexpected cron jobs in /etc/cron* and /var/spool/cron are also a red flag."
 ---
@@ -32,8 +32,7 @@ together is how a homelab gets turned into a botnet node at 3am on a
 Tuesday.
 
 This guide fixes all of it. Work through it top to bottom on any fresh
-Linux install and the result is a server that's genuinely hardened —
-resistant to the automated attacks that scan the internet constantly,
+Linux install and the result is a server that's genuinely hardened, resistant to the automated attacks that scan the internet constantly,
 and set up to tell you when something unusual happens.
 
 Every step is explained. Not just the command, but why it matters and
@@ -55,7 +54,7 @@ you automate it with Ansible (a ready-made role is at the end).
 
 ---
 
-## Step 1 — Update Everything First
+## Step 1, Update Everything First
 
 Before hardening anything, make sure the system is fully patched.
 Known vulnerabilities in old packages are the easiest attack vector.
@@ -66,12 +65,11 @@ sudo apt autoremove -y
 sudo reboot
 ```
 
-The reboot applies any kernel updates. Do this before anything else —
-some later steps depend on the running kernel version.
+The reboot applies any kernel updates. Do this before anything else, some later steps depend on the running kernel version.
 
 ---
 
-## Step 2 — Create a Non-Root Admin User
+## Step 2, Create a Non-Root Admin User
 
 Running everything as root is like doing all your work with nuclear launch
 codes in your pocket. You don't need that power for most tasks, and if
@@ -97,9 +95,9 @@ needed. Root login will be disabled later.
 
 ---
 
-## Step 3 — SSH Key Authentication
+## Step 3, SSH Key Authentication
 
-Password-based SSH is brute-forceable. SSH keys are not — they're
+Password-based SSH is brute-forceable. SSH keys are not. They're
 mathematically unfeasible to crack with any foreseeable hardware.
 
 **On your laptop (not the server):**
@@ -121,12 +119,12 @@ ssh yourusername@192.168.1.x
 # Should connect without asking for a password
 ```
 
-If it connects without a password prompt — keys are working.
+If it connects without a password prompt, keys are working.
 Only proceed to the next step after confirming this.
 
 ---
 
-## Step 4 — Harden SSH Configuration
+## Step 4, Harden SSH Configuration
 
 This is the most impactful single step. Most automated attacks against
 Linux servers target SSH with password guessing. Closing this off
@@ -189,7 +187,7 @@ ssh yourusername@192.168.1.x
 
 ---
 
-## Step 5 — UFW Firewall
+## Step 5, UFW Firewall
 
 UFW (Uncomplicated Firewall) is a frontend for iptables that makes
 firewall rules human-readable. The default Linux install has no firewall.
@@ -236,7 +234,7 @@ sudo ufw allow from 192.168.1.0/24 to any port 5678
 Adjust the ports to match your setup. The principle: every service is
 LAN-only unless there's a specific reason for it to be public.
 
-**Important — Docker bypasses UFW by default:**
+**Important, Docker bypasses UFW by default:**
 
 Docker modifies iptables directly and bypasses UFW rules for exposed
 ports. If you run Docker, add this to prevent Docker from opening
@@ -264,17 +262,17 @@ running Docker.
 
 ---
 
-## Step 6 — fail2ban
+## Step 6, fail2ban
 
 fail2ban watches your log files and automatically bans IPs that show
-signs of brute-force attacks — too many failed SSH logins, too many
+signs of brute-force attacks, too many failed SSH logins, too many
 failed web logins, and so on.
 
 ```bash
 sudo apt install fail2ban -y
 ```
 
-Create a local config (don't edit the original — it gets overwritten
+Create a local config (don't edit the original. It gets overwritten
 on upgrades):
 
 ```bash
@@ -328,7 +326,7 @@ sudo fail2ban-client set sshd unbanip 192.168.1.x
 
 ---
 
-## Step 7 — Automatic Security Updates
+## Step 7, Automatic Security Updates
 
 Security patches are released constantly. Not applying them is how
 known vulnerabilities become your vulnerabilities.
@@ -373,10 +371,9 @@ sudo unattended-upgrades --dry-run --debug 2>&1 | tail -20
 
 ---
 
-## Step 8 — CrowdSec (Collaborative Threat Intelligence)
+## Step 8, CrowdSec (Collaborative Threat Intelligence)
 
-fail2ban bans IPs that attack your machine. CrowdSec goes further —
-it shares threat intelligence across all CrowdSec users, so IPs that
+fail2ban bans IPs that attack your machine. CrowdSec goes further, it shares threat intelligence across all CrowdSec users, so IPs that
 have attacked other homelabs are pre-emptively blocked on yours.
 
 ```bash
@@ -423,7 +420,7 @@ benefits from collective defence without doing anything else.
 
 ---
 
-## Step 9 — Disable Unnecessary Services
+## Step 9, Disable Unnecessary Services
 
 Every running service that you're not using is a potential attack surface.
 
@@ -446,7 +443,7 @@ ss -tulpn
 
 ---
 
-## Step 10 — Set Up Logwatch or Lynis Audit
+## Step 10, Set Up Logwatch or Lynis Audit
 
 **Logwatch** emails you a daily summary of what happened on the system:
 
@@ -486,7 +483,7 @@ over time.
 
 ---
 
-## Step 11 — Kernel Hardening (sysctl)
+## Step 11, Kernel Hardening (sysctl)
 
 The Linux kernel has security parameters that aren't set optimally by
 default. These sysctl settings reduce the kernel's attack surface:
@@ -547,7 +544,7 @@ These settings persist across reboots.
 
 ---
 
-## Step 12 — SSH Two-Factor Authentication (Optional but Recommended)
+## Step 12, SSH Two-Factor Authentication (Optional but Recommended)
 
 For servers that are reachable from the internet, add TOTP two-factor
 auth on top of SSH keys. Even with a stolen key, an attacker needs your
@@ -596,7 +593,7 @@ AuthenticationMethods publickey,keyboard-interactive
 sudo systemctl reload sshd
 ```
 
-Test in a new terminal — it should ask for your key AND your TOTP code.
+Test in a new terminal. It should ask for your key AND your TOTP code.
 
 ---
 
@@ -653,7 +650,7 @@ OPTIONAL
 
 Running through this checklist manually on every new machine takes an
 hour. The [Ansible guide](/homelab/ansible-homelab) shows you how
-to build roles — here's the skeleton of a security role that runs every
+to build roles, here's the skeleton of a security role that runs every
 step above:
 
 ```yaml
@@ -719,23 +716,23 @@ Every server in your homelab, hardened identically, in minutes.
 This guide hardens the OS layer. For a complete security picture,
 also consider:
 
-**Application security** — each service (Nextcloud, Grafana, n8n) has
+**Application security**, each service (Nextcloud, Grafana, n8n) has
 its own security settings. Default installs are rarely secure. Review
 each service's hardening guide after setup.
 
-**Physical security** — if someone can physically access your hardware,
+**Physical security**, if someone can physically access your hardware,
 most software security is irrelevant. Disk encryption (LUKS) protects
 data if a drive is removed.
 
-**Network segmentation** — VLANs in Proxmox or on your router separate
+**Network segmentation**, VLANs in Proxmox or on your router separate
 untrusted services (IoT, guest Wi-Fi) from your homelab. The
 [Proxmox guide](/homelab/proxmox-homelab-setup) covers this.
 
-**Secrets management** — Ansible Vault and Vaultwarden from the
+**Secrets management**, Ansible Vault and Vaultwarden from the
 [Docker Compose stack](/homelab/docker-compose-homelab-stack) handle
 secret storage. Never put passwords in plain-text files or environment
 variables committed to Git.
 
-Security is not a state you reach — it's a practice you maintain.
+Security is not a state you reach. It's a practice you maintain.
 These steps get you to a strong baseline. Lynis will show you what
 to improve next.

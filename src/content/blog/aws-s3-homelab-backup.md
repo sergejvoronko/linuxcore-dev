@@ -39,11 +39,11 @@ the third.
 
 This guide builds a complete offsite backup pipeline using:
 
-- **restic** — fast, encrypted, deduplicated backups to any storage backend
-- **AWS S3** — object storage at €0.023/GB/month for active data
-- **S3 Glacier Instant Retrieval** — €0.004/GB/month for archival data
-- **AWS IAM** — locked-down credentials that can only write to one bucket
-- **systemd timers** — reliable scheduling without cron's failure modes
+- **restic**: fast, encrypted, deduplicated backups to any storage backend
+- **AWS S3**: object storage at €0.023/GB/month for active data
+- **S3 Glacier Instant Retrieval**: €0.004/GB/month for archival data
+- **AWS IAM**: locked-down credentials that can only write to one bucket
+- **systemd timers**: reliable scheduling without cron's failure modes
 
 A typical homelab with 100GB of important data costs under €3/month
 to back up to S3. The config files and databases that actually matter run
@@ -67,18 +67,18 @@ things that aren't replaceable:
 - Your homelab's `docker-compose.yml` and config files
 
 **Don't back up offsite (too large, replaceable):**
-- Jellyfin media library — re-download if needed
-- Ollama model files — re-pull from ollama.com
-- Proxmox ISO images — re-download from upstream
-- System packages — reinstall from apt
+- Jellyfin media library, re-download if needed
+- Ollama model files, re-pull from ollama.com
+- Proxmox ISO images, re-download from upstream
+- System packages, reinstall from apt
 
 Being selective keeps costs low and restore times fast.
 
 ---
 
-## Part 1 — AWS Setup
+## Part 1, AWS Setup
 
-### Step 1 — Create an AWS Account
+### Step 1, Create an AWS Account
 
 Go to **aws.amazon.com** and create an account. You'll need a credit card
 but won't be charged anything for the setup steps.
@@ -89,7 +89,7 @@ knowing but don't depend on it for long-term cost planning.
 
 ---
 
-### Step 2 — Create an S3 Bucket
+### Step 2, Create an S3 Bucket
 
 In the AWS Console → **S3** → **Create bucket**.
 
@@ -109,7 +109,7 @@ Click **Create bucket**.
 
 ---
 
-### Step 3 — Configure Lifecycle Rules (Save Money on Old Backups)
+### Step 3, Configure Lifecycle Rules (Save Money on Old Backups)
 
 S3 Standard costs €0.023/GB/month. S3 Glacier Instant Retrieval costs
 €0.004/GB/month, 83% cheaper for data you rarely access.
@@ -143,7 +143,7 @@ they're deleted automatically.
 
 ---
 
-### Step 4 — Create a Locked-Down IAM User
+### Step 4, Create a Locked-Down IAM User
 
 Never use your root AWS account or a powerful IAM user for backups.
 Create a dedicated user with the minimum permissions needed:
@@ -197,13 +197,13 @@ retrieve the secret key again after this screen.
 
 ---
 
-## Part 2 — restic on Linux
+## Part 2, restic on Linux
 
 restic is the best backup tool for this job. It deduplicates data
 (so unchanged files take zero space), encrypts everything before
 it leaves your machine, and has native S3 support.
 
-### Step 5 — Install restic
+### Step 5, Install restic
 
 ```bash
 # Ubuntu/Debian
@@ -215,7 +215,7 @@ restic version
 
 ---
 
-### Step 6 — Initialise a restic Repository in S3
+### Step 6, Initialise a restic Repository in S3
 
 Set your AWS credentials as environment variables:
 
@@ -244,7 +244,7 @@ created restic repository abc123 at s3:s3.amazonaws.com/homelab-backup-YOURNAME
 
 ---
 
-### Step 7 — Run Your First Backup
+### Step 7, Run Your First Backup
 
 ```bash
 # Back up Docker volumes
@@ -280,7 +280,7 @@ e5f6g7h8  2026-05-26 02:01:15  server          /home/user/homelab-ansible
 
 ---
 
-### Step 8 — Create a Credentials File
+### Step 8, Create a Credentials File
 
 Hardcoding credentials in scripts is bad practice. Store them in a
 protected file instead:
@@ -306,7 +306,7 @@ sudo chown root:root /etc/restic/s3-credentials.conf
 
 ---
 
-### Step 9 — Create a Backup Script
+### Step 9, Create a Backup Script
 
 ```bash
 sudo nano /usr/local/bin/homelab-backup.sh
@@ -400,7 +400,7 @@ cat /var/log/restic-backup.log
 
 ---
 
-### Step 10 — Schedule with systemd Timer
+### Step 10, Schedule with systemd Timer
 
 systemd timers are more reliable than cron. They log properly, retry
 on failure, and handle machines that were off at the scheduled time.
@@ -467,7 +467,7 @@ journalctl -u restic-backup.service -f
 
 ---
 
-## Part 3 — Backing Up Proxmox VMs to S3
+## Part 3, Backing Up Proxmox VMs to S3
 
 For full VM backups (not just configs), use Proxmox's built-in backup
 tool combined with rclone to sync to S3.
@@ -548,7 +548,7 @@ WantedBy=timers.target
 
 ---
 
-## Part 4 — Restoring from Backup
+## Part 4, Restoring from Backup
 
 A backup you haven't tested is not a backup. Test restores regularly:
 at minimum, once after initial setup and once every few months.
@@ -605,7 +605,7 @@ Here's what a real homelab backup setup costs at typical sizes:
 | Nextcloud files | 50GB | Standard (30 days) → Glacier | €1.15 → €0.20 |
 | Ansible + configs | 1GB | Standard | €0.02 |
 | Proxmox VM backups | 40GB | Standard (30 days) → Glacier | €0.92 → €0.16 |
-| API requests | — | — | ~€0.05 |
+| API requests |, |, | ~€0.05 |
 | **Total (first month)** | **106GB** | | **~€2.49** |
 | **Total (after 90 days, Glacier)** | | | **~€0.49** |
 

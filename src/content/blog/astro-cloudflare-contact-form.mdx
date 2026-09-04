@@ -1,6 +1,6 @@
 ---
 title: "Astro Contact Forms with Cloudflare Pages Functions"
-description: "Send email from a fully static Astro site using Cloudflare Pages Functions and MailChannels — no backend server, no third-party form service, completely free."
+description: "Send email from a fully static Astro site using Cloudflare Pages Functions and MailChannels, no backend server, no third-party form service, completely free."
 pubDate: 2026-04-05
 heroImage: "/images/astro-cloudflare-contact-form.webp"
 heroImageAlt: "Astro contact form code with Cloudflare Pages Functions handler sending email via MailChannels, no backend server"
@@ -16,13 +16,13 @@ draft: false
 readingTime: 10
 faqs:
   - q: "Is MailChannels still free on Cloudflare Pages?"
-    a: "MailChannels historically allowed Cloudflare Pages Functions to send email for free via their API. This partnership can change — check MailChannels' current terms before relying on it for production use. The guide also notes alternatives in case the free tier changes."
+    a: "MailChannels historically allowed Cloudflare Pages Functions to send email for free via their API. This partnership can change, check MailChannels' current terms before relying on it for production use. The guide also notes alternatives in case the free tier changes."
   - q: "Do I need a backend server to send email from an Astro site?"
-    a: "No. Cloudflare Pages Functions run server-side logic at the edge without a dedicated backend server. The contact form submits to a Pages Function URL, which calls MailChannels to send the email — the static site itself never touches email delivery."
+    a: "No. Cloudflare Pages Functions run server-side logic at the edge without a dedicated backend server. The contact form submits to a Pages Function URL, which calls MailChannels to send the email, the static site itself never touches email delivery."
   - q: "Can I add spam protection to the Cloudflare contact form?"
     a: "Yes. Add Cloudflare Turnstile (free, privacy-friendly CAPTCHA) to the form. Validate the Turnstile token inside your Pages Function before calling MailChannels. This blocks most bots without requiring users to solve image puzzles."
   - q: "Does this approach work with other static site generators?"
-    a: "Yes. The Cloudflare Pages Function and MailChannels setup is independent of the frontend framework. The same function works with Next.js, SvelteKit, Nuxt, or plain HTML — anything deployed to Cloudflare Pages can call a Pages Function endpoint."
+    a: "Yes. The Cloudflare Pages Function and MailChannels setup is independent of the frontend framework. The same function works with Next.js, SvelteKit, Nuxt, or plain HTML, anything deployed to Cloudflare Pages can call a Pages Function endpoint."
 ---
 
 import Callout from '../../components/Callout.astro';
@@ -31,13 +31,13 @@ The first time I needed a contact form on linuxcore.dev, the obvious solutions a
 
 Cloudflare Pages Functions combined with MailChannels is a different kind of answer. It's a serverless function that runs at the edge, built directly into your Cloudflare Pages project, using a mail delivery service that Cloudflare has a partnership with specifically for Pages users. No separate account, no API key for the mail service, completely free.
 
-This article walks through the complete setup on linuxcore.dev — from the form HTML to the function handling delivery.
+This article walks through the complete setup on linuxcore.dev, from the form HTML to the function handling delivery.
 
 ---
 
 ## How It Works
 
-When someone submits your contact form, the browser POSTs to `/api/contact` — a URL handled by a Cloudflare Pages Function. That function formats an email and sends it to the MailChannels API, which delivers it to your inbox.
+When someone submits your contact form, the browser POSTs to `/api/contact`, a URL handled by a Cloudflare Pages Function. That function formats an email and sends it to the MailChannels API, which delivers it to your inbox.
 
 The flow:
 
@@ -48,7 +48,7 @@ Browser → POST /api/contact
        → Your inbox
 ```
 
-Cloudflare's partnership with MailChannels means authenticated requests from Cloudflare Workers/Pages don't require a MailChannels account — delivery is included in the Pages free tier.
+Cloudflare's partnership with MailChannels means authenticated requests from Cloudflare Workers/Pages don't require a MailChannels account, delivery is included in the Pages free tier.
 
 <Callout type="info">
 MailChannels stopped offering free standalone accounts in 2023, but delivery from Cloudflare Pages Functions specifically remains free and doesn't require a MailChannels account. This only works when called from within a Cloudflare Pages Function.
@@ -217,15 +217,15 @@ CONTACT_TO_EMAIL=your@email.com
 CONTACT_FROM=contact@linuxcore.dev
 ```
 
-Add `.env` to `.gitignore` — never commit credentials.
+Add `.env` to `.gitignore`, never commit credentials.
 
 **For Cloudflare Pages production:**
 
 1. Go to your Cloudflare dashboard
 2. **Workers & Pages** → your project → **Settings** → **Environment Variables**
 3. Add both variables under **Production**:
-   - `CONTACT_TO_EMAIL` — your inbox address
-   - `CONTACT_FROM` — the sender address (should be `something@yourdomain.com`)
+   - `CONTACT_TO_EMAIL`, your inbox address
+   - `CONTACT_FROM`, the sender address (should be `something@yourdomain.com`)
 
 <Callout type="warning">
 The `CONTACT_FROM` address needs to be on a domain you own and have configured in Cloudflare. Using a Gmail or other external address as the sender will likely cause delivery to fail or land in spam.
@@ -401,7 +401,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
 ## Testing Locally
 
-Cloudflare Pages Functions don't run with `npm run dev` by default — the Astro dev server doesn't execute them. To test the function locally you need the Wrangler CLI:
+Cloudflare Pages Functions don't run with `npm run dev` by default, the Astro dev server doesn't execute them. To test the function locally you need the Wrangler CLI:
 
 ```bash
 npm install -g wrangler
@@ -417,7 +417,7 @@ npx wrangler pages dev dist
 
 Wrangler reads your `.env` file automatically and runs the functions alongside your static files.
 
-Alternatively, test in production by deploying to a preview branch first — push to a non-main branch and Cloudflare gives you a preview URL with full function support.
+Alternatively, test in production by deploying to a preview branch first, push to a non-main branch and Cloudflare gives you a preview URL with full function support.
 
 ---
 
@@ -439,10 +439,10 @@ Confirm both environment variables are set in Cloudflare Pages under **Productio
 
 ## The End Result
 
-A working contact form with no third-party form service, no monthly bill, and no additional infrastructure. The function runs in Cloudflare's edge network — the same infrastructure serving your static site — and emails arrive in your inbox within seconds of submission.
+A working contact form with no third-party form service, no monthly bill, and no additional infrastructure. The function runs in Cloudflare's edge network, the same infrastructure serving your static site, and emails arrive in your inbox within seconds of submission.
 
-The entire setup — function, form, SPF record — takes under 30 minutes and requires touching exactly three files.
+The entire setup, function, form, SPF record, takes under 30 minutes and requires touching exactly three files.
 
 ---
 
-*Next in this series: [Building a Shop in Astro with Printify and Stripe](/astro/astro-printify-stripe-shop) — print-on-demand merch with Cloudflare checkout.*
+*Next in this series: [Building a Shop in Astro with Printify and Stripe](/astro/astro-printify-stripe-shop), print-on-demand merch with Cloudflare checkout.*

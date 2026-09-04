@@ -42,7 +42,7 @@ Recent versions of `lxc` (the userspace tools that power Proxmox's LXC integrati
 
 This approach gives you a workflow that feels very similar to managing standard LXC containers, but with a real hardware-virtualized boundary.
 
-### Step 1 — Prepare the Proxmox Host
+### Step 1, Prepare the Proxmox Host
 
 First, SSH into your Proxmox node. You'll need to install the `firecracker` binary and some LXC tooling that might not be present by default.
 
@@ -82,7 +82,7 @@ rm alpine-virt-3.18.2-x86_64.iso
 ```
 Now you have a guest kernel ready at `/opt/microvm/kernels/vmlinuz-alpine-3.18`.
 
-### Step 2 — Create the MicroVM Configuration
+### Step 2, Create the MicroVM Configuration
 
 This is the secret sauce. We'll create an LXC configuration file that instructs it to use the `firecracker` driver.
 
@@ -108,7 +108,7 @@ lxc.net.0.hwaddr = 00:16:3e:xx:xx:xx # CHANGE THIS
 
 **CRITICAL:** You must change the `lxc.net.0.hwaddr` to a unique MAC address. Mash your keyboard for the last three octets if you have to, just make it unique on your network. This config bridges the microVM's network interface directly to your Proxmox `vmbr0`, so it will get an IP from your DHCP server just like any other VM or container.
 
-### Step 3 — Create and Launch the MicroVM
+### Step 3, Create and Launch the MicroVM
 
 We'll use standard `lxc-create` to build the root filesystem and then launch it with our custom config. We'll create an Alpine-based microVM named `mvm-test01`.
 
@@ -123,7 +123,7 @@ lxc-start -n mvm-test01 -f ~/firecracker.conf --logpriority=INFO --logfile=/tmp/
 
 You won't see much output. Check the log file for progress. If it hangs, it's almost always a networking or kernel path issue. A successful boot log will end with Firecracker reporting a successful exit after you stop the VM.
 
-### Step 4 — Access and Manage
+### Step 4, Access and Manage
 
 How do you get a shell? `lxc-attach` works just like it does with regular containers.
 

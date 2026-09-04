@@ -42,7 +42,7 @@ Most of us are stuck with a dynamic IP. The solution is Dynamic DNS (DDNS). A sm
 
 It sounds complex, but it's a solved problem. Services like DuckDNS (free) or your domain registrar's own tools can handle this. I prefer using Cloudflare to manage my DNS, since its API is fantastic and well-supported.
 
-You can run a DDNS client in a simple Docker container. Here’s a `docker-compose.yml` for the popular `cloudflare-ddns` client. It's lightweight and reliable.
+You can run a DDNS client in a simple Docker container. Here's a `docker-compose.yml` for the popular `cloudflare-ddns` client. It's lightweight and reliable.
 
 ```yaml
 # docker-compose.yml
@@ -83,7 +83,7 @@ Instead of opening a dozen ports, you open just *one*. This single port will be 
 WireGuard is a modern VPN protocol that is lean, fast, and built into the Linux kernel. It's the de facto standard for self-hosted VPNs.
 
 *   **How it works:** You run a WireGuard server on a device in your homelab (a Raspberry Pi, a VM, or even a container). You forward a single UDP port (e.g., 51820) from your router to this server. Your clients (phone, laptop) have a configuration file with keys that lets them connect.
-*   **Pros:** Incredible performance and low overhead. You control all the keys and infrastructure. It’s the most secure and performant option if you're willing to do the setup.
+*   **Pros:** Incredible performance and low overhead. You control all the keys and infrastructure. It's the most secure and performant option if you're willing to do the setup.
 *   **Cons:** Configuration is manual. You have to generate keys and distribute config files to each device. Tools like `wg-easy` provide a web UI to simplify this process immensely, so the "con" is pretty small. Your DDNS setup is critical here; the hostname (`vpn.yourdomain.com`) goes directly into the client config files.
 
 ### Option 2: Tailscale (The "It Just Works" Overlay Network)

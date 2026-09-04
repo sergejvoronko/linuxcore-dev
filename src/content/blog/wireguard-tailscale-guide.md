@@ -3,7 +3,7 @@ title: "WireGuard vs Tailscale for Homelab Remote Access (2026)"
 description: "Secure remote access to your homelab without port forwarding. Set up WireGuard and Tailscale, understand when to use each, and lock down your Linux servers."
 pubDate: 2026-04-21
 heroImage: "/images/wireguard-tailscale-guide.webp"
-heroImageAlt: "WireGuard and Tailscale configuration comparison on a Linux homelab — terminal showing active VPN tunnel status"
+heroImageAlt: "WireGuard and Tailscale configuration comparison on a Linux homelab, terminal showing active VPN tunnel status"
 section: "homelab"
 pillar: "Security"
 type: "PILLAR"
@@ -47,21 +47,21 @@ situation in your homelab.
 Your homelab sits behind your home router. To reach it from outside (from
 your phone, your work laptop, a hotel Wi-Fi) you have three options:
 
-**Option A — Open a port on your router** (bad)
+**Option A, Open a port on your router** (bad)
 ```
 Internet → router:22 → your server SSH
 ```
 Every port scanner on the internet will find it within hours. Your SSH logs
 will fill with brute-force attempts. Eventually someone gets in.
 
-**Option B — VPN tunnel** (good)
+**Option B, VPN tunnel** (good)
 ```
 Internet → VPN server → encrypted tunnel → your homelab
 ```
 Only authenticated devices can connect. No ports exposed. The surface area
 for attack is a single authenticated endpoint.
 
-**Option C — Tailscale mesh** (also good, different tradeoffs)
+**Option C, Tailscale mesh** (also good, different tradeoffs)
 ```
 Device A ←→ Tailscale coordination ←→ Device B
          ↘ direct peer-to-peer connection ↗
@@ -78,12 +78,12 @@ Both B and C are the right answer. Which one depends on your requirements.
 | | WireGuard | Tailscale |
 |:--|:----------|:---------|
 | Setup time | 30–60 min | 5 min |
-| External dependency | None — fully self-hosted | Tailscale's control plane |
-| Works through strict NAT | Needs port forward | Yes — no port forward needed |
+| External dependency | None, fully self-hosted | Tailscale's control plane |
+| Works through strict NAT | Needs port forward | Yes, no port forward needed |
 | Device limit (free) | Unlimited | 3 devices (free), 20 on Personal |
 | Subnet routing | Manual config | Built-in, 2 clicks |
 | Exit node (route all traffic) | Manual config | Built-in |
-| Auditability | Complete — you own everything | Partial — key exchange via Tailscale |
+| Auditability | Complete, you own everything | Partial, key exchange via Tailscale |
 | Best for | Production, privacy-first, full control | Rapid access, many devices, simplicity |
 
 **My actual setup:** Tailscale for daily access (phone, laptop, quick
@@ -94,9 +94,9 @@ You don't have to choose. Run both. They coexist without conflict.
 
 ---
 
-## Part 1 — WireGuard
+## Part 1, WireGuard
 
-### Step 1 — Install WireGuard
+### Step 1, Install WireGuard
 
 On the server (Ubuntu/Debian):
 
@@ -114,7 +114,7 @@ already there, and the package just adds the userspace tools.
 
 ---
 
-### Step 2 — Generate Key Pairs
+### Step 2, Generate Key Pairs
 
 WireGuard uses public-key cryptography. Every peer, server and client alike,
 needs its own keypair.
@@ -140,7 +140,7 @@ cat client1_public.key    # share this with the server
 
 ---
 
-### Step 3 — Server Configuration
+### Step 3, Server Configuration
 
 ```bash
 sudo nano /etc/wireguard/wg0.conf
@@ -186,7 +186,7 @@ sudo sysctl -p
 
 ---
 
-### Step 4 — Start WireGuard
+### Step 4, Start WireGuard
 
 ```bash
 # Start the interface
@@ -215,7 +215,7 @@ router settings: **UDP port 51820 → your server's LAN IP**.
 
 ---
 
-### Step 5 — Client Configuration (Linux laptop)
+### Step 5, Client Configuration (Linux laptop)
 
 ```bash
 sudo apt install wireguard -y
@@ -263,7 +263,7 @@ sudo wg show
 
 ---
 
-### Step 6 — Client Configuration (Phone)
+### Step 6, Client Configuration (Phone)
 
 Install the WireGuard app from your phone's app store. The easiest way to
 configure it is with a QR code.
@@ -299,12 +299,12 @@ On your phone: WireGuard app → **+** → **Scan QR code** → scan → connect
 
 ---
 
-### Step 7 — Dynamic DNS (if you don't have a static IP)
+### Step 7, Dynamic DNS (if you don't have a static IP)
 
 Most home ISPs give you a dynamic IP that changes occasionally. Without a
 static IP, your WireGuard `Endpoint` goes stale.
 
-**Free solution — DuckDNS:**
+**Free solution, DuckDNS:**
 
 ```bash
 # Install curl if needed
@@ -329,9 +329,9 @@ your home IP changes.
 
 ---
 
-## Part 2 — Tailscale
+## Part 2, Tailscale
 
-### Step 1 — Install Tailscale
+### Step 1, Install Tailscale
 
 ```bash
 curl -fsSL https://tailscale.com/install.sh | sh
@@ -341,7 +341,7 @@ That's it. One line installs the daemon and CLI on any Debian/Ubuntu system.
 
 ---
 
-### Step 2 — Authenticate
+### Step 2, Authenticate
 
 ```bash
 sudo tailscale up
@@ -363,7 +363,7 @@ These never change, even if your home IP does.
 
 ---
 
-### Step 3 — Add More Devices
+### Step 3, Add More Devices
 
 Install Tailscale on every device you want on the network, using the same
 one-liner or the app store version for phones. After `tailscale up` and
@@ -375,7 +375,7 @@ possible.
 
 ---
 
-### Step 4 — Access Your Entire Homelab via Subnet Routing
+### Step 4, Access Your Entire Homelab via Subnet Routing
 
 By default, Tailscale only connects the devices that have it installed.
 **Subnet routing** lets one machine act as a gateway so you can reach
@@ -403,7 +403,7 @@ Tailscale on each one.
 
 ---
 
-### Step 5 — MagicDNS (Access by Hostname)
+### Step 5, MagicDNS (Access by Hostname)
 
 Tailscale can give every machine a DNS name so you don't have to remember
 IPs.
@@ -422,7 +422,7 @@ anywhere on your tailnet.
 
 ---
 
-### Step 6 — Serve a Local Service Publicly (with HTTPS)
+### Step 6, Serve a Local Service Publicly (with HTTPS)
 
 Tailscale Serve exposes a local service on your tailnet with automatic
 HTTPS, the same feature used in the Ollama guide.
@@ -457,7 +457,7 @@ tailscale funnel --bg off
 
 ---
 
-### Step 7 — SSH via Tailscale (No Keys Needed)
+### Step 7, SSH via Tailscale (No Keys Needed)
 
 Tailscale SSH replaces key-based SSH auth with Tailscale identity. No more
 managing `authorized_keys`.
@@ -480,7 +480,7 @@ re-authentication for sensitive machines, and review SSH session logs.
 
 ---
 
-## Part 3 — General SSH Hardening
+## Part 3, General SSH Hardening
 
 Whether you use WireGuard, Tailscale, or both, your SSH config should be
 hardened regardless. These settings reduce your attack surface significantly.
@@ -535,7 +535,7 @@ yourself out, and the existing session keeps you in while you fix it.
 
 ---
 
-## Part 4 — UFW Firewall Baseline
+## Part 4, UFW Firewall Baseline
 
 A proper firewall baseline complements both VPN setups.
 

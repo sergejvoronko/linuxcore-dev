@@ -12,12 +12,12 @@ faqs:
   - q: "Does Ubuntu Server 24.04 install AI features by default?"
     a: "Not by default on the minimal server ISO, but desktop and certain cloud images ship with snaps that pull in AI-adjacent components. The Ubuntu Pro and Landscape integrations can also phone home. Always audit with 'snap list' and 'systemctl list-units' after a fresh install."
   - q: "What is the Ubuntu AI kill switch and how does it work?"
-    a: "Canonical's opt-in AI framework is Snap-packaged, meaning each AI component is an isolated snap or a snap service. The kill switch is effectively snap removal or snap service disabling combined with blocking the relevant systemd units. There is no single toggle — you need to audit and remove each component individually."
+    a: "Canonical's opt-in AI framework is Snap-packaged, meaning each AI component is an isolated snap or a snap service. The kill switch is effectively snap removal or snap service disabling combined with blocking the relevant systemd units. There is no single toggle. You need to audit and remove each component individually."
   - q: "Should I switch from Ubuntu to Debian or Fedora for my homelab server because of this?"
     a: "If you are already running Ubuntu Server LTS and managing it carefully, the AI components are easy to audit and remove. Debian remains the lower-noise alternative with no snap infrastructure by default. Fedora Server is a reasonable choice if you want cutting-edge packages without Canonical's ecosystem overhead. The decision comes down to your tolerance for upstream package freshness versus ecosystem simplicity."
 ---
 
-Canonical has been steadily expanding Ubuntu's AI footprint — AI-assisted package suggestions, Snap-delivered model runtimes, and Ubuntu Pro integrations that touch your system in ways that aren't immediately obvious from a minimal server install. The "kill switch" framing comes from Canonical's own acknowledgment that these features are opt-in and removable, but "opt-in" is doing a lot of work when some components land by default on cloud and desktop images.
+Canonical has been steadily expanding Ubuntu's AI footprint, AI-assisted package suggestions, Snap-delivered model runtimes, and Ubuntu Pro integrations that touch your system in ways that aren't immediately obvious from a minimal server install. The "kill switch" framing comes from Canonical's own acknowledgment that these features are opt-in and removable, but "opt-in" is doing a lot of work when some components land by default on cloud and desktop images.
 
 This guide is for homelab operators running Ubuntu Server 24.04 LTS (Noble Numbat) or planning for 26.04. Here is exactly what gets installed, how to audit it, and how to cleanly remove AI-related components without breaking your base system.
 
@@ -27,13 +27,13 @@ On a **minimal Ubuntu Server ISO install**, you get less than you might fear. Th
 
 The components to know about:
 
-- **`ubuntu-pro-client` (`pro`)** — Manages Ubuntu Pro subscriptions. Since 23.10 it ships by default and includes hooks for AI-related services under the Pro umbrella.
-- **`snapd`** — The snap daemon. Not inherently AI, but it is the delivery mechanism for Canonical's AI snaps.
-- **`landscape-client`** — System management agent that reports inventory to Canonical's Landscape SaaS. Often auto-installed on cloud images.
-- **`ubuntu-report`** — Sends hardware/software telemetry on first boot.
-- **AI model snaps** — Things like `ollama`, `openai-cli`, or future Canonical-published model snaps are Snap-packaged. On 26.04, Canonical has signaled intent to publish curated AI snap bundles.
+- **`ubuntu-pro-client` (`pro`)**, Manages Ubuntu Pro subscriptions. Since 23.10 it ships by default and includes hooks for AI-related services under the Pro umbrella.
+- **`snapd`**, The snap daemon. Not inherently AI, but it is the delivery mechanism for Canonical's AI snaps.
+- **`landscape-client`**, System management agent that reports inventory to Canonical's Landscape SaaS. Often auto-installed on cloud images.
+- **`ubuntu-report`**, Sends hardware/software telemetry on first boot.
+- **AI model snaps**: Things like `ollama`, `openai-cli`, or future Canonical-published model snaps are Snap-packaged. On 26.04, Canonical has signaled intent to publish curated AI snap bundles.
 
-The Phoronix coverage of the kill switch confirms that Canonical's position is: AI features are snap-delivered and snap-removal is the kill switch. That is accurate but incomplete — the telemetry and Pro client hooks persist unless you deal with them separately.
+The Phoronix coverage of the kill switch confirms that Canonical's position is: AI features are snap-delivered and snap-removal is the kill switch. That is accurate but incomplete, the telemetry and Pro client hooks persist unless you deal with them separately.
 
 ## Step 1: Audit What's Running
 
@@ -181,13 +181,13 @@ Container images don't run `snapd` anyway (no D-Bus, no systemd by default), so 
 
 Honest take for homelabbers:
 
-**Ubuntu Server 24.04 LTS** — Still the path of least resistance if you need broad package availability, LXD integration, or cloud tooling that assumes Ubuntu. The AI components are removable. The 5-year LTS window matters if you set servers up and leave them.
+**Ubuntu Server 24.04 LTS**, Still the path of least resistance if you need broad package availability, LXD integration, or cloud tooling that assumes Ubuntu. The AI components are removable. The 5-year LTS window matters if you set servers up and leave them.
 
-**Debian 12/13** — No snapd, no Canonical telemetry, no Pro client. `apt` and done. If your workload runs fine on Debian's package versions (which are conservative), this is the lower-noise option. The tradeoff is slower package updates and occasionally older versions of tools like Docker Engine requiring third-party repos anyway.
+**Debian 12/13**, No snapd, no Canonical telemetry, no Pro client. `apt` and done. If your workload runs fine on Debian's package versions (which are conservative), this is the lower-noise option. The tradeoff is slower package updates and occasionally older versions of tools like Docker Engine requiring third-party repos anyway.
 
-**Fedora Server 41+** — Fresh packages, SELinux by default, no snap infrastructure. Good if you want rpm-ostree immutable deployments. Less ideal if your homelab scripts assume Debian/Ubuntu conventions.
+**Fedora Server 41+**, Fresh packages, SELinux by default, no snap infrastructure. Good if you want rpm-ostree immutable deployments. Less ideal if your homelab scripts assume Debian/Ubuntu conventions.
 
-For a **headless homelab server you SSH into and forget** — Debian or Ubuntu minimal with the steps above applied. For a **homelab that doubles as a dev environment** where you want current packages — Ubuntu 24.04 with snapd removed and Pro client purged is still competitive.
+For a **headless homelab server you SSH into and forget**, Debian or Ubuntu minimal with the steps above applied. For a **homelab that doubles as a dev environment** where you want current packages, Ubuntu 24.04 with snapd removed and Pro client purged is still competitive.
 
 ## Verifying Nothing Is Calling Home
 
@@ -203,7 +203,7 @@ No output means no callbacks to Canonical endpoints. Also worth blocking at the 
 
 ## What's Next
 
-- [CachyOS vs Ubuntu 26.04 LTS vs Fedora 44: Best Linux Distro for Your Homelab Server](/homelab/cachyos-vs-ubuntu-2604-vs-fedora-44-homelab-server) — Deep comparison of Debian vs Ubuntu for headless homelab servers
-- /homelab/snapd-remove-ubuntu-server — Full guide to removing snapd from Ubuntu without breaking LXD
-- /homelab/pihole-network-dns-blocking-homelab — Block telemetry at the network level with Pi-hole
-- [Docker Compose for Homelab: What It Is and How to Use It](/homelab/docker-compose-explained) — Building stripped-down Ubuntu Docker base images for homelab services
+- [CachyOS vs Ubuntu 26.04 LTS vs Fedora 44: Best Linux Distro for Your Homelab Server](/homelab/cachyos-vs-ubuntu-2604-vs-fedora-44-homelab-server): Deep comparison of Debian vs Ubuntu for headless homelab servers
+- /homelab/snapd-remove-ubuntu-server, Full guide to removing snapd from Ubuntu without breaking LXD
+- /homelab/pihole-network-dns-blocking-homelab, Block telemetry at the network level with Pi-hole
+- [Docker Compose for Homelab: What It Is and How to Use It](/homelab/docker-compose-explained): Building stripped-down Ubuntu Docker base images for homelab services

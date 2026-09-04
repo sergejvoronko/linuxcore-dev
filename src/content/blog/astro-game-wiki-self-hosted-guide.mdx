@@ -33,7 +33,7 @@ Here's why Astro fits the bill perfectly:
 *   **Content Collections:** This is Astro's killer feature for a project like a wiki. It lets you organize your content (items, characters, quests) in a structured way using Markdown and Zod schemas for validation. It's like having a database, but your data is just text files in your Git repository.
 *   **Developer Experience:** You get to use modern tools and a component-based architecture (similar to React or Vue) but without shipping a mountain of JavaScript to the user by default.
 
-## Step 1 — Scaffold the Astro Project
+## Step 1, Scaffold the Astro Project
 
 First, get a basic Astro project running. You'll need Node.js (v18 or newer) installed.
 
@@ -54,7 +54,7 @@ The CLI will ask you a few questions. Here are the choices I recommend:
 
 This gives you a clean slate. The most important folders are `src/`, where your code and content live, and `public/`, for static assets like favicons that don't need processing.
 
-## Step 2 — Define Your Content Structure
+## Step 2, Define Your Content Structure
 
 This is where the magic happens. We'll use Astro's Content Collections to define the "schema" for our wiki entries. Let's say we're building a wiki for an RPG and want to document in-game items.
 
@@ -99,7 +99,7 @@ The Steel Longsword is a common drop from early-game bandits in the Western Reac
 
 You now have structured, validatable content living right alongside your code.
 
-## Step 3 — Generate Pages from Content
+## Step 3, Generate Pages from Content
 
 With our content defined, we need to tell Astro how to turn each entry into a web page. We do this with a dynamic route.
 
@@ -149,7 +149,7 @@ The `getStaticPaths` function is the core concept here. It runs at build time, f
 
 Inside the component, `Astro.props` gives you access to the specific entry for the page being rendered. You can then pull data from its frontmatter (`entry.data`) and render the Markdown body with the `<Content />` component.
 
-## Step 4 — Build and Deploy to Your Homelab
+## Step 4, Build and Deploy to Your Homelab
 
 Once you've built out your pages and styles, creating the production site is a single command:
 

@@ -28,7 +28,7 @@ If your source already outputs a standard HLS (HTTP Live Streaming) stream, you 
 
 A media proxy sits between your video source and your browser. It fetches the video stream and "re-serves" it. Proxies can be useful for transcoding, authentication, or bypassing network restrictions. They also add a significant point of failure and complexity.
 
-This setup skips that layer entirely. Here’s the data flow:
+This setup skips that layer entirely. Here's the data flow:
 
 1.  Your browser loads a static HTML page from your Astro site.
 2.  The page contains a JavaScript video player.
@@ -47,7 +47,7 @@ Many homelab tools can do this:
 *   **xTeVe:** A popular choice for proxying HDHomeRun tuners and IPTV playlists.
 *   **IPTV-Screener:** A simple Docker container that can take an IPTV playlist and generate clean HLS streams.
 
-I used `IPTV-Screener` for testing because it's so simple to deploy. Here’s a `docker-compose.yml` to get it running. You'll need to provide your own `playlist.m3u` file.
+I used `IPTV-Screener` for testing because it's so simple to deploy. Here's a `docker-compose.yml` to get it running. You'll need to provide your own `playlist.m3u` file.
 
 ```yaml
 # docker-compose.yml

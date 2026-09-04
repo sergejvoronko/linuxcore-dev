@@ -1,6 +1,6 @@
 ---
 title: "Astro Newsletters with MailerLite and Buttondown"
-description: "Add a newsletter form to your Astro site without backend or iframe embeds. API-driven setup with a three-email welcome sequence — works on Cloudflare Pages."
+description: "Add a newsletter form to your Astro site without backend or iframe embeds. API-driven setup with a three-email welcome sequence, works on Cloudflare Pages."
 pubDate: 2026-04-12
 heroImage: "/images/astro-newsletter-mailerLite.webp"
 heroImageAlt: "Newsletter subscription form in an Astro site making an API call to MailerLite without a backend server"
@@ -17,20 +17,20 @@ draft: false
 readingTime: 10
 faqs:
   - q: "Is MailerLite free?"
-    a: "MailerLite's free plan supports up to 1,000 subscribers and 12,000 emails per month — enough for most early-stage newsletters. Automation sequences and the landing page builder are included on the free plan. Paid plans start at around €9/month for 1,000+ subscribers with unlimited emails."
+    a: "MailerLite's free plan supports up to 1,000 subscribers and 12,000 emails per month, enough for most early-stage newsletters. Automation sequences and the landing page builder are included on the free plan. Paid plans start at around €9/month for 1,000+ subscribers with unlimited emails."
   - q: "Can I add a newsletter form to Astro without a backend server?"
     a: "Yes, using a Cloudflare Pages Function as a thin API layer. The form submits to the Function, which calls the MailerLite or Buttondown API server-side. Your static Astro site never exposes the API key to the browser."
   - q: "What is double opt-in and do I need it?"
-    a: "Double opt-in sends a confirmation email after signup — the subscriber only joins your list after clicking the confirmation link. It reduces list size but improves deliverability and ensures GDPR compliance. For EU audiences, double opt-in is strongly recommended. MailerLite enables it per group in your account settings."
+    a: "Double opt-in sends a confirmation email after signup, the subscriber only joins your list after clicking the confirmation link. It reduces list size but improves deliverability and ensures GDPR compliance. For EU audiences, double opt-in is strongly recommended. MailerLite enables it per group in your account settings."
   - q: "Can I switch from MailerLite to Buttondown later without rebuilding my form?"
-    a: "Yes. The form component itself stays the same — only the API endpoint and payload format change inside the Cloudflare Pages Function. Swap out the MailerLite API call for Buttondown's API, update your environment variables, and the form keeps working without any frontend changes."
+    a: "Yes. The form component itself stays the same, only the API endpoint and payload format change inside the Cloudflare Pages Function. Swap out the MailerLite API call for Buttondown's API, update your environment variables, and the form keeps working without any frontend changes."
 ---
 
 import Callout from '../../components/Callout.astro';
 
-A newsletter is one of the most valuable things you can build alongside a technical blog. Unlike SEO traffic, which can disappear overnight with an algorithm change, an email list is direct — when you publish something, subscribers see it, regardless of what Google does.
+A newsletter is one of the most valuable things you can build alongside a technical blog. Unlike SEO traffic, which can disappear overnight with an algorithm change, an email list is direct, when you publish something, subscribers see it, regardless of what Google does.
 
-The standard advice for adding a newsletter to a static site is "embed the form from your email provider." MailerLite, ConvertKit, Buttondown — they all give you an iframe or a script tag to paste in. It works, but it looks exactly like what it is: a foreign element dropped into your page, usually with styling that doesn't match, tracking pixels you didn't ask for, and behaviour you can't control.
+The standard advice for adding a newsletter to a static site is "embed the form from your email provider." MailerLite, ConvertKit, Buttondown, they all give you an iframe or a script tag to paste in. It works, but it looks exactly like what it is: a foreign element dropped into your page, usually with styling that doesn't match, tracking pixels you didn't ask for, and behaviour you can't control.
 
 The API approach is a few more lines of code but gives you a form that looks like it belongs on your site, handles errors gracefully, and doesn't load any third-party JavaScript until the user actually submits.
 
@@ -50,7 +50,7 @@ Both MailerLite and Buttondown work well for a technical blog. Quick comparison:
 | Markdown emails | No (HTML editor) | Yes (native) |
 | Best for | Growing audience, sequences | Writers, developers |
 
-For linuxcore.dev I use MailerLite for its automation capabilities — the welcome sequence runs automatically when someone subscribes. Buttondown is a good choice if you prefer writing emails in Markdown.
+For linuxcore.dev I use MailerLite for its automation capabilities, the welcome sequence runs automatically when someone subscribes. Buttondown is a good choice if you prefer writing emails in Markdown.
 
 ---
 
@@ -143,14 +143,14 @@ export async function onRequestPost({ request, env }: { request: Request; env: E
 ```
 
 Add the environment variables to Cloudflare Pages:
-- `MAILERLITE_API_KEY` — your API token
-- `MAILERLITE_GROUP_ID` — your group/list ID
+- `MAILERLITE_API_KEY`, your API token
+- `MAILERLITE_GROUP_ID`, your group/list ID
 
 ---
 
 ## Option B: Buttondown Integration
 
-Buttondown is even simpler — no group ID needed, just an API key.
+Buttondown is even simpler, no group ID needed, just an API key.
 
 ```typescript
 // functions/api/subscribe.ts (Buttondown version)
@@ -372,13 +372,13 @@ In PostLayout, add it after the comments section:
 
 ## Setting Up a Welcome Sequence (MailerLite)
 
-A welcome sequence — a short series of emails sent automatically when someone subscribes — is one of the highest-value things you can add to a newsletter. New subscribers are most engaged immediately after signing up. Three emails over a week does more than a single welcome message.
+A welcome sequence, a short series of emails sent automatically when someone subscribes, is one of the highest-value things you can add to a newsletter. New subscribers are most engaged immediately after signing up. Three emails over a week does more than a single welcome message.
 
 The linuxcore.dev welcome sequence:
 
-**Email 1 — immediately:** Welcome + point to the most useful article for new readers
-**Email 2 — day 3:** Introduce the [Ansible Homelab Bundle](/go/ansible-bundle) with a short explanation of what it covers
-**Email 3 — day 7:** Ask what topics they'd most like to see covered (reply-based, good for engagement)
+**Email 1, immediately:** Welcome + point to the most useful article for new readers
+**Email 2, day 3:** Introduce the [Ansible Homelab Bundle](/go/ansible-bundle) with a short explanation of what it covers
+**Email 3, day 7:** Ask what topics they'd most like to see covered (reply-based, good for engagement)
 
 To set this up in MailerLite:
 
@@ -390,22 +390,22 @@ To set this up in MailerLite:
 The automation runs automatically for every new subscriber. You write it once and it works indefinitely.
 
 <Callout type="tip">
-Keep the welcome sequence emails short — 150 to 250 words each. Long emails get skimmed or skipped. One clear point per email, one clear link, done.
+Keep the welcome sequence emails short, 150 to 250 words each. Long emails get skimmed or skipped. One clear point per email, one clear link, done.
 </Callout>
 
 ---
 
 ## Double Opt-In Consideration
 
-By default, MailerLite adds subscribers with `status: active` — no confirmation email required. This is single opt-in.
+By default, MailerLite adds subscribers with `status: active`, no confirmation email required. This is single opt-in.
 
-For audiences in the EU (GDPR) or California (CCPA), double opt-in — where subscribers confirm their email before being added — is better practice and reduces the legal ambiguity around consent. To enable it in MailerLite:
+For audiences in the EU (GDPR) or California (CCPA), double opt-in, where subscribers confirm their email before being added, is better practice and reduces the legal ambiguity around consent. To enable it in MailerLite:
 
 1. Go to your group settings
 2. Enable **Double opt-in**
 3. Customise the confirmation email
 
-Your API calls stay the same — MailerLite handles sending the confirmation email automatically and only activates the subscriber after they click confirm.
+Your API calls stay the same, MailerLite handles sending the confirmation email automatically and only activates the subscriber after they click confirm.
 
 ---
 
@@ -413,8 +413,8 @@ Your API calls stay the same — MailerLite handles sending the confirmation ema
 
 A newsletter subscription form that looks native to your site, handles edge cases (already subscribed, invalid email, API errors) gracefully, and connects to a proper email platform with automation support. No iframes, no third-party JavaScript loaded on page load, no styling that fights with your design.
 
-Combined with the welcome sequence, new subscribers immediately get useful content from you — not a month later when you happen to publish something new.
+Combined with the welcome sequence, new subscribers immediately get useful content from you, not a month later when you happen to publish something new.
 
 ---
 
-*This concludes the Astro series for now. All five features — comments, contact forms, shop, SEO, and newsletter — are running in production on this site. Questions or issues? Drop a comment below.*
+*This concludes the Astro series for now. All five features, comments, contact forms, shop, SEO, and newsletter, are running in production on this site. Questions or issues? Drop a comment below.*

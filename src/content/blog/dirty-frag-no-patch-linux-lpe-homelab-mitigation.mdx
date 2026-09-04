@@ -19,9 +19,9 @@ faqs:
 
 ## What Dirty Frag Is and Why You Should Care Right Now
 
-A new Linux local privilege escalation vulnerability — colloquially dubbed **Dirty Frag** — surfaced publicly in early May 2026 under circumstances that make it more dangerous than a typical kernel CVE: the coordinated disclosure embargo broke before a patch landed upstream. That means exploit details are circulating while the fix is still being finalized in the kernel mailing list.
+A new Linux local privilege escalation vulnerability, colloquially dubbed **Dirty Frag**, surfaced publicly in early May 2026 under circumstances that make it more dangerous than a typical kernel CVE: the coordinated disclosure embargo broke before a patch landed upstream. That means exploit details are circulating while the fix is still being finalized in the kernel mailing list.
 
-The bug lives in kernel memory management code, specifically in how the kernel handles page fragment allocation and reclaim under memory pressure. An unprivileged local user can trigger a use-after-free or similar memory corruption primitive via crafted operations, ultimately gaining a root shell. The technical root cause traces back to fragmented page handling in the networking and memory subsystem — hence the name.
+The bug lives in kernel memory management code, specifically in how the kernel handles page fragment allocation and reclaim under memory pressure. An unprivileged local user can trigger a use-after-free or similar memory corruption primitive via crafted operations, ultimately gaining a root shell. The technical root cause traces back to fragmented page handling in the networking and memory subsystem, hence the name.
 
 For homelab admins, the threat model is real. You almost certainly have:
 
@@ -38,7 +38,7 @@ You don't need to be running a data center to care about an LPE. One compromised
 
 Normally, a vulnerability like this follows a coordinated disclosure timeline: researcher reports to kernel security team → patch developed in private → CVE assigned → patch lands → public disclosure. Distributions backport the fix, ship updates within days, and users patch before exploits go wide.
 
-That process failed here. Details leaked — through a conference talk abstract, a partially redacted mailing list post, or a repository commit message, depending on which account you believe — before the patch was ready. As of this writing, [Phoronix reported](https://www.phoronix.com/news/Dirty-Frag-Linux) that the vulnerability is public but the upstream fix has not yet merged into Linus's tree.
+That process failed here. Details leaked, through a conference talk abstract, a partially redacted mailing list post, or a repository commit message, depending on which account you believe, before the patch was ready. As of this writing, [Phoronix reported](https://www.phoronix.com/news/Dirty-Frag-Linux) that the vulnerability is public but the upstream fix has not yet merged into Linus's tree.
 
 The practical consequence: a window exists where:
 
@@ -188,10 +188,10 @@ The fastest signals, in order of reliability:
 1. **Kernel mailing list**: Search `lore.kernel.org` for "dirty frag" or the relevant subsystem (mm, net). Patch series will appear here first.
 2. **linux-stable mailing list**: Backport patches land here before distro inclusion.
 3. **Distro security advisories**: Subscribe to `ubuntu-security-announce`, `debian-security-announce`, or equivalent for your distro.
-4. **Phoronix**: [phoronix.com](https://www.phoronix.com) — already tracking this; watch for follow-up articles confirming merge.
+4. **Phoronix**: [phoronix.com](https://www.phoronix.com): already tracking this; watch for follow-up articles confirming merge.
 5. **CVE database**: Once a CVE is assigned, `nvd.nist.gov` and `cve.org` will have references to patches.
 
-Set a calendar reminder to check weekly until you've confirmed your running kernel includes the fix. After patching, remove the sysctl restrictions if they're breaking functionality — the mitigations are stop-gaps, not permanent policy.
+Set a calendar reminder to check weekly until you've confirmed your running kernel includes the fix. After patching, remove the sysctl restrictions if they're breaking functionality, the mitigations are stop-gaps, not permanent policy.
 
 ---
 
