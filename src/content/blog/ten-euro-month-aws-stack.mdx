@@ -39,6 +39,11 @@ This guide builds a practical AWS setup that costs under €10/month. Not a toy 
 - **S3**: Offsite backups of the EC2 instance config and logs.
 - **CloudWatch**: Free-tier metrics and a single alarm for CPU/disk.
 
+The S3 bucket here only holds this instance's own config and logs. To point the
+rest of the homelab at it, Proxmox VMs, Docker volumes, Nextcloud,
+[automated S3 and Glacier backups with restic](/homelab/aws-s3-homelab-backup/)
+covers the scheduling and the real monthly cost.
+
 ## The cost breakdown
 
 Before we start, here's exactly where the money goes:

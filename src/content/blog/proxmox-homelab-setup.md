@@ -269,7 +269,13 @@ and download with one click.
 ## Step 6, Create Your First LXC Container
 
 LXC containers are the right choice for most homelab services. They start
-in under a second, use minimal RAM, and share the host kernel.
+in under a second, use minimal RAM, and share the host kernel. That shared
+kernel is the trade-off, a container is not the security boundary a VM is.
+[Containers are not sandboxes](/homelab/docker-container-not-a-sandbox-microvm-homelab-isolation/)
+covers where the line actually sits, and
+[microVMs on Proxmox VE](/homelab/microvms-proxmox-ve-homelab-isolation/)
+is the option when you want VM-grade isolation at close to container startup
+speed.
 
 **In the web UI:**
 
@@ -436,6 +442,11 @@ containers connect through this bridge and share the host network.
 Useful for separating homelab services from your main LAN, or for
 building a testing network that can't reach production.
 
+If the bottleneck turns out to be the single onboard NIC rather than the
+bridge config, [a 2.5/10GbE USB adapter](/homelab/10gbe-usb-adapter-homelab-upgrade-guide/)
+is the cheapest way to add a second interface to a mini PC that has no PCIe
+slot.
+
 ```bash
 # Edit network config
 nano /etc/network/interfaces
@@ -506,7 +517,10 @@ pct delsnapshot 101 before-upgrade
 ## Step 11, Security Hardening
 
 Proxmox is powerful, a compromised Proxmox host means every VM is
-compromised too. Lock it down.
+compromised too. Lock it down. Config hardening is half the job, the other
+half is keeping the kernel current, which the
+[kernel CVE patching guide](/homelab/linux-kernel-cves-homelab-patching-guide/)
+covers for Debian-based hosts like this one.
 
 **Change the SSH port and restrict access:**
 
@@ -668,6 +682,10 @@ What I run this on (affiliate links. They help fund the site at no extra cost to
 - [Beelink EQ12 Pro (N100 mini PC)](/go/beelink-eq12/): my main Proxmox node
 - [Samsung 990 Pro NVMe SSD](/go/samsung-990-pro/): fast VM/DB storage
 - [CyberPower UPS](/go/cyberpower-ups/): clean shutdowns, no corrupted pools
+
+All x86. If you would rather run this on a Pi-class board or an ARM mini PC,
+[Proxmox VE on arm64](/homelab/proxmox-ve-arm64-homelab-mini-pc-sbc/) covers
+what works and what is still missing on that platform.
 
 ## What's Next
 

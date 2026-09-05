@@ -70,6 +70,15 @@ What makes it exceptional for homelab use:
 - A Telegram account for notifications (free)
 - 1 GB free RAM for n8n
 
+Everything here runs an off-the-shelf model. If you would rather fine-tune your
+own on the hardware you already have,
+[training a gen AI model on an old Linux desktop](/homelab/train-gen-ai-old-linux-desktop-limited-vram-guide/)
+covers doing it with limited VRAM.
+
+One operational note: n8n stores its workflow history in SQLite by default, and
+a busy instance is exactly the workload that trips
+[SQLite WAL mode reader locks](/homelab/sqlite-wal-mode-locking-homelab-optimization/).
+
 ---
 
 ## Step 1, Deploy n8n with Docker Compose

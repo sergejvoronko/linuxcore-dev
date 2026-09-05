@@ -150,6 +150,8 @@ The separation into multiple plays matters: `base` and `docker` run everywhere, 
 
 The base role handles everything a fresh Ubuntu/Debian machine needs before anything else runs on it.
 
+Two guides pair with this role. [Patching kernel CVEs](/homelab/linux-kernel-cves-homelab-patching-guide/) explains which updates actually need a reboot, which is what turns the upgrade task below into a real patching routine rather than a cache refresh. And if you want the policy enforced rather than merely applied on the last playbook run, [Bor](/homelab/bor-self-hosted-linux-policy-management-homelab/) is a self-hosted policy manager that covers the drift Ansible leaves between runs.
+
 ```yaml
 # roles/base/tasks/main.yml
 ---

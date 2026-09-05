@@ -38,6 +38,15 @@ In a homelab, risk is specific to your setup. Here's how I break it down:
 
 Your priority list might look different. The point is to have one. Write it down. This is your bible for the next step.
 
+### Worked examples from this tier list
+
+Abstract tiers are easy to agree with and hard to apply, so here is where recent kernel bugs actually landed for me:
+
+- **Medium, LPE, patch available:** [Fragnesia](/homelab/fragnesia-linux-privilege-escalation-homelab-patch-guide/), [Dirtyfrag](/homelab/dirtyfrag-linux-lpe-homelab-patch-guide/), [the XFS bug in CVE-2026-64600](/homelab/refluxfs-linux-kernel-xfs-lpe-cve-2026-64600-homelab-patching/), and the [AEAD socket use-after-free](/homelab/aead-socket-vulnerability-linux-kernel-patch-homelab/). All four need a local account first. Normal update cycle for a single-user box, urgent the moment you hand out shell accounts.
+- **Medium, LPE, no patch yet:** [Dirty Frag](/homelab/dirty-frag-no-patch-linux-lpe-homelab-mitigation/) is the awkward case the tier list does not cover, where the only move is mitigation rather than a version bump.
+
+Worth reading alongside all of this: [kernel CVE disclosure is genuinely broken](/homelab/linux-kernel-cve-disclosure-gap-homelab-security/), which is a large part of why the raw count hit 400+ in the first place.
+
 ## Step 1: Assess with a Real Scanner
 
 Stop running `uname -r` and trying to cross-reference it with a CVE list. That way lies madness. You need an automated tool that understands your distribution's packaging and backports.

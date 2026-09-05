@@ -37,9 +37,11 @@ This guide answers the actual question: given your homelab's uptime expectations
 
 This is where the decision forks immediately.
 
-**Ubuntu 26.04 LTS** gives you a fixed target. Kernel, glibc, Python, OpenSSL. They're locked to known versions and only receive security backports. If you provision a server today and want it running the same way in two years with minimal intervention, Ubuntu LTS is the answer. It's boring in the best possible way.
+**Ubuntu 26.04 LTS** gives you a fixed target. Kernel, glibc, Python, OpenSSL. They're locked to known versions and only receive security backports. If you provision a server today and want it running the same way in two years with minimal intervention, Ubuntu LTS is the answer. It's boring in the best possible way. One thing to audit before you deploy it: [what Canonical's AI features install on Ubuntu Server](/homelab/ubuntu-ai-kill-switch-homelab-servers/), and how to switch them off.
 
 **Fedora 44** runs on a roughly six-month release cycle with about thirteen months of total support. That means you're doing a dist-upgrade every year, minimum. In-place upgrades with `dnf system-upgrade` are reliable in practice, but they're not zero-risk. For a homelab this is usually fine, you're not running a hospital, but calendar the upgrade windows.
+
+If Debian is on your shortlist too, [the Debian 13.5 Trixie update guide](/homelab/debian-13-5-trixie-homelab-update-guide/) covers that cadence, and whichever distro you land on, [patching kernel CVEs](/homelab/linux-kernel-cves-homelab-patching-guide/) is the part the release cycle does not do for you.
 
 **CachyOS** is rolling, Arch-based, and ships kernel updates aggressively. The CachyOS team maintains their own kernel variants (`linux-cachyos`, `linux-cachyos-bore`) with patches that aren't in mainline yet. This is great for performance. It also means that occasionally a `pacman -Syu` will require manual intervention, a broken initramfs, a changed config schema, a rebuilt package order. If your homelab runs unattended for weeks at a time, this is a real operational risk.
 
