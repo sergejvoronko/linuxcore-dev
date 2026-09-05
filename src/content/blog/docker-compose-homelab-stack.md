@@ -35,7 +35,7 @@ every environment variable documented, every volume explained, every port
 listed. Deploy the whole stack with one command, or pick out the services
 you need and ignore the rest.
 
-The stack is designed to run on a single machine. A [Beelink EQ14](/go/beelink-mini-s12) with
+The stack is designed to run on a single machine. A [Beelink EQ14](/go/beelink-mini-s12/) with
 16GB RAM handles the full set comfortably. On 8GB you'll want to pick
 your top 10 and leave the rest for later.
 
@@ -689,14 +689,14 @@ Proxy Manager or Tailscale Funnel):
 - [ ] Enable UFW: `sudo ufw allow from 192.168.1.0/24 to any port 3000` etc
 - [ ] Watchtower runs weekly at minimum, keep containers patched
 
-The [WireGuard + Tailscale guide](/homelab/wireguard-tailscale-guide)
+The [WireGuard + Tailscale guide](/homelab/wireguard-tailscale-guide/)
 covers the network security layer that sits in front of all of this.
 
 ---
 
 ## Automating the Entire Deploy with Ansible
 
-This stack pairs perfectly with the [Ansible guide](/homelab/ansible-homelab).
+This stack pairs perfectly with the [Ansible guide](/homelab/ansible-homelab/).
 Add a `docker-compose` role that:
 
 1. Copies `docker-compose.yml` to the target machine

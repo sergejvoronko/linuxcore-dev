@@ -458,10 +458,10 @@ Three `v` flags show you the full SSH conversation and module output, enough to 
 
 ---
 
-This playbook covers the foundation. For a production-ready setup with five fully built roles, base hardening, Docker CE, SSH/kernel security with CrowdSec, Prometheus/Grafana monitoring, and Ollama with automatic GPU detection, the **[Ansible Homelab Bundle](/go/ansible-bundle)** includes 25 ready-to-run files. One command provisions a fresh Ubuntu server to a complete homelab stack in under 10 minutes.
+This playbook covers the foundation. For a production-ready setup with five fully built roles, base hardening, Docker CE, SSH/kernel security with CrowdSec, Prometheus/Grafana monitoring, and Ollama with automatic GPU detection, the **[Ansible Homelab Bundle](/go/ansible-bundle/)** includes 25 ready-to-run files. One command provisions a fresh Ubuntu server to a complete homelab stack in under 10 minutes.
 
 Related guides:
 
-- **[Docker Compose Homelab Stack](/homelab/docker-compose-homelab-stack)**: the services this Ansible setup deploys
-- **[Proxmox VE Setup](/homelab/proxmox-homelab-setup)**: the infrastructure these playbooks typically run against
-- **[Linux Security Hardening](/homelab/linux-security-hardening)**: manual hardening steps that the base role automates
+- **[Docker Compose Homelab Stack](/homelab/docker-compose-homelab-stack/)**: the services this Ansible setup deploys
+- **[Proxmox VE Setup](/homelab/proxmox-homelab-setup/)**: the infrastructure these playbooks typically run against
+- **[Linux Security Hardening](/homelab/linux-security-hardening/)**: manual hardening steps that the base role automates

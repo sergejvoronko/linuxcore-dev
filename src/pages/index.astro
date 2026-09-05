@@ -48,9 +48,9 @@ const siteSchema = {
         written by a Linux infrastructure engineer who runs this stack in production every day.
       </p>
       <div class="hero-ctas reveal" style="animation-delay:0.34s">
-        <a href="/homelab" class="btn-primary">Homelab →</a>
-        <a href="/aws" class="btn-outline">AWS</a>
-        <a href="/astro" class="btn-outline">Astro</a>
+        <a href="/homelab/" class="btn-primary">Homelab →</a>
+        <a href="/aws/" class="btn-outline">AWS</a>
+        <a href="/astro/" class="btn-outline">Astro</a>
       </div>
       <div class="hero-stack reveal" style="animation-delay:0.46s">
         {['Ansible', 'Docker', 'Proxmox', 'Ollama', 'Grafana', 'Terraform', 'AWS', 'Astro'].map(t => (
@@ -112,9 +112,9 @@ const siteSchema = {
         <div class="cards-grid">
           {featured.map(post => {
             const section = post.data.section;
-            const href = section === 'homelab' ? `/homelab/${post.id}`
-                       : section === 'astro'   ? `/astro/${post.id}`
-                       : `/blog/${post.id}`;
+            const href = section === 'homelab' ? `/homelab/${post.id}/`
+                       : section === 'astro'   ? `/astro/${post.id}/`
+                       : `/blog/${post.id}/`;
             return (
               <ArticleCard
                 title={post.data.title}
@@ -136,7 +136,7 @@ const siteSchema = {
     <div class="section-inner">
       <h2 class="section-heading"><span class="sh-host">root@linuxcore</span><span class="sh-sep">:~#</span> ls topics/</h2>
       <div class="topics-grid">
-        <a href="/homelab" class="topic-card">
+        <a href="/homelab/" class="topic-card">
           <div class="topic-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="5" rx="1"/><rect x="2" y="10" width="20" height="5" rx="1"/><circle cx="6" cy="5.5" r="1" fill="currentColor" stroke="none"/><circle cx="6" cy="12.5" r="1" fill="currentColor" stroke="none"/><path d="M2 19h8m4 0h8"/><path d="M12 17v4"/></svg>
           </div>
@@ -144,7 +144,7 @@ const siteSchema = {
           <p class="topic-desc">Ansible, Docker, Proxmox, self-hosted AI, Grafana monitoring, WireGuard — built for reliability, not just tutorials.</p>
           <span class="topic-cta">Explore →</span>
         </a>
-        <a href="/astro" class="topic-card">
+        <a href="/astro/" class="topic-card">
           <div class="topic-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2L2 19.5h20L12 2z"/><path d="M12 2v11"/><path d="M7 14l5-3 5 3"/></svg>
           </div>
@@ -152,7 +152,7 @@ const siteSchema = {
           <p class="topic-desc">Fast static sites on Cloudflare for ~€12/year. Practical guides from real production builds.</p>
           <span class="topic-cta">Explore →</span>
         </a>
-        <a href="/aws" class="topic-card">
+        <a href="/aws/" class="topic-card">
           <div class="topic-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 18a7 7 0 010-12 5 5 0 019.9-1A6 6 0 1118 18H3z"/></svg>
           </div>
@@ -160,7 +160,7 @@ const siteSchema = {
           <p class="topic-desc">Cost-effective cloud for homelab operators — spot instances, S3 backups, hybrid setups, and Terraform. Real numbers, no fluff.</p>
           <span class="topic-cta">Explore →</span>
         </a>
-        <a href="/scripts" class="topic-card">
+        <a href="/scripts/" class="topic-card">
           <div class="topic-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
           </div>
@@ -180,9 +180,9 @@ const siteSchema = {
         <div class="cards-grid">
           {recent.map(post => {
             const section = post.data.section;
-            const href = section === 'homelab' ? `/homelab/${post.id}`
-                       : section === 'astro'   ? `/astro/${post.id}`
-                       : `/blog/${post.id}`;
+            const href = section === 'homelab' ? `/homelab/${post.id}/`
+                       : section === 'astro'   ? `/astro/${post.id}/`
+                       : `/blog/${post.id}/`;
             return (
               <ArticleCard
                 title={post.data.title}
@@ -211,8 +211,8 @@ const siteSchema = {
             automatic GPU detection. Run one command and your server is configured — no copy-pasting from blog posts.
           </p>
           <div class="cta-actions">
-            <a href="/go/ansible-bundle" class="btn-primary" target="_blank" rel="noopener">Get the Bundle — €29 →</a>
-            <a href="/scripts" class="btn-outline">See all scripts</a>
+            <a href="/go/ansible-bundle/" class="btn-primary" target="_blank" rel="noopener">Get the Bundle — €29 →</a>
+            <a href="/scripts/" class="btn-outline">See all scripts</a>
           </div>
         </div>
         <div class="product-cta-meta">

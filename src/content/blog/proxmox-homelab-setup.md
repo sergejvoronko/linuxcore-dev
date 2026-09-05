@@ -77,9 +77,9 @@ free, all faster than you'd expect.
 - A wired network connection during install
 - [Ventoy](https://www.ventoy.net) or [Rufus](https://rufus.ie) to write the ISO
 
-If you haven't chosen hardware yet, the [mini PC guide](/homelab/best-mini-pc-homelab-2026)
+If you haven't chosen hardware yet, the [mini PC guide](/homelab/best-mini-pc-homelab-2026/)
 covers the best options at every price point. A Beelink EQ14 with 16GB
-RAM runs this entire guide comfortably. ([grab one here](/go/beelink-mini-s12))
+RAM runs this entire guide comfortably. ([grab one here](/go/beelink-mini-s12/))
 
 ---
 
@@ -421,7 +421,7 @@ In the Proxmox UI: VM → Hardware → Add → PCI Device → select your GPU
 → enable **All Functions** and **Primary GPU** if you want full passthrough.
 
 Inside the VM, install the NVIDIA drivers normally, the VM sees the GPU
-as real hardware and the [Ollama guide](/homelab/ollama-linux-setup) applies
+as real hardware and the [Ollama guide](/homelab/ollama-linux-setup/) applies
 without modification.
 
 ---
@@ -593,11 +593,11 @@ a single 16GB RAM mini PC:
 
 | CT ID | Hostname | RAM | Purpose |
 |:-----:|:---------|:---:|:--------|
-| 100 | ollama | 8192MB | Ollama + Open WebUI ([guide](/homelab/ollama-linux-setup)) |
-| 101 | monitoring | 2048MB | Grafana + Prometheus ([guide](/homelab/grafana-prometheus-homelab)) |
-| 102 | automation | 1024MB | n8n workflows ([guide](/homelab/n8n-ollama-automation)) |
-| 103 | wireguard | 512MB | WireGuard VPN ([guide](/homelab/wireguard-tailscale-guide)) |
-| 104 | ansible | 512MB | Ansible control node ([guide](/homelab/ansible-homelab)) |
+| 100 | ollama | 8192MB | Ollama + Open WebUI ([guide](/homelab/ollama-linux-setup/)) |
+| 101 | monitoring | 2048MB | Grafana + Prometheus ([guide](/homelab/grafana-prometheus-homelab/)) |
+| 102 | automation | 1024MB | n8n workflows ([guide](/homelab/n8n-ollama-automation/)) |
+| 103 | wireguard | 512MB | WireGuard VPN ([guide](/homelab/wireguard-tailscale-guide/)) |
+| 104 | ansible | 512MB | Ansible control node ([guide](/homelab/ansible-homelab/)) |
 
 Total RAM allocation: ~12GB. Leaves 4GB for the Proxmox host and burst
 headroom. All containers on `vmbr0` for LAN access, or move Wireguard to
@@ -665,9 +665,9 @@ Rebuild initramfs: `update-initramfs -u -k all` and reboot. Once it shows
 
 What I run this on (affiliate links. They help fund the site at no extra cost to you):
 
-- [Beelink EQ12 Pro (N100 mini PC)](/go/beelink-eq12): my main Proxmox node
-- [Samsung 990 Pro NVMe SSD](/go/samsung-990-pro): fast VM/DB storage
-- [CyberPower UPS](/go/cyberpower-ups): clean shutdowns, no corrupted pools
+- [Beelink EQ12 Pro (N100 mini PC)](/go/beelink-eq12/): my main Proxmox node
+- [Samsung 990 Pro NVMe SSD](/go/samsung-990-pro/): fast VM/DB storage
+- [CyberPower UPS](/go/cyberpower-ups/): clean shutdowns, no corrupted pools
 
 ## What's Next
 
@@ -685,12 +685,12 @@ for maintenance while services stay running on the other.
 you can build a distributed storage cluster that survives a node failure
 without losing data.
 
-**Automate with Ansible**, the [Ansible guide](/homelab/ansible-homelab)
+**Automate with Ansible**, the [Ansible guide](/homelab/ansible-homelab/)
 includes everything you need to provision containers automatically.
 Combined with Proxmox, you can rebuild your entire stack from a playbook
 in under 10 minutes.
 
-**Monitor everything**, connect the [Grafana + Prometheus stack](/homelab/grafana-prometheus-homelab)
+**Monitor everything**, connect the [Grafana + Prometheus stack](/homelab/grafana-prometheus-homelab/)
 to Proxmox. The `pve` exporter gives you VM CPU, memory, disk I/O, and
 network graphs for every guest, all in one dashboard.
 

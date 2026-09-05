@@ -53,10 +53,10 @@ const sectionLabel = section === 'homelab' ? 'Homelab'
                    : section === 'astro'   ? 'Astro'
                    : section === 'aws'     ? 'AWS'
                    : 'Blog';
-const sectionHref  = section === 'homelab' ? '/homelab'
-                   : section === 'astro'   ? '/astro'
-                   : section === 'aws'     ? '/aws'
-                   : '/blog';
+const sectionHref  = section === 'homelab' ? '/homelab/'
+                   : section === 'astro'   ? '/astro/'
+                   : section === 'aws'     ? '/aws/'
+                   : '/blog/';
 
 const tocHeadings = headings.filter(h => h.depth === 2 || h.depth === 3);
 const hasToc      = tocHeadings.length > 2;
@@ -112,7 +112,7 @@ const breadcrumbSchema = {
   "@context": "https://schema.org",
   "@type": "BreadcrumbList",
   "itemListElement": [
-    { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://linuxcore.dev" },
+    { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://linuxcore.dev/" },
     { "@type": "ListItem", "position": 2, "name": sectionLabel, "item": `https://linuxcore.dev${sectionHref}` },
     { "@type": "ListItem", "position": 3, "name": title, "item": canonicalURL.toString() }
   ]
@@ -212,7 +212,7 @@ const breadcrumbSchema = {
         <div class="author-info">
           <div class="author-name">Sergej Voronko</div>
           <div class="author-role">SAP Basis · Senior Operations Manager · Linux infrastructure engineer</div>
-          <a href="/about" class="author-link">About the author →</a>
+          <a href="/about/" class="author-link">About the author →</a>
         </div>
       </div>
     </footer>

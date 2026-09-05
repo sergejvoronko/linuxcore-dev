@@ -9,6 +9,7 @@ import rehypeLinks from './src/lib/rehype-links.mjs';
 export default defineConfig({
   site: 'https://linuxcore.dev',
   output: 'static',
+  trailingSlash: 'always',
   build: {
     inlineStylesheets: 'always',
   },

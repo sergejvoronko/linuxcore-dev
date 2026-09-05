@@ -36,7 +36,7 @@ const images = product?.images?.slice(0, 6) ?? [];
     {fetchError && (
       <div class="error-state">
         <p>Could not load product: <code>{fetchError}</code></p>
-        <a href="/shop">← Back to shop</a>
+        <a href="/shop/">← Back to shop</a>
       </div>
     )}
 
@@ -62,7 +62,7 @@ const images = product?.images?.slice(0, 6) ?? [];
 
           <!-- Buy box (title, price, variants, qty, CTA) -->
           <div class="product-details">
-            <div class="back-link"><a href="/shop">← Shop</a></div>
+            <div class="back-link"><a href="/shop/">← Shop</a></div>
             <h1 class="product-title">{product.title}</h1>
             <div class="product-price-display" id="price-display">
               {formatPrice(getBasePrice(product))}
@@ -115,7 +115,7 @@ const images = product?.images?.slice(0, 6) ?? [];
             <div class="related-label"><span class="tb">[</span>also in the shop<span class="tb">]</span></div>
             <div class="related-grid">
               {related.map((p: any) => (
-                <a href={`/shop/product/${p.id}`} class="related-card">
+                <a href={`/shop/product/${p.id}/`} class="related-card">
                   <div class="related-img-wrap">
                     <img src={getDefaultImage(p)} alt={p.title} width="300" height="300" loading="lazy" />
                   </div>
@@ -141,7 +141,7 @@ const images = product?.images?.slice(0, 6) ?? [];
                 box to full homelab stack in 8 minutes.
               </p>
             </div>
-            <a href="/go/ansible-bundle" class="btn-primary upsell-btn" target="_blank" rel="noopener">
+            <a href="/go/ansible-bundle/" class="btn-primary upsell-btn" target="_blank" rel="noopener">
               Get the Bundle — €29 →
             </a>
           </div>

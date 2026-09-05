@@ -228,7 +228,7 @@ try {
     {products.length > 0 && (
       <div class="products-grid">
         {products.map(p => (
-          <a href={`/shop/product/${p.id}`} class="product-card">
+          <a href={`/shop/product/${p.id}/`} class="product-card">
             <div class="product-img">
               <img src={getDefaultImage(p)} alt={p.title} width="600" height="600" loading="lazy" />
             </div>
@@ -297,7 +297,7 @@ const basePrice = product ? getBasePrice(product) : 0;
 <BaseLayout title={product?.title ?? 'Product'} description={product?.description?.replace(/<[^>]+>/g, '').slice(0, 160) ?? ''}>
   <main class="product-page">
     {!product && (
-      <div class="error">Product not found. <a href="/shop">← Back to shop</a></div>
+      <div class="error">Product not found. <a href="/shop/">← Back to shop</a></div>
     )}
 
     {product && (
@@ -320,7 +320,7 @@ const basePrice = product ? getBasePrice(product) : 0;
 
         <!-- Details -->
         <div class="details">
-          <a href="/shop" class="back">← Shop</a>
+          <a href="/shop/" class="back">← Shop</a>
           <h1 class="product-title">{product.title}</h1>
           <div class="price" id="price-display">{formatPrice(basePrice)}</div>
 
@@ -535,4 +535,4 @@ The product pages are static, they rebuild whenever you deploy. If you add new p
 
 ---
 
-*Next in this series: [SEO in Astro Without Plugins](/astro/astro-seo-without-plugins), sitemaps, structured data, and OG images from scratch.*
+*Next in this series: [SEO in Astro Without Plugins](/astro/astro-seo-without-plugins/), sitemaps, structured data, and OG images from scratch.*

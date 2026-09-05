@@ -229,7 +229,7 @@ export RESTIC_PASSWORD=YOUR_STRONG_BACKUP_PASSWORD
 The `RESTIC_PASSWORD` encrypts your backups. **Write this down and
 store it somewhere safe.** Without it, your backups are unrecoverable.
 A password manager like Vaultwarden (from the
-[Docker Compose stack](/homelab/docker-compose-homelab-stack)) is ideal.
+[Docker Compose stack](/homelab/docker-compose-homelab-stack/)) is ideal.
 
 Initialise the repository (creates the restic index in S3):
 
@@ -639,7 +639,7 @@ journalctl -u restic-backup.service --since "7 days ago"
 ```
 
 **Set up a Telegram alert for backup failures** using the
-[n8n automation guide](/homelab/n8n-ollama-automation):
+[n8n automation guide](/homelab/n8n-ollama-automation/):
 
 Create a workflow: **Schedule Trigger** (daily, 9am) →
 **Execute Command** (`systemctl is-active restic-backup.service`) →
@@ -690,11 +690,11 @@ multiple protection layers:
 
 | Layer | Tool | What it protects against |
 |:------|:-----|:------------------------|
-| Snapshots | Proxmox (from [Proxmox guide](/homelab/proxmox-homelab-setup)) | Accidental deletion, bad updates |
+| Snapshots | Proxmox (from [Proxmox guide](/homelab/proxmox-homelab-setup/)) | Accidental deletion, bad updates |
 | Local backup | Docker volume mounts | Container failure |
 | NAS backup | Your OpenMediaVault | Single-drive failure |
 | Offsite backup | restic + AWS S3 (this guide) | Site-level disaster, theft |
-| Monitoring | Grafana + Prometheus (from [monitoring guide](/homelab/grafana-prometheus-homelab)) | Detect failures early |
+| Monitoring | Grafana + Prometheus (from [monitoring guide](/homelab/grafana-prometheus-homelab/)) | Detect failures early |
 
 The 3-2-1 rule is now satisfied: your important data lives on your main
 machine (copy 1), on your OpenMediaVault NAS (copy 2, different media),

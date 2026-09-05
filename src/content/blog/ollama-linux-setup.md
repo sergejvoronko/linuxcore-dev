@@ -241,11 +241,11 @@ A split (e.g. `48%/52% CPU/GPU`) means the model didn't fit in VRAM and Ollama o
 
 For GPU-accelerated local inference (affiliate links. They help fund the site at no extra cost to you):
 
-- [NVIDIA RTX 3060 12GB](/go/rtx-3060-12gb): the value pick for 7B–13B models
-- [Beelink EQ12 Pro (N100)](/go/beelink-eq12): fine for CPU-only 3B models
+- [NVIDIA RTX 3060 12GB](/go/rtx-3060-12gb/): the value pick for 7B–13B models
+- [Beelink EQ12 Pro (N100)](/go/beelink-eq12/): fine for CPU-only 3B models
 
 Once Ollama is running, a few natural next steps from this site:
 
-- **[n8n + Ollama: Build an AI Automation Agent](/homelab/n8n-ollama-automation)**: connect your local models to real workflows (RSS summaries, log analysis, Telegram alerts)
-- **[Grafana + Prometheus monitoring](/homelab/grafana-prometheus-homelab)**: add metrics and alerting to track GPU usage and container health
-- **[Best mini PC for a homelab server](/homelab/best-mini-pc-homelab-2026)**: hardware recommendations if you're choosing hardware for running local AI
+- **[n8n + Ollama: Build an AI Automation Agent](/homelab/n8n-ollama-automation/)**: connect your local models to real workflows (RSS summaries, log analysis, Telegram alerts)
+- **[Grafana + Prometheus monitoring](/homelab/grafana-prometheus-homelab/)**: add metrics and alerting to track GPU usage and container health
+- **[Best mini PC for a homelab server](/homelab/best-mini-pc-homelab-2026/)**: hardware recommendations if you're choosing hardware for running local AI

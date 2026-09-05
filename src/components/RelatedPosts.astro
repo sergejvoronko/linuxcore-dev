@@ -31,7 +31,7 @@ const scored = all
 if (scored.length === 0) return;
 
 const sectionHref = (s?: string) =>
-  s === 'homelab' ? '/homelab' : s === 'astro' ? '/astro' : s === 'aws' ? '/aws' : '/blog';
+  s === 'homelab' ? '/homelab/' : s === 'astro' ? '/astro/' : s === 'aws' ? '/aws/' : '/blog/';
 
 const sectionColor = (s?: string) =>
   s === 'astro' ? '#7eb8d4' : s === 'aws' ? '#e8923a' : '#f0a500';
@@ -47,7 +47,7 @@ const formatDate = (d: Date) => new Date(d).toLocaleDateString('en-GB', {
   <div class="related-grid">
     {scored.map(post => {
       const sec = post.data.section;
-      const slug = sec ? `/${sec}/${post.id}` : `/blog/${post.id}`;
+      const slug = sec ? `/${sec}/${post.id}/` : `/blog/${post.id}/`;
       const color = sectionColor(sec);
       return (
         <a href={slug} class="rel-card" style={`--rc: ${color}`}>

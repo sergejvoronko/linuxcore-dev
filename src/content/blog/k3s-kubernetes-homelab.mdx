@@ -36,13 +36,13 @@ This guide walks you through deploying K3s on your homelab hardware, configuring
 
 You'll need:
 
-- One or more Linux machines (bare metal, Proxmox VMs, or [mini PCs](/homelab/best-mini-pc-homelab-2026)) running Ubuntu 22.04+ or Debian 12+
+- One or more Linux machines (bare metal, Proxmox VMs, or [mini PCs](/homelab/best-mini-pc-homelab-2026/)) running Ubuntu 22.04+ or Debian 12+
 - At least 2 GB RAM and 2 vCPUs per node (4 GB+ recommended for the server node)
 - SSH access with a sudo user
 - Static IPs or DHCP reservations on each node
-- A working [Docker installation](/homelab/docker-compose-homelab-stack) (helpful for testing, not required for K3s itself)
+- A working [Docker installation](/homelab/docker-compose-homelab-stack/) (helpful for testing, not required for K3s itself)
 
-If you want to automate the deployment, the [Ansible approach](#automating-with-ansible) later in this guide ties directly into the playbook patterns from the [Ansible Homelab Bundle](/homelab/ansible-homelab).
+If you want to automate the deployment, the [Ansible approach](#automating-with-ansible) later in this guide ties directly into the playbook patterns from the [Ansible Homelab Bundle](/homelab/ansible-homelab/).
 
 ## Installing K3s: Single-Node Cluster
 
@@ -120,7 +120,7 @@ spec:
     gpu: "true"
 ```
 
-This is exactly how you'd ensure [Ollama runs on the node with your GPU](/homelab/ollama-linux-setup).
+This is exactly how you'd ensure [Ollama runs on the node with your GPU](/homelab/ollama-linux-setup/).
 
 ## Persistent Storage with Longhorn
 
@@ -170,7 +170,7 @@ helm install monitoring prometheus-community/kube-prometheus-stack \
   --set grafana.persistence.size=5Gi
 ```
 
-This deploys Prometheus, Grafana, Alertmanager, node-exporter, and kube-state-metrics, all pre-wired with dashboards that show cluster-level metrics out of the box. Compare that to the [manual Prometheus/Grafana setup](/homelab/grafana-prometheus-homelab), same monitoring, but Kubernetes handles restarts, health checks, and scaling.
+This deploys Prometheus, Grafana, Alertmanager, node-exporter, and kube-state-metrics, all pre-wired with dashboards that show cluster-level metrics out of the box. Compare that to the [manual Prometheus/Grafana setup](/homelab/grafana-prometheus-homelab/), same monitoring, but Kubernetes handles restarts, health checks, and scaling.
 
 ### Ollama with GPU Passthrough
 
@@ -393,7 +393,7 @@ curl -sfL https://get.k3s.io | K3S_URL=https://<SERVER_IP>:6443 K3S_TOKEN=<TOKEN
 
 **Storage:** The built-in `local-path-provisioner` is fine for a Pi cluster. Longhorn works on ARM64 but the replication overhead can strain SD cards, if you use Longhorn, boot from USB SSDs.
 
-**CPU-bound workloads:** Don't expect to run Ollama or heavy AI models on a Pi. Use Pis for lightweight services (Pi-hole, Home Assistant, Gitea, monitoring agents) and keep GPU/CPU-intensive workloads on your [mini PC nodes](/homelab/best-mini-pc-homelab-2026).
+**CPU-bound workloads:** Don't expect to run Ollama or heavy AI models on a Pi. Use Pis for lightweight services (Pi-hole, Home Assistant, Gitea, monitoring agents) and keep GPU/CPU-intensive workloads on your [mini PC nodes](/homelab/best-mini-pc-homelab-2026/).
 
 **Mixed-architecture clusters:** You can mix Pi nodes (ARM64) with x86 mini PCs in the same cluster. Kubernetes handles scheduling, but your container images must support both architectures. Most popular images (Grafana, Prometheus, n8n, Traefik) publish multi-arch manifests. Check with:
 
@@ -542,7 +542,7 @@ Run it:
 ansible-playbook -i inventory/homelab k3s-cluster.yml
 ```
 
-This pairs naturally with the hardening and Docker roles from the [Ansible Homelab Bundle](/homelab/ansible-homelab), run the security playbook first, then layer K3s on top.
+This pairs naturally with the hardening and Docker roles from the [Ansible Homelab Bundle](/homelab/ansible-homelab/), run the security playbook first, then layer K3s on top.
 
 ## K3s vs Docker Compose: When to Switch
 
@@ -554,7 +554,7 @@ Don't switch just because Kubernetes is trendy. Switch when you actually need wh
 
 ## Backing Up Your Cluster
 
-K3s stores cluster state in `/var/lib/rancher/k3s/server/db/` (SQLite by default). Back it up alongside your regular [restic backup strategy](/aws/aws-s3-restic-homelab-backups):
+K3s stores cluster state in `/var/lib/rancher/k3s/server/db/` (SQLite by default). Back it up alongside your regular [restic backup strategy](/aws/aws-s3-restic-homelab-backups/):
 
 ```bash
 # Snapshot the K3s database
@@ -582,6 +582,6 @@ Clean removal, no orphaned containers or iptables rules left behind.
 
 ## What's Next
 
-With K3s running, you've got a real Kubernetes cluster on homelab hardware. From here, you can explore GitOps with Flux or ArgoCD for declarative deployments, add [Tailscale or WireGuard](/homelab/wireguard-tailscale-guide) for secure remote access to your cluster, set up Kubernetes-native monitoring with the [Prometheus stack](/homelab/grafana-prometheus-homelab), or integrate [WireGuard](/homelab/wireguard-tailscale-guide) for site-to-site connectivity between clusters.
+With K3s running, you've got a real Kubernetes cluster on homelab hardware. From here, you can explore GitOps with Flux or ArgoCD for declarative deployments, add [Tailscale or WireGuard](/homelab/wireguard-tailscale-guide/) for secure remote access to your cluster, set up Kubernetes-native monitoring with the [Prometheus stack](/homelab/grafana-prometheus-homelab/), or integrate [WireGuard](/homelab/wireguard-tailscale-guide/) for site-to-site connectivity between clusters.
 
 The beauty of K3s is that everything you learn applies directly to production Kubernetes. Same API, same tooling, same patterns, just running on a mini PC under your desk instead of a cloud region.

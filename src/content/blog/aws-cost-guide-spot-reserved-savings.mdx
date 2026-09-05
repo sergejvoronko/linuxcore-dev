@@ -62,7 +62,7 @@ Spot prices fluctuate by instance type, region, and availability zone. Typical d
 ### When to use spot
 
 - **Batch processing**: jobs that can be interrupted and resumed (data processing, CI/CD builds, video transcoding)
-- **Burst GPU compute**: AI inference sessions where you launch, work, and terminate (see the [Ollama spot instance guide](/aws/ollama-aws-gpu-spot-instance))
+- **Burst GPU compute**: AI inference sessions where you launch, work, and terminate (see the [Ollama spot instance guide](/aws/ollama-aws-gpu-spot-instance/))
 - **Dev/test environments**: if it goes down for 10 minutes, nobody cares
 - **Stateless web servers** behind a load balancer, traffic shifts to other instances during interruption
 
@@ -281,8 +281,8 @@ aws ce get-cost-and-usage \
 
 ## Next in the series
 
-- [The €10/Month AWS Stack](/aws/ten-euro-month-aws-stack): the baseline setup these savings apply to
-- [Running Ollama on GPU Spot Instances](/aws/ollama-aws-gpu-spot-instance): spot pricing in action for AI workloads
-- [Terraform for Homelab Users](/aws/terraform-for-homelab-users): codify your infrastructure so you can reproduce it after any pricing change
+- [The €10/Month AWS Stack](/aws/ten-euro-month-aws-stack/): the baseline setup these savings apply to
+- [Running Ollama on GPU Spot Instances](/aws/ollama-aws-gpu-spot-instance/): spot pricing in action for AI workloads
+- [Terraform for Homelab Users](/aws/terraform-for-homelab-users/): codify your infrastructure so you can reproduce it after any pricing change
 
 Understanding AWS pricing isn't glamorous, but it's the difference between a €10/month cloud extension and a surprise €80 bill. Spend an hour with the Cost Explorer after your first month and you'll know exactly where to optimize.
