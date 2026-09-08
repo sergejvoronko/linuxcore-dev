@@ -1,0 +1,104 @@
+---
+title: "ZFS vs Btrfs vs Stratis: Best Homelab NAS Filesystem?"
+description: "Choosing a homelab NAS filesystem? This guide compares ZFS, Btrfs, and Stratis on RAID, snapshots, data integrity, and performance for backups."
+pubDate: 2026-09-06
+readingTime: 8
+heroImage: "/images/zfs-btrfs-stratis-homelab-nas-backup-filesystem-comparison.webp"
+heroImageAlt: "A visual comparison of ZFS, Btrfs, and Stratis logos on a server rack background, representing a homelab NAS filesystem choice."
+section: "homelab"
+tags: ["homelab", "zfs", "btrfs", "stratis", "storage", "nas", "backups"]
+draft: false
+faqs:
+  - q: "Is ZFS too complex for a homelab?"
+    a: "No. The concepts (pools, vdevs, datasets) are different from what you're used to, but the commands are consistent and well-documented. The complexity is front-loaded. Once it's set up, it's remarkably low-maintenance."
+  - q: "What's the 'RAID5/6 write hole' in Btrfs? Is it fixed?"
+    a: "It's a condition where a power loss during a write to a RAID5/6 array could lead to inconsistent parity, silently corrupting data. The Btrfs code has been improved, but the core issue is hard to solve without performance penalties. The Btrfs wiki still lists its RAID5/6 status as unstable. I would not use it for primary data."
+  - q: "Can I use Stratis for my Proxmox root filesystem?"
+    a: "No. Proxmox doesn't support Stratis in its installer. It offers ext4, xfs, and ZFS. You could potentially set it up manually post-install for data pools, but it's not a supported configuration for the boot drive."
+---
+
+Your homelab has grown beyond a single disk. You need a proper NAS, a backup target, or just a resilient place to store VM images. Sticking with `ext4` on `mdraid` feels archaic. You need snapshots, you need data integrity, and you don't want to lose your data to bit rot.
+
+The three main contenders in the modern Linux storage space are ZFS, Btrfs, and Stratis. Each promises a better way to manage disks, but they get there through very different philosophies. Choosing the right one depends entirely on what you're trying to achieve, what hardware you have, and how much you trust the code.
+
+### The Contenders: A Quick Intro
+
+*   **ZFS:** The battle-hardened veteran from Sun Microsystems, now maintained by OpenZFS. It's a combined logical volume manager and filesystem. Its reputation for data integrity is legendary. It’s the default choice for systems like TrueNAS and is a first-class citizen in Proxmox. It's powerful, but it has its own way of doing things.
+*   **Btrfs:** The "better filesystem" that's been in the Linux kernel for years. It's also a combined volume manager and filesystem, offering features like ZFS but with more flexibility. Its history is a bit rocky, especially regarding its RAID5/6 implementation, which still spooks many admins (myself included).
+*   **Stratis:** The new kid on the block, primarily from Red Hat. Stratis isn't a filesystem. It's a user-friendly volume manager that runs on top of existing Linux components like LVM and XFS. It aims to provide ZFS-like management simplicity while using stable, mature backend technologies.
+
+### Feature Showdown: Integrity, RAID, and Snapshots
+
+Let's cut to the chase. These are the features that matter for a homelab NAS.
+
+#### Data Integrity: The Whole Point
+
+This is the number one reason to ditch `ext4`. Silent data corruption (bit rot) is a real phenomenon where bits on your storage media flip spontaneously over time. Without checksums, you'll never know your family photos are corrupted until you try to open them.
+
+*   **ZFS:** Copies-on-write (CoW) and checksums everything: user data and metadata. If you have a redundant array (like a mirror or RAID-Z), ZFS will detect a corrupt block during a read, find the good copy on another disk, serve it to you, and fix the bad block in the background. This is called self-healing, and it is the gold standard.
+*   **Btrfs:** Also uses CoW and checksums everything. It provides the same self-healing capability as ZFS on redundant arrays. On the integrity front, it's a direct competitor and works extremely well.
+*   **Stratis:** Stratis provides data integrity, but in a different way. It uses the `dm-integrity` device-mapper target underneath XFS. This means integrity checking happens at the block layer, *before* the data gets to the XFS filesystem. It works, but it feels less integrated. XFS itself has no idea this is happening. The end result is similar (corrupt blocks are detected), but it's a layered solution, not a ground-up design.
+
+#### RAID Implementation: Flexibility vs. Rigidity
+
+Building a redundant array is fundamental for a NAS. The approaches here could not be more different.
+
+*   **ZFS:** RAID is built-in. You create virtual devices (vdevs), such as a `mirror` (RAID1), `raidz1` (RAID5), or `raidz2` (RAID6), and add them to a storage pool. It's incredibly robust but rigid. You can't just add a single disk to an existing RAID-Z vdev to expand it. You must add another complete vdev of the same type. Replacing a failed drive is trivial, but growing a pool requires careful planning.
+*   **Btrfs:** RAID is also built-in but is far more flexible. You can create a RAID1 array with two disks, then add a third disk later and rebalance the array to include it. You can even mix disk sizes, though it complicates capacity calculations. This flexibility is a huge win for homelabbers who often expand with whatever drives are on sale. The massive caveat is the RAID5/6 implementation. The infamous "write hole" bug and data loss horror stories have destroyed its reputation. While it's supposedly much better now, the official Btrfs wiki still says "Unstable". Stick to RAID1 or RAID10.
+*   **Stratis:** Does not have its own RAID. It's a volume manager, not a RAID engine. The expectation is that you'll use Linux's proven `mdraid` for redundancy. You create your `md` array first, then create a Stratis pool on top of that `/dev/mdX` device. This is a modular approach: use the best tool for each job. It's reliable but adds another layer to manage.
+
+#### Snapshots & Replication: The Backup Killer Feature
+
+Point-in-time snapshots are crucial for recovering from "oops" moments or ransomware. The ability to efficiently send those snapshots to another server is what elevates a filesystem to a true backup solution.
+
+*   **ZFS:** Atomic, instant, and cheap snapshots are a core feature. The killer app is `zfs send` and `zfs recv`, which allows you to send an incremental (or full) copy of a snapshot to another ZFS pool, even over SSH. Tools like `sanoid` and `syncoid` automate this beautifully, creating a perfect push/pull backup system.
+*   **Btrfs:** Also has excellent, cheap, and instant snapshot capabilities. It has its own `btrfs send` and `btrfs receive` commands that function almost identically to their ZFS counterparts. For snapshots and replication, it's on par with ZFS.
+*   **Stratis:** Supports snapshots because it uses LVM's thin provisioning feature underneath. They work for local point-in-time recovery. However, it completely lacks a `send/receive` replication feature. This is a dealbreaker for using Stratis as a primary backup system if you want to efficiently replicate data to another machine. You'd have to fall back to tools like `rsync`, which is far less efficient than block-level replication.
+
+### A Practical Example: Creating a Mirrored Pool
+
+Seeing the commands side-by-side makes the different philosophies clear. Assume you want to create a simple mirror with `/dev/sda` and `/dev/sdb`.
+
+```bash
+# ZFS: Create a pool named 'tank' with a mirror vdev
+zpool create tank mirror /dev/sda /dev/sdb
+zfs create tank/data
+echo "ZFS is ready" > /tank/data/test.txt
+
+# Btrfs: Create a RAID1 filesystem across two devices
+# The filesystem is mounted directly after creation
+mkfs.btrfs -d raid1 -m raid1 /dev/sda /dev/sdb
+mkdir /btrfs_mount
+mount /dev/sda /btrfs_mount
+echo "Btrfs is ready" > /btrfs_mount/test.txt
+
+# Stratis: Layered approach
+# 1. Create the pool from the block devices
+stratis pool create mypool /dev/sda /dev/sdb
+# 2. Create a filesystem within that pool
+stratis filesystem create mypool myfs
+# 3. Stratis auto-mounts it for you under /stratis/
+echo "Stratis is ready" > /stratis/mypool/myfs/test.txt
+```
+
+The ZFS and Stratis commands feel more like managing storage objects, while Btrfs feels more like a traditional `mkfs` command with extra flags.
+
+### The Verdict: Which One Should You Choose?
+
+There's no single "best" option. It's about tradeoffs.
+
+*   **Choose ZFS if:** You want the most reliable, battle-tested solution for a NAS or hypervisor storage. You are building a system and don't plan to change the disk layout frequently. The rock-solid data integrity, self-healing, and amazing `send/recv` feature make it the top choice for critical data. This is what you should use with Proxmox or for your primary backup server. Just make sure you have enough RAM (1GB per TB of storage is a decent rule of thumb, but it can run on less).
+
+*   **Choose Btrfs if:** You value flexibility above all. You want to easily add and remove drives of different sizes from your array. Your use case is a Linux desktop, a single-drive server needing snapshots, or a multi-drive array using RAID1 or RAID10. The performance can be spiky for database or VM workloads, but for general file storage, it's great. Stay away from its RAID5/6.
+
+*   **Choose Stratis if:** You are heavily invested in the Red Hat ecosystem (Fedora, RHEL, CentOS) and want a simpler way to manage storage volumes with data integrity. You trust XFS and `mdraid` and just want a better user interface on top. It's a good LVM replacement, but its lack of integrated RAID and replication makes it a poor choice for a multi-drive NAS or a dedicated backup server compared to ZFS.
+
+For my homelab, I use ZFS for my Proxmox host and primary NAS. The reliability is worth the initial learning curve. I use Btrfs on my laptop for its snapshot capabilities on a single drive. I've experimented with Stratis, but I've never found a use case where it was a better choice than the other two.
+
+## What's Next
+
+Once you've settled on a filesystem, you'll need to think about the rest of your storage and backup strategy.
+
+*   [Stratis on Linux: ZFS-Like Storage, Less Complexity](/homelab/stratis-storage-homelab-guide/)
+*   [Proxmox VE Homelab Setup: Install and Configure (2026)](/homelab/proxmox-homelab-setup/)
+*   [AWS S3 + Restic: Homelab Backups Under €2/Month](/aws/aws-s3-restic-homelab-backups/)
