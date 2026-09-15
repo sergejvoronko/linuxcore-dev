@@ -43,7 +43,7 @@ Printify            → Product data (fetched at build time)
 Astro               → Static product pages
 Cloudflare Function → Creates Stripe Checkout sessions at runtime
 Stripe              → Handles payment, returns order ID
-Printify            → Automatically fulfils after successful payment
+Printify            → Order submitted by your webhook, then printed and shipped
 ```
 
 The only dynamic piece is the checkout function, everything else is static HTML generated from Printify's API during your Cloudflare Pages build.
@@ -94,7 +94,7 @@ The response gives you a numeric `id`. That's your `PRINTIFY_SHOP_ID`.
 1. Create a Stripe account and complete the basic setup
 2. Go to **Developers** → **API Keys**
 3. Copy your **Secret key** (starts with `sk_live_` for production, `sk_test_` for testing)
-4. In Printify, go to **Sales channels** → **Add new** → link your Stripe account so orders auto-fulfil after payment
+4. In Printify, go to **Sales channels** → **Add new** → **Printify API** (custom integration). This gives you the shop ID your code posts orders to
 
 <Callout type="warning">
 Start with Stripe's test mode (`sk_test_` key) until you've verified the full flow end-to-end. Test card number: `4242 4242 4242 4242`, any future expiry, any CVC.
@@ -513,12 +513,15 @@ export async function onRequestPost({ request, env }: { request: Request; env: E
 
 ## Connecting Printify Auto-Fulfilment
 
-For orders to automatically trigger printing and shipping, Printify needs to know about successful payments. The simplest way on this stack:
+For orders to trigger printing and shipping, Printify needs to know about successful payments, and nothing connects the two for you. Printify has no Stripe integration: its sales channels are Etsy, Shopify, eBay, Amazon, Wix, WooCommerce and the rest, plus its own API. There is no setting that watches your Stripe account.
 
-1. In Printify: **Sales channels** → **Custom integration** → link your Stripe account
-2. Printify watches for completed Stripe payments and auto-creates orders
+So this is a piece you have to build:
 
-Alternatively, set up a Stripe webhook to call Printify's Orders API. This gives you more control but requires an additional function.
+1. Add a Stripe webhook for `checkout.session.completed`
+2. In the handler, verify the signature, then `POST /v1/shops/{shop_id}/orders.json` with the variant, quantity and the shipping address Stripe collected
+3. Handle the cases that follow: a failed order call after a successful payment, address validation rejections, and refunds
+
+Budget real time for step 3. Taking the money is the easy half; the half that matters is making sure an order exists for every payment, and that you find out when it does not.
 
 ---
 
