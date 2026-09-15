@@ -1,18 +1,29 @@
 ---
 // src/pages/shop/index.astro
-export const prerender = false;
-
+// Static now. The page used to call Printify at request time and link to an
+// SSR product page whose Buy button posted to /api/checkout, a route that was
+// never built - so nothing was purchasable. Orders go through Etsy instead,
+// which also removes the Printify token from the request path.
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import { getProducts, getBasePrice, getDefaultImage, formatPrice } from '../../lib/printify';
+import liveProducts from '../../data/merch.json';
 
-let products: any[] = [];
-let fetchError = '';
+// Designs live here; whether each is buyable comes from the sync.
+const designs = [
+  { slug: 'terminal', productId: '6aa966a9b0b4951d3205f2cf', name: 'Root Prompt',
+    blurb: 'root@linuxcore:~# and a blinking block cursor.' },
+  { slug: 'status', productId: '6aa966b2a1f58782b30d47d1', name: 'Server Status',
+    blurb: 'Uptime 99.9%, load 0.01, status ONLINE. The numbers you want and occasionally get.' },
+  { slug: 'radial', productId: '6aa966bdcd9c21a29a0ee40d', name: 'Registration Mark',
+    blurb: 'Monospace inside a thin circle. For when you would rather not wear a joke.' },
+  { slug: 'logo', productId: '6aa966c7d6405923e60a2070', name: 'Circuit Mark',
+    blurb: 'Bracketed mark with traces running out either side.' },
+  { slug: 'penguin', productId: '6aa966d1289360dc3901a44b', name: 'Tux',
+    blurb: 'The penguin, drawn flat and friendly rather than glossy.' },
+];
 
-try {
-  products = await getProducts();
-} catch (e: any) {
-  fetchError = e.message;
-}
+const byId = new Map(liveProducts.map((p: any) => [p.id, p]));
+const items = designs.map(d => ({ ...d, live: byId.get(d.productId) }));
+const liveCount = items.filter(i => i.live).length;
 ---
 
 <BaseLayout
@@ -28,32 +39,28 @@ try {
       <p class="hero-lead">T-shirts, mugs, and prints for people who self-host everything. Printed on demand — ships worldwide.</p>
     </section>
 
-    {fetchError && (
+    {liveCount === 0 && (
       <div class="shop-notice">
-        <strong>Setup required:</strong> Add <code>PRINTIFY_API_TOKEN</code> and <code>PRINTIFY_SHOP_ID</code>
-        to your Cloudflare Pages environment variables. <a href="/about/">More info</a>.
+        The designs are finished and print-ready. Listings go live on Etsy shortly.
       </div>
     )}
 
-    {!fetchError && products.length === 0 && (
-      <div class="shop-notice">No products published yet — add products in Printify and mark them as visible.</div>
-    )}
-
-    {products.length > 0 && (
-      <div class="products-grid">
-        {products.map(product => (
-          <a href={`/shop/product/${product.id}/`} class="product-card">
-            <div class="product-img-wrap">
-              <img src={getDefaultImage(product)} alt={product.title} width="600" height="600" loading="lazy" />
-            </div>
-            <div class="product-info">
-              <div class="product-name">{product.title}</div>
-              <div class="product-price">from {formatPrice(getBasePrice(product))}</div>
-            </div>
-          </a>
-        ))}
-      </div>
-    )}
+    <div class="products-grid">
+      {items.map(d => (
+        <article class="product-card">
+          <div class="product-img-wrap">
+            <img src={`/images/merch/${d.slug}.webp`} alt={`${d.name} design`} width="900" height="900" loading="lazy" />
+          </div>
+          <div class="product-info">
+            <div class="product-name">{d.name}</div>
+            <p class="product-blurb">{d.blurb}</p>
+            {d.live
+              ? <a class="product-buy" href={d.live.url} target="_blank" rel="noopener">Buy on Etsy</a>
+              : <span class="product-buy product-buy-off">Not in the store yet</span>}
+          </div>
+        </article>
+      ))}
+    </div>
 
   </main>
 </BaseLayout>
@@ -96,4 +103,30 @@ try {
   .product-info { padding: 1rem 1.1rem; }
   .product-name { font-family: var(--font-display); font-size: 1rem; font-weight: 600; color: var(--text-bright); margin-bottom: 0.3rem; }
   .product-price { font-family: var(--font-mono); font-size: 0.78rem; color: var(--amber); }
+</style>
+
+<style>
+  .product-blurb {
+    color: var(--text-dim, #a09482);
+    font-size: 0.86rem;
+    line-height: 1.6;
+    margin: 6px 0 14px;
+  }
+  .product-buy {
+    display: inline-block;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.82rem;
+    padding: 9px 16px;
+    border: 1px solid var(--amber);
+    color: var(--amber);
+    text-decoration: none;
+    border-radius: 2px;
+  }
+  .product-buy:hover { background: var(--amber); color: #121212; }
+  .product-buy-off {
+    border-color: var(--border-amber);
+    color: var(--text-dim, #a09482);
+    cursor: default;
+  }
+  .product-buy-off:hover { background: none; color: var(--text-dim, #a09482); }
 </style>
