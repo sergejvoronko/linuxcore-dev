@@ -1,0 +1,242 @@
+---
+title: "Pagefind Astro Tutorial: Static Site Full Text Search"
+description: "Implement zero-server astro search. This pagefind astro tutorial covers adding static site full text search astro setups by indexing SSG output."
+pubDate: 2026-09-15
+readingTime: 8
+heroImage: "/images/astro-static-site-search-pagefind-guide.webp"
+heroImageAlt: "Illustration of page content fragments lifting out of a browser window into a search index, pinned to a workshop wall beside drafting tools"
+section: "astro"
+tags: ["astro", "pagefind", "search", "static-site"]
+draft: false
+faqs:
+  - q: "Does Pagefind work with Astro SSR?"
+    a: "No. Pagefind requires static HTML output to build its index. If you use Server-Side Rendering (SSR) for your pages, you need a different tool."
+  - q: "How large is the Pagefind search bundle?"
+    a: "The core WebAssembly search logic is under 100kB. The client only loads index fragments dynamically based on user queries, keeping bandwidth use minimal regardless of site size."
+  - q: "Can I style the default Pagefind UI component?"
+    a: "Yes. Pagefind exposes specific CSS variables for colors, fonts, and borders. You override these variables in your global stylesheet."
+---
+
+Most static site generators fail at search. You usually end up relying on third-party SaaS platforms or shipping a massive JavaScript index to the client. Both options carry severe drawbacks. Commercial APIs track your users, inject telemetry, and cost money. Client-side libraries like Fuse.js ruin your page load metrics. If you have 500 blog posts, a client-side search tool forces every visitor to download a massive JSON file containing the text of your entire site before they can execute a single query.
+
+Pagefind solves this mechanically. It acts entirely on your static output after the build process finishes. A compiled Rust binary parses your `dist` directory, reads the raw HTML, and generates a chunked, highly compressed search index. When a user searches your site, a tiny WebAssembly client fetches only the specific index fragments required for that exact query. It requires zero active server processes, costs nothing, and scales effortlessly to thousands of pages.
+
+Here is exactly how to implement static site full text search in your Astro project using Pagefind.
+
+## Installing and Configuring Pagefind
+
+You do not need an Astro integration for this. Pagefind is a standalone CLI tool that operates on your static output directory.
+
+Install the package as a development dependency:
+
+```bash
+npm install --save-dev pagefind
+```
+
+Next, modify your `package.json` to run Pagefind immediately after Astro finishes generating your static HTML. By default, Astro outputs files to the `dist` folder. If you changed your `outDir` in `astro.config.mjs`, adjust the command accordingly.
+
+```json
+{
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro build && pagefind --site dist",
+    "preview": "astro preview"
+  }
+}
+```
+
+Running `npm run build` now compiles your Astro site, then executes Pagefind. The tool reads every `.html` file, extracts the text, builds the WebAssembly search module, and outputs a new `pagefind` folder directly inside your `dist` directory. This entire folder gets served as static assets alongside your site.
+
+## Building the Search Component
+
+Astro allows you to write raw HTML directly in your components. Since we want a zero-dependency implementation, we will use the default CSS and JavaScript shipped by Pagefind.
+
+Create a new file at `src/components/Search.astro` and paste the following code:
+
+```html
+<div id="search" class="search-container"></div>
+
+<script is:inline>
+  window.addEventListener('DOMContentLoaded', (event) => {
+    if (typeof PagefindUI !== 'undefined') {
+      new PagefindUI({
+        element: "#search",
+        showSubResults: true,
+        showImages: false,
+        resetStyles: false
+      });
+    }
+  });
+</script>
+
+<link href="/pagefind/pagefind-ui.css" rel="stylesheet" />
+<script src="/pagefind/pagefind-ui.js" type="text/javascript"></script>
+
+<style>
+  .search-container {
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  
+  /* Overriding default Pagefind CSS variables */
+  :root {
+    --pagefind-ui-scale: 1;
+    --pagefind-ui-primary: #3b82f6;
+    --pagefind-ui-text: #1f2937;
+    --pagefind-ui-background: #ffffff;
+    --pagefind-ui-border: #e5e7eb;
+    --pagefind-ui-tag: #f3f4f6;
+    --pagefind-ui-border-width: 1px;
+    --pagefind-ui-border-radius: 8px;
+    --pagefind-ui-image-border-radius: 8px;
+    --pagefind-ui-image-box-ratio: 3 / 2;
+    --pagefind-ui-font: system-ui, -apple-system, sans-serif;
+  }
+</style>
+```
+
+Notice the hardcoded paths `/pagefind/pagefind-ui.css` and `/pagefind/pagefind-ui.js`. You will get 404 errors during standard `astro dev` local development because those files do not exist until you run a full build. We address this local development issue in a later section.
+
+Place this `<Search />` component anywhere in your layout. The `is:inline` directive on the script tag prevents Astro from bundling the JavaScript, ensuring it executes exactly where placed.
+
+## Controlling the Index
+
+If you run the build right now, Pagefind indexes everything. It reads your navigation bar, your footer, your sidebar widgets, and your script tags. A search for "home" will return every single page on your site because the word "Home" appears in the main navigation.
+
+You must explicitly tell Pagefind what to ignore. Use the `data-pagefind-ignore` attribute on any HTML element you want excluded from the search index.
+
+Modify your main Astro layout file (usually `src/layouts/BaseLayout.astro`):
+
+```html
+<body>
+  <nav data-pagefind-ignore>
+    <!-- Navigation links -->
+  </nav>
+
+  <main data-pagefind-body>
+    <slot />
+  </main>
+
+  <footer data-pagefind-ignore>
+    <!-- Footer content -->
+  </footer>
+</body>
+```
+
+The `data-pagefind-body` attribute restricts indexing strictly to the contents of that element. Anything outside `main` is completely ignored by the crawler.
+
+### Adding Rich Metadata
+
+Search results look better when they include dates, authors, and category tags. Pagefind automatically pulls the page title from the `<title>` tag or the first `<h1>`, but you can explicitly define metadata using HTML attributes.
+
+In your blog post layout, wrap your metadata in standard HTML tags with the `data-pagefind-meta` attribute:
+
+```html
+<article>
+  <h1 data-pagefind-meta="title">{title}</h1>
+  
+  <div class="meta-row">
+    <span data-pagefind-meta="author">{author}</span>
+    <time data-pagefind-meta="date">{pubDate}</time>
+  </div>
+
+  <div class="tags">
+    {tags.map(tag => (
+      <span data-pagefind-filter="tag">{tag}</span>
+    ))}
+  </div>
+
+  <div class="content">
+    <slot />
+  </div>
+</article>
+```
+
+The `data-pagefind-filter` attribute allows users to filter their search results by clicking on tags within the Pagefind UI.
+
+## The Local Development Problem
+
+The biggest gotcha with Pagefind in Astro is local testing. The `astro dev` command spins up a Vite server that compiles pages dynamically in memory. It never creates a `dist` folder. Pagefind requires a physical `dist` folder filled with actual `.html` files.
+
+If you try to type in your search box during `astro dev`, nothing happens because the `/pagefind/pagefind-ui.js` file returns a 404.
+
+To fix this, create a local preview script. Instead of relying on `astro dev` when you need to test search functionality, compile the site locally and serve the physical directory.
+
+Create a simple bash script at `scripts/preview-search.sh`:
+
+```bash
+#!/usr/bin/env bash
+set -e
+
+echo "Building Astro site..."
+npx astro build
+
+echo "Running Pagefind..."
+npx pagefind --site dist
+
+echo "Starting local static server on port 4321..."
+npx serve dist -l 4321
+```
+
+Make the script executable with `chmod +x scripts/preview-search.sh`. Run this script whenever you modify your search component or tweak the indexing metadata. It accurately replicates the production environment.
+
+## Deploying to a Homelab
+
+Because Pagefind generates purely static files, hosting the final output is trivial. You do not need Node.js, PM2, or a complex runtime. A basic Nginx container handles this perfectly.
+
+If you self-host your blog on a Proxmox VM or a local Docker host, use this `docker-compose.yml` to serve the `dist` folder:
+
+```yaml
+services:
+  astro-blog:
+    image: nginx:alpine
+    container_name: astro-blog-pagefind
+    ports:
+      - "8080:80"
+    volumes:
+      - ./dist:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    restart: unless-stopped
+```
+
+Create a simple `nginx.conf` in the same directory to handle caching and routing. Nginx needs to serve the WebAssembly files with the correct MIME type.
+
+```nginx
+server {
+    listen 80;
+    server_name localhost;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Serve Astro clean URLs
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Ensure WebAssembly files are cached and served correctly
+    location ~* \.wasm$ {
+        types {
+            application/wasm wasm;
+        }
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
+
+    # Cache CSS, JS, and JSON index chunks
+    location ~* \.(js|css|json)$ {
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
+}
+```
+
+Run your build command to generate the `dist` folder, then execute `docker compose up -d`. Your Astro site, complete with an offline-capable, highly performant search index, is now live.
+
+Pagefind scales effortlessly. Whether your static blog has fifty posts or five thousand, the search index generation takes less than a second on modern hardware, and the client-side load time remains virtually identical. You get commercial-grade search capabilities while maintaining complete ownership over your data and infrastructure.
+
+## What's Next
+
+- [SEO in Astro Without Plugins: Sitemaps and Schema](/astro/astro-seo-without-plugins/)
+- [Migrate Next.js to Astro 5: Performance and Cost Deep Dive](/astro/nextjs-to-astro-5-migration-homelab-cost-performance/)
+- [SvelteKit vs Astro: Which Performs Better in Production?](/astro/sveltekit-vs-astro-performance-benchmark-real-world/)
+- [Coolify on Your Homelab: Ditch Vercel and Heroku for Good](/homelab/coolify-self-hosted-paas-homelab-proxmox-setup/)
