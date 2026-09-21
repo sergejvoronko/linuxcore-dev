@@ -81,8 +81,10 @@ If you haven't chosen hardware yet, the [mini PC guide](/homelab/best-mini-pc-ho
 covers the best options at every price point. A Beelink EQ14 with 16GB
 RAM runs this entire guide comfortably. ([grab one here](/go/beelink-mini-s12/))
 
----
+Anyway, I also recommend to check  [racknotes's 8 step checklist](https://racknotes.pro/things-to-do-after-installing-proxmox/) as it covers a bit different view from my article here, also including different Operating Systems.
 
+---
+ 
 ## Step 1, Download and Write the ISO
 
 Download the latest Proxmox VE ISO from **proxmox.com/downloads**.
