@@ -18,17 +18,17 @@ HERE = Path(__file__).parent
 URLS_FILE = HERE / "urls.yaml"
 STATE_FILE = HERE / "state.json"
 
-GSC_SCOPES = ["https://www.googleapis.com/auth/webmasters.readonly"]
-
 
 def get_credentials() -> Credentials:
+    # No `scopes=` here: the refresh token was granted with a broader scope
+    # set (indexing + webmasters + analytics); requesting a narrower/different
+    # scope string on refresh makes Google reject it with invalid_scope.
     creds = Credentials(
         token=None,
         refresh_token=os.environ["GSC_REFRESH_TOKEN"],
         client_id=os.environ["GSC_CLIENT_ID"],
         client_secret=os.environ["GSC_CLIENT_SECRET"],
         token_uri="https://oauth2.googleapis.com/token",
-        scopes=GSC_SCOPES,
     )
     creds.refresh(Request())
     return creds
