@@ -5,5 +5,9 @@
     "page_fetch_state": "SUCCESSFUL",
     "robots_txt_state": "ALLOWED",
     "verdict": "PASS"
+  },
+  "https://racknotes.pro/proxmox-gpu-passthrough/": {
+    "link_present": true,
+    "status_code": 200
   }
 }
