@@ -1,0 +1,5 @@
+# URLs to watch for indexing regressions.
+# property: GSC property the URL belongs to (sc-domain:host or https://host/)
+- url: https://linuxcore.dev/homelab/proxmox-homelab-setup/
+  property: "sc-domain:linuxcore.dev"
+  note: "outbound reciprocal link to racknotes.pro"
