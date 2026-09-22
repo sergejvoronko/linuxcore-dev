@@ -1,5 +1,14 @@
-# URLs to watch for indexing regressions.
+# GSC-checked URLs: full index-status inspection, but only works for
+# properties we own in Search Console.
 # property: GSC property the URL belongs to (sc-domain:host or https://host/)
-- url: https://linuxcore.dev/homelab/proxmox-homelab-setup/
-  property: "sc-domain:linuxcore.dev"
-  note: "outbound reciprocal link to racknotes.pro"
+gsc:
+  - url: https://linuxcore.dev/homelab/proxmox-homelab-setup/
+    property: "sc-domain:linuxcore.dev"
+    note: "outbound reciprocal link to racknotes.pro"
+
+# link_check URLs: pages we don't own in GSC. Just verifies the page is
+# reachable (200) and still contains link_target somewhere in its HTML.
+link_check:
+  - url: https://racknotes.pro/proxmox-gpu-passthrough/
+    link_target: linuxcore.dev
+    note: "RackNotes reciprocal link back to our Proxmox guide"

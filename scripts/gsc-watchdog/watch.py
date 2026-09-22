@@ -47,6 +47,16 @@ def inspect(service, url: str, site_property: str) -> dict:
     }
 
 
+def check_link(url: str, link_target: str) -> dict:
+    """For pages we don't own in GSC: just confirm the page is up and still
+    links to link_target somewhere in its HTML."""
+    resp = requests.get(url, timeout=20, headers={"User-Agent": "linuxcore-dev-watchdog/1.0"})
+    return {
+        "status_code": resp.status_code,
+        "link_present": link_target in resp.text,
+    }
+
+
 def notify(text: str) -> None:
     token = os.environ["TELEGRAM_BOT_TOKEN"]
     chat_id = os.environ["TELEGRAM_CHAT_ID"]
@@ -61,18 +71,44 @@ def main() -> int:
     watchlist = yaml.safe_load(URLS_FILE.read_text())
     prev_state = json.loads(STATE_FILE.read_text()) if STATE_FILE.exists() else {}
 
-    creds = get_credentials()
-    service = build("searchconsole", "v1", credentials=creds)
-
     new_state = {}
     changes = []
 
-    for entry in watchlist:
+    gsc_entries = watchlist.get("gsc", [])
+    if gsc_entries:
+        creds = get_credentials()
+        service = build("searchconsole", "v1", credentials=creds)
+
+        for entry in gsc_entries:
+            url = entry["url"]
+            try:
+                result = inspect(service, url, entry["property"])
+            except Exception as e:
+                changes.append(f"⚠️ inspection failed for {url}: {e}")
+                continue
+
+            new_state[url] = result
+            prev = prev_state.get(url)
+
+            if prev is None:
+                continue  # first run establishes baseline, no alert
+
+            if prev.get("verdict") != result["verdict"] or prev.get("coverage_state") != result["coverage_state"]:
+                note = entry.get("note", "")
+                changes.append(
+                    f"🔎 index status changed — {url}"
+                    f"{' (' + note + ')' if note else ''}\n"
+                    f"  {prev.get('coverage_state')} → {result['coverage_state']}"
+                    f"  (verdict: {prev.get('verdict')} → {result['verdict']})"
+                )
+
+    for entry in watchlist.get("link_check", []):
         url = entry["url"]
+        link_target = entry["link_target"]
         try:
-            result = inspect(service, url, entry["property"])
+            result = check_link(url, link_target)
         except Exception as e:
-            changes.append(f"⚠️ inspection failed for {url}: {e}")
+            changes.append(f"⚠️ link check failed for {url}: {e}")
             continue
 
         new_state[url] = result
@@ -81,13 +117,13 @@ def main() -> int:
         if prev is None:
             continue  # first run establishes baseline, no alert
 
-        if prev.get("verdict") != result["verdict"] or prev.get("coverage_state") != result["coverage_state"]:
+        if prev.get("status_code") != result["status_code"] or prev.get("link_present") != result["link_present"]:
             note = entry.get("note", "")
             changes.append(
-                f"🔎 index status changed — {url}"
+                f"🔗 link check changed — {url}"
                 f"{' (' + note + ')' if note else ''}\n"
-                f"  {prev.get('coverage_state')} → {result['coverage_state']}"
-                f"  (verdict: {prev.get('verdict')} → {result['verdict']})"
+                f"  status {prev.get('status_code')} → {result['status_code']}"
+                f"  | link present: {prev.get('link_present')} → {result['link_present']}"
             )
 
     STATE_FILE.write_text(json.dumps(new_state, indent=2, sort_keys=True) + "\n")
