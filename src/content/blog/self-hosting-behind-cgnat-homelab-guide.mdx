@@ -1,0 +1,175 @@
+---
+title: "Self-Hosting Behind CGNAT: Tunnels and Relays"
+description: "Master self-hosting behind cgnat. Expose your cgnat homelab securely without public IPv4 using Cloudflare Tunnels, WireGuard VPS relays, and IPv6."
+pubDate: 2026-09-22
+readingTime: 7
+heroImage: "/images/self-hosting-behind-cgnat-homelab-guide.webp"
+heroImageAlt: "Dark circuit board where grey inbound traces stop dead against a walled boundary while one orange trace escapes through a gap to an outside node"
+section: "homelab"
+tags: ["cgnat", "cloudflare", "wireguard", "networking"]
+draft: false
+faqs:
+  - q: "How do I configure homelab port forwarding cgnat setups locally?"
+    a: "You do not. The router firewall ignores inbound traffic because the ISP drops the connection upstream. Rely exclusively on outbound tunnel connections."
+  - q: "Can I use Tailscale Funnel instead of Cloudflare?"
+    a: "Yes. Tailscale Funnel exposes local ports to the internet without managing a VPS. Bandwidth limits apply and you do not control the egress nodes."
+  - q: "Do WireGuard relays destroy latency?"
+    a: "Expect a 15ms to 40ms penalty depending on geographic distance to the VPS. Host the relay in a data center geographically close to your ISP."
+---
+
+Your ISP ran out of IPv4 addresses. You build a server, open your router settings, and realize your WAN IP does not match the public IP reported by external lookup tools. You are trapped behind Carrier-Grade NAT (CGNAT). The traditional approach of configuring a static lease and mapping port 443 through your firewall will fail. 
+
+Self-hosting behind cgnat requires an entirely different routing architecture. Since your router cannot accept uninitiated inbound connections, your server must establish an outbound connection to an external node on the public internet. That external node then proxies incoming requests back through the established tunnel.
+
+This guide covers three practical architectures for a cgnat homelab: Cloudflare Tunnels, rented VPS WireGuard relays, and native IPv6 routing.
+
+## Option 1: Cloudflare Tunnels
+
+Cloudflare Tunnels require installing the `cloudflared` daemon on your local server. This service dials out to Cloudflare's edge network and maintains an encrypted connection. When users type your domain name into a browser, Cloudflare routes the request to their nearest edge node and pushes the traffic down your established tunnel.
+
+The primary benefit is zero firewall configuration. You do not expose any local ports. You only need an outbound internet connection.
+
+### Implementation
+
+You configure the tunnel via the Cloudflare Zero Trust dashboard, which provides a generated token. Run the daemon using Docker Compose alongside your application stack.
+
+```yaml
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared_tunnel
+    restart: unless-stopped
+    command: tunnel run
+    environment:
+      - TUNNEL_TOKEN=eyJhIjoi...YOUR_TOKEN_HERE...
+    networks:
+      - proxy_net
+
+  nextcloud:
+    image: nextcloud:latest
+    networks:
+      - proxy_net
+    # ... Nextcloud config ...
+
+networks:
+  proxy_net:
+    name: proxy_net
+```
+
+In the Cloudflare dashboard, you map the public hostname (`cloud.yourdomain.com`) to the internal Docker service (`http://nextcloud:80`). The `cloudflared` container routes traffic directly to the Nextcloud container over the internal Docker bridge.
+
+### The Catch
+
+Cloudflare decrypts your traffic. The edge node terminates the SSL connection, inspects the payload, and re-encrypts it before sending it down the tunnel. You surrender total privacy.
+
+Furthermore, section 2.8 of Cloudflare's standard Terms of Service prohibits serving a disproportionate amount of non-HTML content. Routing heavy media streams from Plex or Jellyfin through a free Cloudflare Tunnel often results in account suspension. Use this method for web dashboards, wikis, and lightweight APIs.
+
+## Option 2: The VPS WireGuard Relay
+
+For full control over your data and traffic types, rent a cheap Virtual Private Server (VPS) with a dedicated public IPv4 address. The VPS acts as the public face of your homelab. You connect the homelab to the VPS via WireGuard, and a reverse proxy on the VPS forwards traffic back through the tunnel.
+
+This architecture handles raw TCP/UDP streams, bulk file transfers, and media streaming without violating third-party terms of service. 
+
+### Implementation
+
+Rent a Linux instance from providers like Hetzner, DigitalOcean, or AWS Lightsail. Install WireGuard on both the VPS and the local server.
+
+**VPS WireGuard Config (`/etc/wireguard/wg0.conf`):**
+
+```ini
+[Interface]
+Address = 10.0.0.1/24
+ListenPort = 51820
+PrivateKey = <VPS_PRIVATE_KEY>
+
+# Forwarding rules for internet access
+PostUp = iptables -A FORWARD -i wg0 -j ACCEPT
+PostDown = iptables -D FORWARD -i wg0 -j ACCEPT
+
+[Peer]
+# The Homelab
+PublicKey = <HOMELAB_PUBLIC_KEY>
+AllowedIPs = 10.0.0.2/32
+```
+
+**Homelab WireGuard Config (`/etc/wireguard/wg0.conf`):**
+
+```ini
+[Interface]
+Address = 10.0.0.2/24
+PrivateKey = <HOMELAB_PRIVATE_KEY>
+
+[Peer]
+PublicKey = <VPS_PUBLIC_KEY>
+Endpoint = <VPS_PUBLIC_IP>:51820
+AllowedIPs = 10.0.0.1/32
+PersistentKeepalive = 25
+```
+
+The `PersistentKeepalive = 25` directive is mandatory. CGNAT routers drop idle UDP connection states aggressively. Sending a keepalive packet every 25 seconds ensures the inbound tunnel remains open.
+
+Next, install a reverse proxy like Nginx, Traefik, or HAProxy on the VPS. Configure the proxy to listen on standard HTTP/HTTPS ports and forward requests to the homelab's tunnel IP (`10.0.0.2`). 
+
+If you use Nginx, the upstream block looks like this:
+
+```nginx
+upstream homelab_app {
+    server 10.0.0.2:8080;
+}
+
+server {
+    listen 443 ssl;
+    server_name myapp.domain.com;
+    
+    # SSL config omitted
+
+    location / {
+        proxy_pass http://homelab_app;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+```
+
+The TLS connection terminates on the VPS. Alternatively, you can use HAProxy in TCP mode to route encrypted packets directly to a reverse proxy running locally in your homelab. TCP mode passes the SSL certificate requirements down to the local server, keeping the VPS entirely blind to the traffic contents.
+
+### The Catch
+
+You must maintain a second server. The VPS requires automated patching, firewall configuration, and monitoring. You also incur data transfer costs, though providers like Hetzner offer 20TB of monthly egress on a base tier. 
+
+## Option 3: Native IPv6 Routing
+
+CGNAT primarily solves IPv4 scarcity. Many ISPs utilizing CGNAT simultaneously provide a native, publicly routable IPv6 prefix (typically a `/56` or `/64` block) to the customer router.
+
+If your ISP supports dual-stack networking, you can expose services directly via IPv6.
+
+### Implementation
+
+Configure your local server to acquire an IPv6 address via SLAAC or DHCPv6. Open the IPv6 firewall rules on your router to allow inbound traffic on port 443 targeting your server's specific IPv6 address. 
+
+In your domain's DNS settings, create an AAAA record pointing to the server's public IPv6 address. Do not create an A record. 
+
+When a client queries the domain, DNS returns the IPv6 address. The client establishes a direct connection, entirely bypassing the ISP's IPv4 CGNAT translation layer.
+
+### The Catch
+
+Client adoption of IPv6 remains incomplete. If you attempt to access your domain from a corporate network, a hotel, or an older mobile carrier that only supports IPv4, the connection will fail. The client machine has no mechanism to reach an IPv6-only destination.
+
+For high availability, you must pair native IPv6 routing with a fallback IPv4 tunnel solution. 
+
+## Architectural Decision
+
+Your choice dictates your maintenance burden. 
+
+Use Cloudflare Tunnels for internal monitoring dashboards, RSS readers, and personal Git repositories. The setup takes five minutes and costs nothing.
+
+Deploy a WireGuard VPS relay for media servers, large file sync applications, or any service where you refuse to compromise TLS termination privacy. 
+
+Implement IPv6 direct routing strictly as an optimization. Point your main domain to the VPS relay (A record) and add an AAAA record pointing directly to your local hardware. Modern clients prioritize IPv6, resulting in a direct, low-latency connection while legacy clients fall back to the IPv4 tunnel. 
+
+## What's Next
+
+- [WireGuard vs Tailscale for Homelab Remote Access (2026)](/homelab/wireguard-tailscale-guide/)
+- [Self-Hosting on a Static IP: The No-Nonsense Homelab Guide](/homelab/self-host-static-ip-living-room-homelab/)
+- [The €10/Month AWS Stack: VPS, DNS, Monitoring, and Backups](/aws/ten-euro-month-aws-stack/)
