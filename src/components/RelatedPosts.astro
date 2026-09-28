@@ -9,9 +9,20 @@ interface Props {
   limit?:      number;
 }
 
-const { currentSlug, currentTags, section, limit = 3 } = Astro.props;
+const { currentSlug, currentTags, section, limit = 6 } = Astro.props;
 
 const all = await getCollection('blog', ({ data }) => !data.draft);
+
+// Ties are common (same section, one shared tag). Breaking them newest-first
+// made every page link the same few recent posts, so older posts got almost no
+// internal links and Google left most of them undiscovered. A stable hash of
+// the page pair spreads those ties across the whole archive instead, and stays
+// the same between builds.
+const pairHash = (a: string, b: string) => {
+  let h = 2166136261;
+  for (const ch of a + '|' + b) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
+  return h >>> 0;
+};
 
 const scored = all
   .filter(p => p.id !== currentSlug)
@@ -24,7 +35,7 @@ const scored = all
     return { post: p, score };
   })
   .filter(({ score }) => score > 0)
-  .sort((a, b) => b.score - a.score || b.post.data.pubDate.getTime() - a.post.data.pubDate.getTime())
+  .sort((a, b) => b.score - a.score || pairHash(currentSlug, a.post.id) - pairHash(currentSlug, b.post.id))
   .slice(0, limit)
   .map(({ post }) => post);
 
