@@ -4,6 +4,7 @@ import Nav from '../components/Nav.astro';
 import Footer from '../components/Footer.astro';
 import CookieBanner from '../components/CookieBanner.astro';
 import NewsletterBanner from '../components/NewsletterBanner.astro';
+import '../styles/fonts.css';
 import '../styles/global.css';
 
 interface Props {
@@ -56,11 +57,13 @@ const pageTitle  = title.length + SUFFIX.length <= 60 ? title + SUFFIX : title;
   <meta name="twitter:description" content={description} />
   <meta name="twitter:image"       content={new URL(heroImage, Astro.site)} />
 
-  <!-- Fonts (self-hosted, same-origin — no third-party connection) -->
+  <!-- Fonts (self-hosted, same-origin — no third-party connection).
+       @font-face rules are inlined via src/styles/fonts.css; preload the latin
+       files used above the fold: DM Sans, Fraunces, Fraunces italic, Space Mono. -->
   <link rel="preload" as="font" type="font/woff2" href="/fonts/dmsans-v17-rP2Yp2ywxg089UriI5-g4vlH9VoD8Cmcqbu0-K4.woff2" crossorigin />
   <link rel="preload" as="font" type="font/woff2" href="/fonts/fraunces-v38-6NU78FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0KxC9TeA.woff2" crossorigin />
-  <link rel="preload" as="style" href="/fonts/fonts.css" onload="this.onload=null;this.rel='stylesheet'" />
-  <noscript><link rel="stylesheet" href="/fonts/fonts.css" /></noscript>
+  <link rel="preload" as="font" type="font/woff2" href="/fonts/fraunces-v38-6NUs8FyLNQOQZAnv9ZwNjucMHVn85Ni7emAe9lKqZTnbB-gzTK0K1ChJdt9hFwpX9W37lgF_mv0iQg.woff2" crossorigin />
+  <link rel="preload" as="font" type="font/woff2" href="/fonts/spacemono-v17-i7dPIFZifjKcF5UAWdDRYEF8RQ.woff2" crossorigin />
 
   <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />

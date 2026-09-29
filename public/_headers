@@ -1,3 +1,9 @@
 /giscus-amber.css
   Access-Control-Allow-Origin: *
   Content-Type: text/css
+
+/_astro/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable

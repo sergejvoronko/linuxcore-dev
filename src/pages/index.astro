@@ -31,7 +31,8 @@ const siteSchema = {
 ---
 
 <BaseLayout title="Linux Infrastructure Guides — Homelab, AWS & Astro">
-  <link slot="head" rel="preload" as="image" href="/images/hero-bg.webp" fetchpriority="high" />
+  <link slot="head" rel="preload" as="image" href="/images/hero-bg-mobile.webp" media="(max-width: 768px)" fetchpriority="high" />
+  <link slot="head" rel="preload" as="image" href="/images/hero-bg.webp" media="(min-width: 769px)" fetchpriority="high" />
   <script type="application/ld+json" set:html={JSON.stringify(siteSchema)} />
   <!-- Hero -->
   <section class="hero">
@@ -39,11 +40,11 @@ const siteSchema = {
       <div class="hero-label reveal" style="animation-delay:0s">
         <span class="live-dot"></span> linuxcore.dev
       </div>
-      <h1 class="hero-title reveal" style="animation-delay:0.1s">
+      <h1 class="hero-title">
         Linux Infrastructure,<br>
         <em class="hero-accent">Built to Last</em>
       </h1>
-      <p class="hero-lead reveal" style="animation-delay:0.22s">
+      <p class="hero-lead">
         Practical guides on homelab automation, AWS hybrid setups, and building with Astro —
         written by a Linux infrastructure engineer who runs this stack in production every day.
       </p>
@@ -268,6 +269,10 @@ const siteSchema = {
     background-image: url('/images/hero-bg.webp');
     background-size: cover;
     background-position: center;
+  }
+  /* Phones: 768w copy (~22 KB vs 67 KB) — it sits under a dark overlay anyway */
+  @media (max-width: 768px) {
+    .hero { background-image: url('/images/hero-bg-mobile.webp'); }
   }
   .hero::after {
     content: '';
