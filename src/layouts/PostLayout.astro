@@ -224,6 +224,41 @@ const breadcrumbSchema = {
   </div>
 </BaseLayout>
 
+<script>
+  // Copy button on every code block. The <pre> is wrapped so the button stays
+  // put while long lines scroll horizontally underneath it.
+  document.querySelectorAll<HTMLPreElement>('.post-body pre').forEach((pre) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'code-wrap';
+    pre.parentNode!.insertBefore(wrap, pre);
+    wrap.appendChild(pre);
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'code-copy-btn';
+    btn.textContent = 'Copy';
+    btn.setAttribute('aria-label', 'Copy code to clipboard');
+    wrap.appendChild(btn);
+
+    let timer: number | undefined;
+    btn.addEventListener('click', async () => {
+      const text = (pre.querySelector('code') ?? pre).innerText.replace(/\n$/, '');
+      try {
+        await navigator.clipboard.writeText(text);
+        btn.textContent = 'Copied';
+        btn.classList.add('copied');
+      } catch {
+        btn.textContent = 'Failed';
+      }
+      clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        btn.textContent = 'Copy';
+        btn.classList.remove('copied');
+      }, 2000);
+    });
+  });
+</script>
+
 <style>
   .post-wrapper {
     max-width: 1100px;
@@ -375,6 +410,20 @@ const breadcrumbSchema = {
     color: inherit;
     font-size: inherit;
   }
+  /* Code copy button — wrapper and button added by the script above.
+     Not .copy-btn: ShareButtons already uses that for "copy link". */
+  .post-body :global(.code-wrap) { position: relative; margin: 1.5em 0; }
+  .post-body :global(.code-wrap pre) { margin: 0; padding-right: 72px; }
+  .post-body :global(.code-copy-btn) {
+    position: absolute; top: 8px; right: 8px;
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em;
+    color: var(--text-dim); background: var(--bg3);
+    border: 1px solid var(--border); padding: 3px 9px;
+    cursor: pointer; line-height: 1.5;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .post-body :global(.code-copy-btn:hover),
+  .post-body :global(.code-copy-btn.copied) { color: var(--amber); border-color: var(--amber); }
   .post-body :global(img) { max-width: 100%; border: 1px solid var(--border); }
 
   /* Tables */
