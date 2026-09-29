@@ -1,0 +1,42 @@
+[
+  {
+    "slug": "terminal",
+    "w": 900,
+    "h": 175,
+    "productId": "6aa966a9b0b4951d3205f2cf",
+    "name": "Root Prompt",
+    "blurb": "root@linuxcore:~# and a blinking block cursor."
+  },
+  {
+    "slug": "status",
+    "w": 900,
+    "h": 738,
+    "productId": "6aa966b2a1f58782b30d47d1",
+    "name": "Server Status",
+    "blurb": "Uptime 99.9%, load 0.01, status ONLINE. The numbers you want and occasionally get."
+  },
+  {
+    "slug": "radial",
+    "w": 800,
+    "h": 900,
+    "productId": "6aa966bdcd9c21a29a0ee40d",
+    "name": "Registration Mark",
+    "blurb": "Monospace inside a thin circle. For when you would rather not wear a joke."
+  },
+  {
+    "slug": "logo",
+    "w": 900,
+    "h": 368,
+    "productId": "6aa966c7d6405923e60a2070",
+    "name": "Circuit Mark",
+    "blurb": "Bracketed mark with traces running out either side."
+  },
+  {
+    "slug": "penguin",
+    "w": 705,
+    "h": 900,
+    "productId": "6aa966d1289360dc3901a44b",
+    "name": "Tux",
+    "blurb": "The penguin, drawn flat and friendly rather than glossy."
+  }
+]

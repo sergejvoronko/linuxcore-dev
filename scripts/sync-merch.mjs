@@ -2,8 +2,8 @@
 /**
  * Pull this site's published Printify products into the site.
  *
- * The Etsy shop holds several brands, so the sync is restricted to the ids in
- * src/data/merch-ids.json. Filtering on an Etsy tag was the alternative, but
+ * The Etsy shop holds several brands, so the sync is restricted to the product
+ * ids in src/data/merch-designs.json. Filtering on an Etsy tag was the alternative, but
  * tags are capped at 13 and one spent on a brand marker is one not spent on a
  * search term.
  *
@@ -26,7 +26,7 @@ import path from 'node:path';
 const SHOP = 28918369;
 const ROOT = path.resolve(import.meta.dirname, '..');
 const OUT = path.join(ROOT, 'src/data/merch.json');
-const IDS = path.join(ROOT, 'src/data/merch-ids.json');
+const DESIGNS = path.join(ROOT, 'src/data/merch-designs.json');
 const ENV = '/home/sergej/Downloads/airbrushdoc-assets/.env';
 
 async function token() {
@@ -56,7 +56,7 @@ async function main() {
   // 50 is the API maximum; limit=100 is rejected with code 8150
   const { data: products } = await api(t, `/shops/${SHOP}/products.json?limit=50`);
 
-  const mine = new Set(JSON.parse(await readFile(IDS, 'utf8')));
+  const mine = new Set(JSON.parse(await readFile(DESIGNS, 'utf8')).map(d => d.productId));
   const live = products.filter(p => mine.has(p.id) && p.external?.handle && p.visible);
 
   const out = live.map(p => ({
