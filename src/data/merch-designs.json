@@ -1,5 +1,17 @@
 [
   {
+    "slug": "1-patch-cable-knot",
+    "productId": "6abcc08d72c6e1c02e06de82",
+    "name": "Patch Cable Knot",
+    "blurb": "Cable management is a lifestyle, especially when autumn weather keeps you indoors rewiring the server rack. This design translates endless patch cable routing into a clean vector geometric knot.",
+    "tag": "New",
+    "products": [
+      "Tee"
+    ],
+    "w": 604,
+    "h": 900
+  },
+  {
     "slug": "terminal",
     "w": 900,
     "h": 175,
