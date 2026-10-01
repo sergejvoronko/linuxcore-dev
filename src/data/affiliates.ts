@@ -1,7 +1,7 @@
 // src/data/affiliates.ts
 // Central registry of all affiliate links.
 // Add a new entry here, then link to /go/slug anywhere on the site.
-// Cloudflare Pages serves the redirect via src/pages/go/[slug].astro
+// The Worker serves the redirect (and counts the click) via src/pages/go/[slug].ts
 
 export interface AffiliateLink {
   slug:        string;   // used in URL: /go/slug

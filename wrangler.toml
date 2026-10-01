@@ -10,3 +10,7 @@ MAILERLITE_GROUP_ID = "184104620350506364"
 [assets]
 directory = "dist/client"
 binding = "ASSETS"
+
+[[analytics_engine_datasets]]
+binding = "GO_CLICKS"
+dataset = "linuxcore_go_clicks"
