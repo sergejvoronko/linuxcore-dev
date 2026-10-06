@@ -17,11 +17,9 @@ faqs:
     a: "No. That's a recipe for burnout. Prioritize relentlessly. Focus on remotely exploitable, high-severity CVEs on your internet-facing systems first. A local-only bug on a trusted machine can wait."
 ---
 
-If you follow kernel development, you recently saw the flood gates open. The Linux kernel project started assigning CVEs to hundreds of bugs, many of them old, obscure, and low-impact. The result was a firehose of over 400 CVE notifications lighting up security feeds.
+Since the Linux kernel became its own CVE Numbering Authority in 2024, it assigns CVEs to a large share of the bugs fixed in stable kernels. Many are old, obscure or low-impact. Hundreds can arrive in a short time, which looks alarming on a scanner and tells you little about what to patch first.
 
-My first reaction wasn't panic. It was a sigh. More noise.
-
-For those of us running homelabs, this isn't a signal to unplug everything. It's a perfect, real-world test of our security posture. Can we filter the signal from the noise? Can we patch efficiently without constant manual intervention? Yes. This is exactly the kind of process a homelab is for. Let's build a sane vulnerability management workflow.
+For a homelab this isn't a signal to unplug everything. It's a test of whether you can separate the few bugs that matter from the noise, and patch without constant manual work.
 
 ## The Problem is Triage, Not Ticking Clocks
 
@@ -29,29 +27,29 @@ First, let's get one thing straight. You are not going to patch all 400+ CVEs to
 
 The goal is not to have zero CVEs. The goal is to mitigate unacceptable risk.
 
-In a homelab, risk is specific to your setup. Here's how I break it down:
+In a homelab, risk is specific to your setup. A practical way to break it down:
 
 1.  **Critical Risk:** Internet-Facing Services. A vulnerability in the network stack (TCP/IP, netfilter) or in a service you expose directly (like a WireGuard VPN endpoint) is your top priority. These are remotely exploitable and need to be fixed now.
-2.  **High Risk:** Container/VM Escape. On my Proxmox hosts, any bug in KVM, QEMU, or cgroups that allows a guest to affect the host is a big deal. I don't run untrusted workloads, but it's a critical security boundary.
+2.  **High Risk:** Container/VM Escape. On a Proxmox host, any bug in KVM, QEMU or cgroups that lets a guest affect the host is a big deal, even if you don't run untrusted workloads: it's a critical security boundary.
 3.  **Medium Risk:** Local Privilege Escalation (LPE). An attacker who already has low-privilege shell access can use an LPE to become root. In a typical single-user homelab, this risk is lower. If you give accounts to friends or run multi-tenant services, its priority goes way up.
-4.  **Low/Informational Risk:** Everything Else. A bug in a Bluetooth driver I don't use? A denial-of-service that requires physical access to a USB port? I'll get the patch when it comes through my normal update cycle, but I'm not losing sleep over it.
+4.  **Low/Informational Risk:** Everything Else. A bug in a Bluetooth driver you don't use? A denial-of-service that needs physical access to a USB port? Those get patched in the normal update cycle.
 
 Your priority list might look different. The point is to have one. Write it down. This is your bible for the next step.
 
 ### Worked examples from this tier list
 
-Abstract tiers are easy to agree with and hard to apply, so here is where recent kernel bugs actually landed for me:
+Abstract tiers are easy to agree with and hard to apply, so here is where some 2026 kernel bugs land:
 
-- **Medium, LPE, patch available:** [Fragnesia](/homelab/fragnesia-linux-privilege-escalation-homelab-patch-guide/), [Dirtyfrag](/homelab/dirtyfrag-linux-lpe-homelab-patch-guide/), [the XFS bug in CVE-2026-64600](/homelab/refluxfs-linux-kernel-xfs-lpe-cve-2026-64600-homelab-patching/), and the [AEAD socket use-after-free](/homelab/aead-socket-vulnerability-linux-kernel-patch-homelab/). All four need a local account first. Normal update cycle for a single-user box, urgent the moment you hand out shell accounts.
-- **Medium, LPE, no patch yet:** [Dirty Frag](/homelab/dirty-frag-no-patch-linux-lpe-homelab-mitigation/) is the awkward case the tier list does not cover, where the only move is mitigation rather than a version bump.
+- **LPE with public exploits:** [Copy Fail (CVE-2026-31431)](/homelab/aead-socket-vulnerability-linux-kernel-patch-homelab/), [Dirty Frag (CVE-2026-43284 and CVE-2026-43500)](/homelab/dirtyfrag-linux-lpe-homelab-patch-guide/), [Fragnesia (CVE-2026-46300)](/homelab/fragnesia-linux-privilege-escalation-homelab-patch-guide/) and [RefluXFS (CVE-2026-64600)](/homelab/refluxfs-linux-kernel-xfs-lpe-cve-2026-64600-homelab-patching/). Local only, but with working exploits they move up the list on any host where containers, other users or exposed services can run code.
+- **LPE published before any patch existed:** Dirty Frag again, the awkward case: for a while the only move was a [mitigation](/homelab/dirty-frag-no-patch-linux-lpe-homelab-mitigation/), not a version bump.
 
-Worth reading alongside all of this: [kernel CVE disclosure is genuinely broken](/homelab/linux-kernel-cve-disclosure-gap-homelab-security/), which is a large part of why the raw count hit 400+ in the first place.
+Worth reading alongside: [why kernel CVE numbers are a poor signal](/homelab/linux-kernel-cve-disclosure-gap-homelab-security/).
 
 ## Step 1: Assess with a Real Scanner
 
 Stop running `uname -r` and trying to cross-reference it with a CVE list. That way lies madness. You need an automated tool that understands your distribution's packaging and backports.
 
-My tool of choice is Trivy, an open-source scanner from Aqua Security. It's fast, simple, and has a comprehensive vulnerability database. It scans installed OS packages (like your kernel) and tells you exactly which CVEs affect them.
+A good free choice is Trivy, an open-source scanner from Aqua Security. Its `rootfs` mode scans a host's installed OS packages against your distribution's security data, including backports.
 
 Install it on your main Linux boxes. Here's a one-liner to get it done:
 
@@ -62,15 +60,14 @@ curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/inst
 Now, run a scan focused only on high and critical vulnerabilities. We're filtering out the noise from the start.
 
 ```bash
-# Scan the running OS for high and critical severity vulnerabilities
-# The '--exit-code 1' will cause the script to exit with an error code if vulns are found,
-# which is useful for automation and scripting.
-trivy os --severity HIGH,CRITICAL --exit-code 1 .
+# Scan the host's OS packages for high and critical vulnerabilities.
+# --exit-code 1 makes the command fail when something is found (useful in scripts).
+sudo trivy rootfs --pkg-types os --scanners vuln --severity HIGH,CRITICAL --exit-code 1 /
 ```
 
-The output will give you a clean, actionable list. It shows the vulnerable package (e.g., `linux-image-6.5.0-28-generic`), the CVE ID, the severity, and the version that contains the fix (e.g., `6.5.0-28.29~22.04.1`). This is your to-do list.
+The output lists each vulnerable package, the CVE ID, the severity and the version that contains the fix. This is your to-do list.
 
-What surprised me the first time I ran this was how many "medium" CVEs existed. It's tempting to chase them, but stick to your priority list. Highs and criticals first.
+Expect a long list of "medium" findings. Stick to your priority list: highs and criticals first, and anything with a public exploit.
 
 ## Step 2: Patch with Automated Tooling
 
@@ -78,11 +75,11 @@ You have your list. Now what? You could `apt upgrade` or `dnf update` manually, 
 
 For Debian/Ubuntu, it's `unattended-upgrades`. For Fedora/RHEL, it's `dnf-automatic`.
 
-I'll focus on `unattended-upgrades` since most of my lab runs on Debian or Ubuntu. The goal is to install *only* security updates automatically. We don't want a feature update to a random package breaking something at 3 AM.
+This guide uses `unattended-upgrades` (Debian and Ubuntu). The goal is to install *only* security updates automatically, so a feature update to a random package doesn't break something at 3 AM.
 
 Install the package first: `sudo apt install unattended-upgrades`.
 
-Then, edit the configuration at `/etc/apt/apt.conf.d/50unattended-upgrades`. You need to make sure the right repository is enabled. For Ubuntu, it looks like this. The key line is `${distro_id}:${distro_codename}-security;`:
+Then, edit the configuration at `/etc/apt/apt.conf.d/50unattended-upgrades`. You need to make sure the right repository is enabled. For Ubuntu it looks like this; the key line is `${distro_id}:${distro_codename}-security`. Debian's file uses `Origins-Pattern` lines instead, with `codename=${distro_codename}-security,label=Debian-Security` for security updates:
 
 ```
 Unattended-Upgrade::Allowed-Origins {
@@ -96,15 +93,15 @@ Unattended-Upgrade::Allowed-Origins {
 
 Enable the service with `sudo dpkg-reconfigure -plow unattended-upgrades` and select "Yes".
 
-Now, your system will pull down and install security patches every day. This handles about 80% of the work.
+Now the system installs security updates daily on its own.
 
 ## Step 3: The Reboot Problem
 
 Your system has the new kernel package installed. But it's not running. The old, vulnerable kernel is still in memory. You have to reboot.
 
-Live patching tools like KernelCare or kpatch exist, but they're complex and often commercial. For a homelab, a scheduled reboot is far simpler and more reliable.
+Live patching (Canonical Livepatch on Ubuntu, commercial services elsewhere) exists, but for a homelab a scheduled reboot is simpler.
 
-My strategy is simple: a weekly cron job that reboots all my servers during a maintenance window. For me, that's Sunday at 4 AM.
+A simple strategy: a weekly reboot in a maintenance window, for example Sunday at 4 AM. `unattended-upgrades` can also reboot by itself only when an update needs it (`Unattended-Upgrade::Automatic-Reboot`). On Proxmox hosts with running guests, reboot by hand after migrating or shutting down VMs instead of from cron.
 
 ```bash
 # Add this to root's crontab with 'sudo crontab -e'
@@ -118,8 +115,8 @@ This is the part people often forget. Patching isn't complete until the service 
 
 After your scheduled reboot, how do you know it worked?
 
-1.  SSH back in and run `uname -r`. The version should have changed to the one Trivy told you had the fix.
-2.  Run your Trivy scan again: `trivy os --severity HIGH,CRITICAL .`.
+1.  SSH back in and run `uname -r` to confirm you're on the new kernel.
+2.  Run the Trivy scan again: `sudo trivy rootfs --pkg-types os --scanners vuln --severity HIGH,CRITICAL /`.
 
 The high-severity kernel CVEs should be gone. If they are, your system is working. If not, it's time to check the logs (`/var/log/unattended-upgrades/`) and figure out what went wrong.
 
@@ -132,4 +129,3 @@ Now that you have a solid kernel patching strategy, you can improve other areas 
 -   **Set Up Unattended Upgrades:** Dive deeper into the configuration for automatically patching your user-space applications with our [Full Guide to Unattended-Upgrades on Debian](/homelab/debian-13-5-trixie-homelab-update-guide/).
 -   **Harden Your Host:** Kernel patching is just one piece. Learn about firewall rules, user access control, and more in our [Linux Security Hardening Guide](/homelab/linux-security-hardening/).
 -   **Monitor Everything:** How do you know if a patch failed or a server didn't come back up after a reboot? Set up monitoring with [Prometheus and Grafana for Your Homelab](/homelab/grafana-prometheus-homelab/).
--   **Translate to the Cloud:** The same principles of scanning and automated patching apply to the cloud. See how it works at scale with [AWS Inspector for EC2 Vulnerability Scanning](/homelab/linux-security-hardening/).
