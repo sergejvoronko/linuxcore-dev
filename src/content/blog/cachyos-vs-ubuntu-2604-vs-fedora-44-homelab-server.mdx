@@ -92,7 +92,7 @@ services:
 
 ## Does the Performance Delta Actually Matter?
 
-Phoronix's benchmarks show CachyOS pulling measurable wins in CPU-bound workloads, compile jobs, compression, certain database operations. The x86-64-v3 baseline (requiring AVX2 support) and BORE scheduler tuning are real advantages.
+Phoronix's benchmarks (run on the desktop editions: Ubuntu 26.04 LTS and Fedora Workstation 44) had CachyOS fastest in most tests, including kernel and LLVM compilation, SVT-AV1 encoding, OpenSSL AES-GCM and ClickHouse. Ubuntu won some (PyBench, OctaneBench) and Fedora at least one. The x86-64-v3 baseline (requiring AVX2 support) and BORE scheduler tuning are real advantages.
 
 But ask yourself: is your homelab server CPU-bound?
 
@@ -118,7 +118,7 @@ The workloads where CachyOS's optimizations show up are workloads most homelabs 
 | Container ecosystem | Docker-first | Podman-first | Both |
 | Security defaults | AppArmor | SELinux | Minimal |
 | Third-party software | Excellent | Good | AUR covers gaps |
-| Raw CPU performance | Baseline | +3-8% | +8-20% |
+| CPU-bound benchmarks (Phoronix) | Some wins | Some wins | Most wins |
 | Upgrade risk | Very low | Low-medium | Medium-high |
 | Best for | Set-and-forget servers | Developers, edge tooling | Power users, compute nodes |
 

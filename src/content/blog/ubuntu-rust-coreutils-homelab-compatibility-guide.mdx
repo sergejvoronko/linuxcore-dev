@@ -1,6 +1,6 @@
 ---
-title: "Ubuntu Rust Coreutils: Fixing Homelab Automation Scripts"
-description: "Ubuntu 26.10 replaces GNU tools with Rust coreutils. Learn how uutils coreutils compatibility impacts your linux homelab automation scripts and Docker setups."
+title: "Ubuntu Rust Coreutils: Test Your Homelab Scripts"
+description: "Since Ubuntu 25.10, and in 26.04 LTS, coreutils come from the Rust uutils project. What changed, a real bug it caused, how to test scripts and how to switch back."
 pubDate: 2026-09-17
 readingTime: 8
 heroImage: "/images/ubuntu-rust-coreutils-homelab-compatibility-guide.webp"
@@ -9,117 +9,52 @@ section: "homelab"
 tags: ["ubuntu", "rust", "bash", "automation"]
 draft: false
 faqs:
-  - q: "Can I revert back to GNU coreutils on Ubuntu 26.10?"
-    a: "Yes. Run apt install coreutils to reinstall the GNU versions. This overwrites the rust-coreutils package and restores legacy shell behavior."
-  - q: "Does the uutils replacement affect my existing Docker containers?"
-    a: "No. Containers bring their own userland. Only scripts executed directly on the Ubuntu 26.10 host or inside new Ubuntu 26.10 base image containers execute the Rust binaries."
-  - q: "Are performance differences noticeable in daily homelab operations?"
-    a: "Only for heavy I/O tasks. Command startup times are identical, but recursive copy commands on massive directories over NFS mounts might show slight variations in CPU usage."
+  - q: "Can I go back to GNU coreutils?"
+    a: "Yes. Ubuntu 25.10 and 26.04 LTS package both variants: coreutils-from-uutils (the default) and coreutils-from-gnu. Installing coreutils-from-gnu switches back; apt asks for confirmation because it replaces an essential package."
+  - q: "Does this affect my Docker containers?"
+    a: "Only containers built from Ubuntu 25.10 or newer images. Containers bring their own userland, so Debian, Alpine or Ubuntu 24.04 based images keep their own coreutils whatever the host runs."
+  - q: "Which Ubuntu releases use the Rust coreutils?"
+    a: "Ubuntu 25.10 was the first release to use uutils coreutils by default, and Ubuntu 26.04 LTS keeps it. Ubuntu 24.04 LTS and older use GNU coreutils."
 ---
 
-Canonical ripped out GNU coreutils in Ubuntu 26.10. If you spin up a fresh server today, your shell runs on Rust. 
+Since **Ubuntu 25.10**, the basic command-line tools (`cp`, `ls`, `date`, `sort` and the rest) come from **uutils**, a Rust reimplementation of GNU coreutils, instead of GNU coreutils. **Ubuntu 26.04 LTS**, released in April 2026, keeps it, so anyone upgrading LTS servers from 24.04 meets it there.
 
-The `coreutils` package, the foundation of your command-line interface, is now powered by the `uutils` project. When you type `cp`, `ls`, or `rm`, you execute compiled Rust binaries instead of 30-year-old GNU C code. Canonical promises strict parity. Reality dictates otherwise. If you maintain Linux homelab automation scripts, this shift will break something in your stack.
+uutils aims to be a drop-in replacement and is tested against the GNU test suite. For interactive use you won't notice. The risk is in scripts that depend on exact GNU behaviour, especially less common options.
 
-The `uutils` project aims for drop-in GNU compatibility. For interactive use, you won't notice a difference. The problem surfaces in cron jobs, automated backups, and log parsers relying on undocumented GNU quirks. Standard POSIX flags work perfectly. Obscure GNU extensions often throw fatal errors. 
+## A real example: the `date --reference` bug
 
-Here is exactly what breaks, why it fails, and how to fix your homelab scripts for the Rust coreutils era.
+Shortly after 25.10 shipped, a bug in the Rust `date` broke **automatic updates**: the shipped version accepted the `--reference` option but ignored it, and Ubuntu's update machinery relied on it. It was fixed in `rust-coreutils` **0.2.2-0ubuntu2.1** ([report](https://ostechnix.com/rust-coreutils-update-bug-fix-ubuntu-25-10/)). That's the shape of the risk: not that common commands break, but that an option your script relies on behaves differently, quietly.
 
-## The Sparse File Backup Trap
-
-Let's look at `cp`. Most homelab sysadmins use `cp -a` for quick local directory backups or cron-based Proxmox VM image copies. 
-
-GNU `cp` detects sparse files heuristically by default. The Rust implementation handles sparse files well, but edge cases with specific block sizes over NFS or ZFS mounts cause `cp` to expand sparse files. A 50GB dynamically allocated qcow2 disk image that takes up 10GB on disk might suddenly expand to the full 50GB during a backup run, rapidly eating your NAS storage.
-
-If you run daily backup scripts for Proxmox raw disk images, Docker volumes, or virtual disks, verify your destination size immediately after upgrading to Ubuntu 26.10.
-
-To prevent storage blowouts, force sparse handling explicitly in your scripts.
+## Which implementation am I running?
 
 ```bash
-#!/usr/bin/env bash
-# Ensure sparse files are preserved during local backups
-# uutils cp supports --sparse=always but test it on your filesystem
-
-SRC="/var/lib/docker/volumes"
-DEST="/mnt/truenas/docker_backups"
-
-if cp --version | grep -q "uutils"; then
-  echo "Rust coreutils detected. Forcing sparse preservation."
-  cp -a --sparse=always "$SRC" "$DEST"
-else
-  cp -a "$SRC" "$DEST"
-fi
+cp --version | head -1          # uutils prints "cp (uutils coreutils) ..."
+apt list --installed 2>/dev/null | grep coreutils-from
 ```
 
-## Parsing df, du, and ls Output
+## How to test your scripts
 
-You shouldn't parse `ls` in bash scripts. Everyone still does it. 
+1. **Run every cron job and backup script once by hand** on an upgraded test machine or a 26.04 VM, and compare the results with the old system: file sizes, timestamps, output files.
+2. **Check the options you use** that go beyond the basics: `date -d` with complex expressions, `cp --sparse`, `--reference`, `sort` with locale-dependent keys, `stat -c` format strings.
+3. **Make scripts less fragile** regardless of implementation:
+   - don't parse `ls` or `df -h` output; use `stat`, `find -printf` or `df --output=` and byte values,
+   - set `LC_ALL=C` in scripts that need byte-order sorting,
+   - use `tail -F` (follow by name) for log files that get rotated,
+   - prefer epoch seconds (`date +%s`) for time arithmetic.
 
-The column alignment and spacing in `uutils` output occasionally differs from GNU coreutils by a few whitespace characters. If your bash scripts use `awk '{print $5}'` on `df -h` to monitor disk usage and trigger Discord webhooks, test those scripts now. The block size calculations match perfectly, but formatting discrepancies will misalign your text parsing and trigger false alerts. 
+## Switching back to GNU coreutils
 
-Standard POSIX output remains identical. The human-readable flags like `-h` introduce the variances. Stop piping `ls -lh` into `awk`. Use `stat` or `find` to extract exact byte sizes instead.
-
-## The Date Parsing Black Magic
-
-GNU `date` parsing is practically black magic. Sysadmins heavily rely on sloppy relative time strings like `date -d "-1 days"`. 
-
-The Rust implementation parses standard formats flawlessly but chokes on heavily chained relative time syntax. If your database backup script calculates retention windows using `date -d "last friday - 2 days"`, expect it to fail silently or output an empty string. The Rust parser enforces stricter rules for relative date strings.
-
-Use strict integer math in bash or rely on standard seconds since epoch (`date +%s`) for time calculations.
-
-## The tail -f Inotify Quirk
-
-Log monitoring scripts relying on `tail -f` behave differently during log rotation. 
-
-GNU `tail` possesses decades of hardening around `inotify` edge cases. It knows exactly what to do when a file is moved, truncated, or replaced by a logrotate daemon. `uutils` catches up quickly, but fail2ban wrappers and custom log parsers occasionally drop the file descriptor during a logrotate execution on 26.10. 
-
-The fix is simple. Use `tail -F` (capital F) in your scripts. This tracks the file by its name rather than its file descriptor, ensuring the script gracefully survives log rotation regardless of the coreutils implementation.
-
-## Locale Sorting and Memory Limits
-
-Many homelabbers pipe logs through `sort | uniq -c | sort -nr`. 
-
-The `uutils` `sort` performance is heavily optimized, but locale sorting (`LC_COLLATE`) evaluates non-ASCII characters differently than the legacy GNU C library locale handling. This breaks scripts looking for exact alphabetical ordering of localized text or complex Unicode log entries.
-
-If your script relies on strict, predictable byte-value sorting, force the C locale at the start of your bash script:
+Ubuntu packages both variants. To switch a machine back:
 
 ```bash
-export LC_ALL=C
+sudo apt install coreutils-from-gnu
 ```
 
-This bypasses regional sorting logic entirely, forcing both GNU and Rust implementations into strict byte-by-byte comparison mode.
+apt warns because an essential package is being replaced; read the prompt before confirming. Going back is reasonable for a server whose scripts you can't test now. Report bugs you find to Ubuntu (Launchpad, `rust-coreutils`) so they get fixed.
 
-## Docker Containers and Ubuntu 26.10 Base Images
+## Containers
 
-Upgrading your host OS to 26.10 only affects scripts running directly on the host machine. Your existing Debian, Alpine, and Ubuntu 24.04 containers retain their own userland binaries. 
-
-The trap triggers when you update your `Dockerfile` base images to `ubuntu:26.10`. If your container build process pipes complex `sort` commands or uses obscure `date` parsing, the build fails. 
-
-```dockerfile
-FROM ubuntu:26.10
-# Breaking change: Rust date fails on chained relative parsing
-# BAD: RUN date -d "now + 1 weeks" > /etc/expiration
-# GOOD: Use explicit seconds or strict ISO 8601
-RUN date -u +"%Y-%m-%dT%H:%M:%SZ" > /etc/build_date
-```
-
-Check your CI/CD pipelines. If you build self-hosted tools on a schedule and pull `ubuntu:latest`, those builds will crash the moment `latest` points to 26.10. Pin your base images to specific versions until you audit your build scripts.
-
-## Performance Impacts on Homelab Hardware
-
-Homelabs usually run on low-power mini PCs, Raspberry Pis, or aging enterprise gear. You might expect compiled Rust binaries to drastically alter CPU usage. They don't. 
-
-Startup times are virtually identical. Memory footprints remain negligible. Heavy I/O operations show the only measurable differences. The multi-threaded nature of specific Rust coreutils operations saturates SATA SSD links slightly faster than single-threaded GNU utilities. 
-
-However, the bottleneck for a recursive `cp` operation on a massive NAS share remains your network link or disk speed, not the CPU executing the `cp` binary. You won't see a 10x speedup backing up your Plex media library. You might see a 5% improvement, accompanied by a slightly higher CPU spike.
-
-## Stop Patching, Start Adapting
-
-You can run `apt install coreutils` to rip out the Rust versions and restore the GNU binaries. Don't do this. 
-
-Ubuntu 26.10 sets the new standard. Canonical will enforce this setup in the upcoming 26.04 LTS release. Adapting your linux homelab automation scripts now saves you from a catastrophic weekend outage next year. 
-
-Audit your cron jobs. Stop parsing `ls` output. Write stricter regex for log parsers. Stop relying on GNU-specific flags where POSIX standards suffice. The transition breaks a few scripts today, but it forces significantly better shell scripting habits for tomorrow.
+Containers use the coreutils of their **image**. Your host's switch doesn't change Debian, Alpine or Ubuntu 24.04 based containers. It matters when you move your own images to `ubuntu:25.10` or newer bases: run your build and entrypoint scripts against the new base before switching, and pin base images by version rather than following `latest`.
 
 ## What's Next
 
