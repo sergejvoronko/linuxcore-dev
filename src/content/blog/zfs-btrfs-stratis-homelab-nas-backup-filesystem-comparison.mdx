@@ -25,7 +25,7 @@ The three main contenders in the modern Linux storage space are ZFS, Btrfs, and 
 
 *   **ZFS:** The battle-hardened veteran from Sun Microsystems, now maintained by OpenZFS. It's a combined logical volume manager and filesystem. Its reputation for data integrity is legendary. It’s the default choice for systems like TrueNAS and is a first-class citizen in Proxmox. It's powerful, but it has its own way of doing things.
 *   **Btrfs:** The "better filesystem" that's been in the Linux kernel for years. It's also a combined volume manager and filesystem, offering features like ZFS but with more flexibility. Its history is a bit rocky, especially regarding its RAID5/6 implementation, which still spooks many admins (myself included).
-*   **Stratis:** The new kid on the block, primarily from Red Hat. Stratis isn't a filesystem. It's a user-friendly volume manager that runs on top of existing Linux components like LVM and XFS. It aims to provide ZFS-like management simplicity while using stable, mature backend technologies.
+*   **Stratis:** The new kid on the block, primarily from Red Hat. Stratis isn't a filesystem: it's a storage manager that builds pools from block devices using device-mapper (thin provisioning underneath) and puts XFS filesystems on top. It aims for ZFS-like management simplicity using mature kernel components.
 
 ### Feature Showdown: Integrity, RAID, and Snapshots
 
@@ -37,13 +37,13 @@ This is the number one reason to ditch `ext4`. Silent data corruption (bit rot) 
 
 *   **ZFS:** Copies-on-write (CoW) and checksums everything: user data and metadata. If you have a redundant array (like a mirror or RAID-Z), ZFS will detect a corrupt block during a read, find the good copy on another disk, serve it to you, and fix the bad block in the background. This is called self-healing, and it is the gold standard.
 *   **Btrfs:** Also uses CoW and checksums everything. It provides the same self-healing capability as ZFS on redundant arrays. On the integrity front, it's a direct competitor and works extremely well.
-*   **Stratis:** Stratis provides data integrity, but in a different way. It uses the `dm-integrity` device-mapper target underneath XFS. This means integrity checking happens at the block layer, *before* the data gets to the XFS filesystem. It works, but it feels less integrated. XFS itself has no idea this is happening. The end result is similar (corrupt blocks are detected), but it's a layered solution, not a ground-up design.
+*   **Stratis:** XFS doesn't checksum user data. Recent Stratis versions can add block-level integrity metadata (dm-integrity) to a pool's devices at creation (`stratis pool create --integrity ...`), which detects corruption. But without redundancy in the pool, it can't repair it the way ZFS or Btrfs can from a mirror.
 
 #### RAID Implementation: Flexibility vs. Rigidity
 
 Building a redundant array is fundamental for a NAS. The approaches here could not be more different.
 
-*   **ZFS:** RAID is built-in. You create virtual devices (vdevs), such as a `mirror` (RAID1), `raidz1` (RAID5), or `raidz2` (RAID6), and add them to a storage pool. It's incredibly robust but rigid. You can't just add a single disk to an existing RAID-Z vdev to expand it. You must add another complete vdev of the same type. Replacing a failed drive is trivial, but growing a pool requires careful planning.
+*   **ZFS:** RAID is built-in. You create virtual devices (vdevs), such as a `mirror` (RAID1), `raidz1` (RAID5-like) or `raidz2` (RAID6-like), and add them to a storage pool. It's very robust and traditionally rigid: for years you couldn't add a single disk to a RAID-Z vdev. **OpenZFS 2.3** added RAIDZ expansion, so you can now grow a RAID-Z vdev one disk at a time (existing data keeps its old parity ratio until rewritten). Mirrors and adding whole vdevs remain the simplest ways to grow a pool.
 *   **Btrfs:** RAID is also built-in but is far more flexible. You can create a RAID1 array with two disks, then add a third disk later and rebalance the array to include it. You can even mix disk sizes, though it complicates capacity calculations. This flexibility is a huge win for homelabbers who often expand with whatever drives are on sale. The massive caveat is the RAID5/6 implementation. The infamous "write hole" bug and data loss horror stories have destroyed its reputation. While it's supposedly much better now, the official Btrfs wiki still says "Unstable". Stick to RAID1 or RAID10.
 *   **Stratis:** Does not have its own RAID. It's a volume manager, not a RAID engine. The expectation is that you'll use Linux's proven `mdraid` for redundancy. You create your `md` array first, then create a Stratis pool on top of that `/dev/mdX` device. This is a modular approach: use the best tool for each job. It's reliable but adds another layer to manage.
 
@@ -53,35 +53,32 @@ Point-in-time snapshots are crucial for recovering from "oops" moments or ransom
 
 *   **ZFS:** Atomic, instant, and cheap snapshots are a core feature. The killer app is `zfs send` and `zfs recv`, which allows you to send an incremental (or full) copy of a snapshot to another ZFS pool, even over SSH. Tools like `sanoid` and `syncoid` automate this beautifully, creating a perfect push/pull backup system.
 *   **Btrfs:** Also has excellent, cheap, and instant snapshot capabilities. It has its own `btrfs send` and `btrfs receive` commands that function almost identically to their ZFS counterparts. For snapshots and replication, it's on par with ZFS.
-*   **Stratis:** Supports snapshots because it uses LVM's thin provisioning feature underneath. They work for local point-in-time recovery. However, it completely lacks a `send/receive` replication feature. This is a dealbreaker for using Stratis as a primary backup system if you want to efficiently replicate data to another machine. You'd have to fall back to tools like `rsync`, which is far less efficient than block-level replication.
+*   **Stratis:** Supports filesystem snapshots, built on device-mapper thin provisioning. They work for local point-in-time recovery, but there's no `send/receive` replication, so replicating to another machine means `rsync` or similar. That's a dealbreaker for using Stratis as a primary backup target.
 
 ### A Practical Example: Creating a Mirrored Pool
 
-Seeing the commands side-by-side makes the different philosophies clear. Assume you want to create a simple mirror with `/dev/sda` and `/dev/sdb`.
+Assume you want a simple two-disk mirror with `/dev/sda` and `/dev/sdb`.
 
 ```bash
-# ZFS: Create a pool named 'tank' with a mirror vdev
+# ZFS: pool with a mirror vdev; datasets are mounted automatically
 zpool create tank mirror /dev/sda /dev/sdb
-zfs create tank/data
-echo "ZFS is ready" > /tank/data/test.txt
+zfs create tank/data            # mounted at /tank/data
 
-# Btrfs: Create a RAID1 filesystem across two devices
-# The filesystem is mounted directly after creation
+# Btrfs: RAID1 for data and metadata; you mount it yourself
 mkfs.btrfs -d raid1 -m raid1 /dev/sda /dev/sdb
-mkdir /btrfs_mount
-mount /dev/sda /btrfs_mount
-echo "Btrfs is ready" > /btrfs_mount/test.txt
+mkdir -p /mnt/btrfs
+mount /dev/sda /mnt/btrfs       # either device works
 
-# Stratis: Layered approach
-# 1. Create the pool from the block devices
-stratis pool create mypool /dev/sda /dev/sdb
-# 2. Create a filesystem within that pool
+# Stratis: no mirroring of its own. Build the mirror with mdraid first...
+mdadm --create /dev/md0 --level=1 --raid-devices=2 /dev/sda /dev/sdb
+# ...then put the Stratis pool on the md device
+stratis pool create mypool /dev/md0
 stratis filesystem create mypool myfs
-# 3. Stratis auto-mounts it for you under /stratis/
-echo "Stratis is ready" > /stratis/mypool/myfs/test.txt
+mkdir -p /mnt/myfs
+mount /dev/stratis/mypool/myfs /mnt/myfs
 ```
 
-The ZFS and Stratis commands feel more like managing storage objects, while Btrfs feels more like a traditional `mkfs` command with extra flags.
+**Warning:** `stratis pool create mypool /dev/sda /dev/sdb` without mdraid does **not** mirror anything: it pools the two disks' capacity, and losing either disk loses the pool.
 
 ### The Verdict: Which One Should You Choose?
 

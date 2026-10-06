@@ -11,7 +11,7 @@ draft: false
 affiliate: true
 faqs:
   - q: "Is Stratis stable enough for production homelab use?"
-    a: "Stratis has been production-ready since version 2.x. Version 3.x introduced tang-based encryption and clevis integration. It ships in RHEL 8/9 and Fedora as a supported storage stack, so yes. It's stable enough for a homelab NAS or VM storage workload."
+    a: "Stratis ships in RHEL and Fedora as a supported storage stack, including pool encryption with Clevis/Tang binding. For a homelab on those distributions it is stable enough; it just lacks redundancy and send/receive of its own."
   - q: "Can Stratis replace ZFS in a Proxmox homelab?"
     a: "It depends on your needs. Stratis lacks native RAID-Z equivalent and send/receive snapshot streaming, which ZFS handles well. For simple tiered pools with encryption and thin provisioning on Proxmox, Stratis is a lighter-weight option. For data integrity-critical NAS workloads, ZFS still wins."
   - q: "Does Stratis 3.9 support encryption on existing pools?"
@@ -92,13 +92,13 @@ Create the pool and a filesystem:
 sudo stratis pool create datapool /dev/sdb /dev/sdc
 sudo stratis filesystem create datapool media
 sudo mkdir -p /mnt/media
-sudo mount /stratis/datapool/media /mnt/media
+sudo mount /dev/stratis/datapool/media /mnt/media
 ```
 
 Add to `/etc/fstab` for persistent mount (use the UUID reported by `stratis filesystem list`):
 
 ```bash
-/stratis/datapool/media /mnt/media xfs defaults,x-systemd.requires=stratisd.service 0 0
+/dev/stratis/datapool/media /mnt/media xfs defaults,x-systemd.requires=stratisd.service 0 0
 ```
 
 ## Stratis 3.9 Encryption Setup
@@ -116,7 +116,7 @@ sudo stratis pool create --key-desc homelab-key encrypted-pool /dev/sdd
 
 # Create a filesystem on it
 sudo stratis filesystem create encrypted-pool vms
-sudo mount /stratis/encrypted-pool/vms /mnt/vms
+sudo mount /dev/stratis/encrypted-pool/vms /mnt/vms
 ```
 
 The key lives in the kernel keyring for the session. On reboot, you'll need to re-add it before mounting.
@@ -165,7 +165,7 @@ sudo stratis filesystem list
 
 # Mount a snapshot read-write
 sudo mkdir /mnt/snap
-sudo mount /stratis/secure-pool/backups-snap-20260428 /mnt/snap
+sudo mount /dev/stratis/secure-pool/backups-snap-20260428 /mnt/snap
 ```
 
 Snapshots are writable and space-efficient. They don't replace a real backup strategy, use them for quick rollbacks before risky changes.
