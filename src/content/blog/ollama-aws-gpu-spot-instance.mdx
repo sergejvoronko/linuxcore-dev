@@ -1,22 +1,22 @@
 ---
-title: "Running Ollama on an AWS GPU Spot Instance for €0.30/Hour"
-description: "Spin up GPU-powered Ollama on AWS spot instances (~€0.35/hr), run 70B+ models, and tear it down when done. Full automation script with real cost comparisons."
+title: "Running Ollama on an AWS GPU Spot Instance"
+description: "Run large Ollama models on AWS GPU spot instances for a few hours and tear them down: which instance fits which model size, a launch script, and cost trade-offs."
 pubDate: 2026-04-25
 readingTime: 10
 section: "aws"
 heroImage: "/images/ollama-aws-gpu-spot-instance.webp"
-heroImageAlt: "AWS EC2 spot instance terminal running Ollama with a 70B parameter model on an NVIDIA GPU for 0.30 euros per hour"
+heroImageAlt: "AWS EC2 GPU spot instance running Ollama"
 tags: ["aws", "ollama", "gpu", "spot-instances", "ai", "llm", "homelab"]
 draft: false
 faqs:
   - q: "Which AWS GPU instance types work best for running LLMs with Ollama?"
-    a: "The g4dn.xlarge (NVIDIA T4, 16 GB VRAM, ~€0.35/hr spot) handles 7B-13B models well. For 70B models, use the g5.2xlarge (NVIDIA A10G, 24 GB VRAM, ~€0.70/hr spot) or g5.12xlarge for multi-GPU inference. The p3.2xlarge (V100) is an older option but often cheaper than g5 at spot pricing."
+    a: "Size the instance by VRAM. g4dn.xlarge (one T4, 16 GB) fits 7B-14B models; g5.xlarge (one A10G, 24 GB) fits models up to roughly 30B at 4-bit. 70B models need more than 40 GB at Ollama's default quantisation, so they need a multi-GPU g5.12xlarge (4x A10G, 96 GB) or a larger-VRAM instance."
   - q: "Can a spot instance be interrupted while I am actively using Ollama?"
-    a: "Yes. AWS can reclaim spot capacity with a 2-minute warning. For interactive sessions this is disruptive, your model generation stops mid-stream. The launch script in this guide handles relaunching automatically, but active sessions cannot be resumed. For long inference jobs, consider spot interruption handling in your client code."
-  - q: "How much does it actually cost to run a 70B model on AWS?"
-    a: "A g5.2xlarge spot instance runs at roughly €0.60-0.85/hour depending on the region and time of day. A typical session, loading the model, running 20-30 prompts, and shutting down, takes 2-3 hours and costs €1.50-2.50. Compare that to a month of API calls to a cloud provider for the same volume of requests."
+    a: "Yes. AWS can reclaim spot capacity with a two-minute warning, and a generation in progress stops. Keep sessions disposable, and keep models on a snapshot or volume so a relaunch is quick."
+  - q: "How much does it cost?"
+    a: "Spot prices vary by region, instance type and time. The launch script reads the current spot price before starting, and AWS's spot price history shows the trend. A few hours of a single-GPU instance usually costs a small fraction of a GPU purchase; daily heavy use tips the balance toward owning hardware."
   - q: "Do I need to keep the instance running between sessions?"
-    a: "No, and you should not. The termination script in this guide stops the instance after use. Ollama re-downloads models on first run if they are not cached. To avoid re-downloading, configure a persistent EBS volume or snapshot for the model cache, as described in the optional section of the guide."
+    a: "No, and you should not. Terminate it after use. To avoid downloading models every time, keep them on an EBS volume or snapshot, as described in the optional section."
 ---
 
 import { Image } from 'astro:assets';
@@ -25,7 +25,7 @@ Your homelab can run 7B and 13B models just fine on a decent CPU or a mid-range 
 
 You have two choices: spend €1,500+ on an RTX 4090 or A6000 that sits idle 95% of the time, or rent exactly the GPU you need for exactly as long as you need it.
 
-AWS spot instances make the second option absurdly cheap. A `g5.xlarge` with an NVIDIA A10G GPU (24GB VRAM) goes for roughly €0.30–0.45/hour on spot pricing. That's 60–80% less than on-demand. Run it for two hours, tear it down, pay less than a euro.
+AWS spot instances make the second option cheap: spot capacity is typically priced well below on-demand, and you pay only for the hours you use. The script below shows the current spot price before launching.
 
 This guide automates the entire lifecycle: launch, configure, run Ollama, and terminate, all from a single script on your homelab machine.
 
@@ -45,17 +45,18 @@ This guide automates the entire lifecycle: launch, configure, run Ollama, and te
 
 ## GPU instance options and pricing
 
-Here's what's available for AI inference workloads on spot pricing in `eu-central-1` (Frankfurt). Prices fluctuate. These are typical ranges:
+Pick the instance by **VRAM**, since the model has to fit. Approximate sizes of Ollama's default 4-bit builds: 7–8B about 5 GB, 14B about 9 GB, 32B about 20 GB, and **70B about 43 GB** (`llama3.3:70b`; even its 2-bit build is 26 GB).
 
-| Instance | GPU | VRAM | Spot price/hr | Good for |
-|----------|-----|------|---------------|----------|
-| g5.xlarge | 1× A10G | 24GB | €0.30–0.45 | 13B–34B models, quantized 70B |
-| g5.2xlarge | 1× A10G | 24GB | €0.45–0.65 | Same GPU, more CPU/RAM for preprocessing |
-| g5.4xlarge | 1× A10G | 24GB | €0.60–0.90 | Same GPU, 64GB system RAM |
-| g5.12xlarge | 4× A10G | 96GB | €1.80–2.70 | Full 70B models, multi-GPU inference |
-| p3.2xlarge | 1× V100 | 16GB | €0.90–1.20 | Older but capable, good for fine-tuning |
+| Instance | GPU | VRAM | Fits (4-bit) |
+|----------|-----|------|--------------|
+| g4dn.xlarge | 1× T4 | 16GB | 7B–14B |
+| g5.xlarge | 1× A10G | 24GB | up to ~30B |
+| g5.2xlarge / g5.4xlarge | 1× A10G | 24GB | same GPU, more CPU and RAM |
+| g5.12xlarge | 4× A10G | 96GB | 70B, split across GPUs |
 
-For most people, `g5.xlarge` is the sweet spot. The A10G's 24GB VRAM runs quantized 70B models (Q4_K_M) comfortably, and the spot price is consistently the cheapest GPU option on AWS.
+Spot prices change by region and over time. Check them with `aws ec2 describe-spot-price-history` (the script does) or in the EC2 console before you start.
+
+For most experiments, `g5.xlarge` is the sweet spot: 24 GB runs the 14B–32B models that are a big step up from what a typical homelab GPU holds. **70B models don't fit on it**; use a multi-GPU instance for those.
 
 ## Prerequisites
 
@@ -90,7 +91,7 @@ set -euo pipefail
 
 # ─── Configuration ─────────────────────────────────────────
 INSTANCE_TYPE="${1:-g5.xlarge}"
-MODEL="${2:-llama3:70b-instruct-q4_K_M}"
+MODEL="${2:-qwen2.5:32b}"   # fits a 24 GB A10G; pass a 70B model only on multi-GPU instances
 REGION="eu-central-1"
 KEY_NAME="ollama-gpu"
 AMI_OWNER="099720109477"  # Canonical (Ubuntu)
@@ -157,7 +158,7 @@ set -euo pipefail
 
 # Install NVIDIA drivers
 apt-get update
-apt-get install -y linux-modules-nvidia-560-server-\$(uname -r) nvidia-utils-560-server
+apt-get install -y ubuntu-drivers-common && ubuntu-drivers install --gpgpu
 modprobe nvidia
 
 # Install Ollama
@@ -245,7 +246,7 @@ Make it executable and run:
 ```bash
 chmod +x ollama-spot.sh
 
-# Default: g5.xlarge with Llama 3 70B
+# Default: g5.xlarge with a 32B model
 ./ollama-spot.sh
 
 # Or specify instance type and model
@@ -261,7 +262,7 @@ Once the setup completes (5–10 minutes for driver install + model pull), you c
 ```bash
 # Direct API call
 curl http://$PUBLIC_IP:11434/api/generate -d '{
-  "model": "llama3:70b-instruct-q4_K_M",
+  "model": "qwen2.5:32b",
   "prompt": "Explain the difference between ext4 and btrfs for a homelab NAS",
   "stream": false
 }'
@@ -279,7 +280,7 @@ docker run -d --name open-webui \
   ghcr.io/open-webui/open-webui:main
 ```
 
-Now you get the familiar chat interface with a 70B model behind it. When you're done, switch back to your local Ollama endpoint.
+Now you get the familiar chat interface with a much larger model behind it. When you're done, switch back to your local Ollama endpoint.
 
 ### SSH tunnel (more secure)
 
@@ -290,7 +291,7 @@ ssh -i ~/.ssh/ollama-gpu.pem -L 11434:localhost:11434 -N ubuntu@$PUBLIC_IP &
 
 # Now access Ollama on localhost as if it were local
 curl http://localhost:11434/api/generate -d '{
-  "model": "llama3:70b-instruct-q4_K_M",
+  "model": "qwen2.5:32b",
   "prompt": "Hello from my homelab through an SSH tunnel",
   "stream": false
 }'
@@ -321,6 +322,8 @@ echo "Instance terminated. No more charges."
 ```
 
 ## Cost comparison: spot vs. buying a GPU
+
+The scenarios below are **examples** with assumed numbers (a spot price of €0.35/hr, a €650 GPU over three years, €0.30/kWh). Plug in today's spot price for your region and your own electricity rate.
 
 Here's the real math. The question is: at what point does buying local hardware save you money?
 
