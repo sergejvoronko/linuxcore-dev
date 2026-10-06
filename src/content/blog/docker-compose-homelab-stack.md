@@ -50,7 +50,7 @@ your top 10 and leave the rest for later.
 | 🔐 Security & Access | Nginx Proxy Manager, Vaultwarden, Authelia |
 | 📁 Storage & Files | Nextcloud, Filebrowser |
 | 🎬 Media | Jellyfin, Kavita |
-| 🛠 Infrastructure | Portainer, Watchtower, Homepage, Dozzle |
+| 🛠 Infrastructure | Portainer, Homepage, Dozzle |
 
 ---
 
@@ -407,7 +407,7 @@ services:
   # ── Kavita ─────────────────────────────────────────────────
   # eBook and manga server with a clean reader interface
   kavita:
-    image: kizaing/kavita:latest
+    image: jvmilazz0/kavita:latest   # official image (kizaing/kavita is no longer updated)
     container_name: kavita
     restart: unless-stopped
     ports:
@@ -437,22 +437,9 @@ services:
     networks:
       - homelab
 
-  # ── Watchtower ─────────────────────────────────────────────
-  # Automatically updates containers when new images are available
-  # Runs at 3am daily. Remove --run-once to enable continuous monitoring.
-  watchtower:
-    image: containrrr/watchtower:latest
-    container_name: watchtower
-    restart: unless-stopped
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    environment:
-      - WATCHTOWER_CLEANUP=true                 # remove old images after update
-      - WATCHTOWER_SCHEDULE=0 0 3 * * *         # 3am daily (cron format)
-      - WATCHTOWER_NOTIFICATIONS=slack          # optional — or remove
-      - WATCHTOWER_NOTIFICATION_SLACK_HOOK_URL= # optional
-    networks:
-      - homelab
+  # Note: many older stacks include Watchtower (containrrr/watchtower) for
+  # automatic updates. That project was archived in December 2025, so it is
+  # left out here. Update images deliberately instead (see "Keeping it updated").
 
   # ── Homepage ───────────────────────────────────────────────
   # Clean dashboard showing all your services with live status
@@ -643,7 +630,7 @@ docker compose up -d prometheus grafana node-exporter uptime-kuma
 **Deploy infrastructure tools:**
 
 ```bash
-docker compose up -d portainer watchtower homepage dozzle
+docker compose up -d portainer homepage dozzle
 ```
 
 You can add and remove services at any time. `docker compose up -d`
@@ -654,7 +641,7 @@ containers that are already correct.
 
 ## Memory Usage: What to Expect
 
-Running the full stack on 16GB RAM:
+Rough estimates for the full stack on 16GB RAM. Actual use depends on data, users and versions: check with `docker stats`.
 
 | Service | Typical RAM | Notes |
 |:--------|:-----------:|:------|
@@ -670,12 +657,26 @@ Running the full stack on 16GB RAM:
 | Everything else combined | ~500MB | |
 | **Total** | **~3GB** | Leaves 13GB for Ollama models and OS |
 
-Ollama's model loading is the only real spike, loading a 7b model
-uses 6–8GB GPU VRAM or system RAM depending on your hardware. On CPU
+Ollama's model loading is the only real spike: a 7B model in Ollama's
+default 4-bit quantisation needs roughly 4–5GB of VRAM or system RAM,
+plus more for long contexts. On CPU
 it claims that RAM for the duration of the session and releases it
 after the model unloads.
 
 ---
+
+## Keeping it updated
+
+Update on a schedule you control instead of automatically:
+
+```bash
+cd ~/homelab
+docker compose pull          # fetch newer images for the tags you use
+docker compose up -d         # recreate only the containers whose image changed
+docker image prune -f        # remove the old images
+```
+
+Before updating anything that stores data (Nextcloud, MariaDB, Vaultwarden, Authelia), read its release notes: major versions sometimes need migration steps. Pinning versions instead of `latest` for those services makes upgrades deliberate.
 
 ## Security Checklist Before Exposing Anything Publicly
 
@@ -687,7 +688,7 @@ Proxy Manager or Tailscale Funnel):
 - [ ] Enable Authelia in front of any service without its own auth
 - [ ] Restrict Prometheus and the Ollama API to LAN only (not through NPM)
 - [ ] Enable UFW: `sudo ufw allow from 192.168.1.0/24 to any port 3000` etc
-- [ ] Watchtower runs weekly at minimum, keep containers patched
+- [ ] Images updated at least monthly: `docker compose pull && docker compose up -d`, after reading release notes for anything that stores data
 
 The [WireGuard + Tailscale guide](/homelab/wireguard-tailscale-guide/)
 covers the network security layer that sits in front of all of this.

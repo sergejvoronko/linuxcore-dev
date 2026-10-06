@@ -46,7 +46,7 @@ Create `docker-compose.yml` in `~/forgejo`:
 ```yaml
 services:
   forgejo:
-    image: codeberg.org/forgejo/forgejo:9
+    image: codeberg.org/forgejo/forgejo:15   # current LTS; use :16 for the latest release
     container_name: forgejo
     restart: unless-stopped
     environment:
@@ -188,7 +188,7 @@ A few things worth doing before you call this production-ready:
 0 3 * * * tar -czf /mnt/backup/forgejo-$(date +\%F).tar.gz ~/forgejo/data
 ```
 
-**Update strategy.** Pin the image to a minor version tag (e.g., `forgejo:9`) and watch the [Forgejo release page](https://forgejo.org/releases/) for updates. Updating is as simple as pulling the new image and restarting the container, your data persists in the volume.
+**Update strategy.** Pin the image to a major version tag (for example `forgejo:15`, the LTS series at the time of writing, or `forgejo:16` for the latest release). The major tag follows that series' patch releases, which include security fixes, so `docker compose pull && docker compose up -d` keeps you patched. Moving to a new **major** version is a manual step: back up, read the release notes, and upgrade deliberately. Watch the [Forgejo releases](https://forgejo.org/releases/) for security announcements, like the [critical template-repository RCE fixed in 16.0.4 and 15.0.8](/homelab/forgejo-rce-vulnerability-security-patch-homelab/).
 
 ## Migrating from GitHub
 
