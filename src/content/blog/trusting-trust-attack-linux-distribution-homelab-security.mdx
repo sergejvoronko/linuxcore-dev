@@ -21,7 +21,7 @@ You patch CVEs. You use fail2ban. You keep your Docker images updated. You think
 
 But the xz attack was simple. It was a malicious script in a source tarball. It was discoverable. What if the attack wasn't in the source code at all? What if the very tools you use to build your software were lying to you?
 
-This is the 'Trusting Trust' attack, first outlined by Ken Thompson in his 1984 Turing Award lecture. It’s not theoretical. It's the apex predator of supply chain attacks, and defending against it requires moving beyond `apt upgrade`.
+This is the 'Trusting Trust' attack, first outlined by Ken Thompson in "Reflections on Trusting Trust", his 1983 Turing Award lecture, published in 1984. It’s not theoretical. It's the apex predator of supply chain attacks, and defending against it requires moving beyond `apt upgrade`.
 
 ## The Ghost in the Compiler
 
@@ -41,7 +41,7 @@ This is the core problem. You can't trust your tools to build trustworthy tools.
 
 ## Practical Paranoia: Hardening Your Homelab
 
-Dismissing this as a "nation-state problem" is a mistake. Homelabs are excellent low-risk environments for testing these attacks and provide pivot points into other networks. The good news is that you control the entire stack, which gives you the power to implement defenses that are often too difficult for large organizations.
+Dismissing this as a "nation-state problem" is a mistake. Homelabs often hold credentials and access to other networks, which makes them a useful pivot point for an attacker. The good news is that you control the entire stack, which gives you the power to implement defenses that are often too difficult for large organizations.
 
 ### 1. Verify Binaries After Installation
 
@@ -78,7 +78,7 @@ debsums --changed --silent 2>/dev/null | grep FAILED | grep -vE " /etc/| /var/"
 echo "Check complete. Review any FAILED items above."
 ```
 
-On RPM-based systems like Fedora or CentOS, the equivalent is `rpm -V <package-name>`. Running `rpm -Va` checks all packages. The output is cryptic, but '5' means MD5 sum differs, and 'T' means mtime differs. Any changes to a binary file should be a massive red flag.
+On RPM-based systems like Fedora, the equivalent is `rpm -V <package-name>`; `rpm -Va` checks all packages. In the output, `5` means the file's digest differs, `S` the size and `T` the modification time. Like `debsums`, this compares against the local package database, which a root-level attacker could also alter, so it catches accidents and unsophisticated tampering, not a determined attacker.
 
 ### 2. Embrace Reproducible Builds
 
@@ -92,7 +92,7 @@ Projects like Debian have been pushing for this for years. Check out `reproducib
 
 The Trusting Trust attack relies on a compromised compiler (`gcc-A`) building a new version of itself (`gcc-B`) to propagate the backdoor. What happens if you use a completely different compiler, like `clang`, to build `gcc-B` from source? The propagation mechanism, which was specific to `gcc-A`, is unlikely to be triggered. The resulting `gcc-B` binary would be clean.
 
-This is the principle behind Diverse Double-Compilation. You build a tool with two different trusted compilers and verify the outputs are identical. For a homelabber, this is advanced. You're not going to do this for every package.
+This is the idea behind **Diverse Double-Compiling** (DDC), formalised by David A. Wheeler: compile the compiler's source with a second, independent compiler, then use that result to compile the same source again, and compare the output bit for bit with the compiler binary you're checking. If they match, the binary corresponds to its source. It needs reproducible builds to work, and for a homelabber it's advanced: you won't do it for every package.
 
 But you *can* do it for the most critical component: your primary compiler. On a fresh system, consider using a pre-existing `clang` to recompile `gcc` from source. It’s a high-effort exercise, but it’s one of the few known ways to break the chain of trust.
 

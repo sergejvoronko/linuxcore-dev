@@ -13,13 +13,13 @@ faqs:
     a: "No. Flatpak user overrides applied via the CLI persist across application updates. The new binaries will continue to run inside the restricted Bubblewrap namespace you defined."
   - q: "Can I achieve this same isolation with the native .deb or .rpm packages?"
     a: "You can approximate it using Firejail or AppArmor, but maintaining custom profiles for proprietary Electron or Qt apps is tedious and prone to breaking during minor updates. Flatpak provides a standardized runtime environment out of the box."
-  - q: "Does XWayland suffer from this exact same vulnerability?"
-    a: "Yes. All applications running under the same XWayland instance share a single virtual X server. An XWayland application can read the clipboard of any other XWayland application, though it cannot read the clipboard of native Wayland applications unless mediated by the compositor."
+  - q: "Does XWayland suffer from the same problem?"
+    a: "Partly. X11 apps under XWayland share one X server, so they can see each other's X selections. Clipboard data from native Wayland apps is passed to XWayland by the compositor, typically when an X11 window gets focus, so a background X11 app can't continuously watch it. Running Zoom natively on Wayland avoids the X11 path entirely."
 ---
 
 You copy an API key, an SSH password, or a sensitive configuration snippet on your workstation. You join a daily standup. Before you even hit Ctrl+V, the proprietary meeting software has already requested and read your clipboard contents. 
 
-This is the reality of running the Linux Zoom client on a traditional X11 desktop environment. Developer Simon Tatham recently documented how the Zoom application proactively issues `SelectionRequest` events to the X server, extracting clipboard data without any user interaction or paste command.
+This is the reality of running the Linux Zoom client on a traditional X11 desktop environment. Simon Tatham, the developer of PuTTY, documented that **Zoom 7.1.5** on X11 reads the clipboard proactively: whenever another application takes ownership of the `CLIPBOARD` selection, Zoom is notified and immediately requests its contents, without any paste and without needing focus. That includes passwords copied from a password manager. Reports say it leaves the `PRIMARY` (middle-click) selection alone. ([Hacker News discussion](https://news.ycombinator.com/item?id=49675902), [Neowin](https://www.neowin.net/news/zoom-update-triggers-privacy-risk-by-slurping-linux-clipboards/))
 
 This behavior highlights a severe architectural flaw in X11 clipboard security. X11 lacks an isolation model. Any connected graphical client can query the global clipboard state at any time. When you combine decades-old graphical protocols with closed-source, telemetry-heavy communication tools, your workstation becomes a massive data leak liability. 
 
@@ -33,7 +33,7 @@ X11 manages copied data using a system of "selections." When you highlight text,
 
 When a different application requires the copied data, it sends a `SelectionRequest` event to the X server. The X server forwards this request to the owning window. The owning window replies with the data, and the requesting window receives it. 
 
-Under X11, any client can send a `SelectionRequest` at any time. The Zoom binary abuses this mechanism. Instead of waiting for a keyboard interrupt triggering a paste action, the application polls the X server. The moment the Zoom window gains focus or detects mouse movement over its UI, it silently requests the active selection. The data transfers into the Zoom process memory instantly. 
+Under X11, any client can request a selection at any time, and the XFIXES extension lets a client be notified whenever selection ownership changes. That is the mechanism the reports describe: Zoom watches for a new `CLIPBOARD` owner and requests the data at once.
 
 If you are performing linux security hardening on your workstation or homelab management machine, running untrusted binaries directly on an X11 server negates your other security policies. 
 
@@ -41,9 +41,7 @@ If you are performing linux security hardening on your workstation or homelab ma
 
 You can observe this data exfiltration mechanically. X11 provides tools to monitor protocol events in real time. 
 
-By inserting a proxy between the X server and the Zoom client, you can dump the exact requests the application issues. Tatham utilized a custom X protocol dumper, but you can achieve similar visibility using `xspy` or by wrapping the application execution in `xpra` and enabling protocol logging.
-
-When you run the Zoom binary through a protocol monitor and copy text in a separate terminal window, the logs show the exact sequence. You will see Zoom issue a `ConvertSelection` request for the `CLIPBOARD` atom the millisecond the application window receives an `EnterNotify` (mouse hover) or `FocusIn` event. The X server obliges, and the text string appears in the protocol trace bound for the Zoom process. 
+Tatham found it by tracing the X protocol traffic between Zoom and the X server: each time something new is copied, a conversion request for `CLIPBOARD` from Zoom follows immediately. Any X protocol tracer that sits between a client and the X server will show the same pattern.
 
 ## The Wayland and Bubblewrap Solution
 
@@ -63,7 +61,7 @@ First, install the Zoom application via Flathub. Flathub provides a packaged ver
 flatpak install flathub us.zoom.Zoom
 ```
 
-Out of the box, the Flathub package maintainers include permissions designed to guarantee the app runs on older, unconfigured systems. This often includes fallback X11 socket access and broad filesystem read permissions. You must strip these defaults.
+The Flathub package grants both the `x11` and `wayland` sockets, so it works on X11 desktops too. It does **not** get your home directory: only `~/Documents/Zoom` and its own `~/.zoom` data. The X11 socket is the part to remove. **This only works in a Wayland session**: on an X11 desktop, an app without the X11 socket has no display to open. If you're on X11, switching the session to Wayland is the real fix.
 
 Use the `flatpak override` command to modify the Bubblewrap namespace parameters for this specific application. 
 
@@ -90,10 +88,10 @@ flatpak override --user \
 
 The overrides command dictates the exact flags passed to Bubblewrap at execution time. 
 
-*   `--nosocket=x11` and `--nosocket=fallback-x11`: These critical flags destroy the application's ability to communicate with the X server or XWayland. If the application attempts to issue a `SelectionRequest`, the socket connection fails.
+*   `--nosocket=x11` and `--nosocket=fallback-x11`: Zoom can no longer connect to an X server or XWayland, so the X11 clipboard is out of reach. The package leaves Qt's platform choice open, so in a Wayland session Zoom can use Wayland natively. If it doesn't start after this change, it needed X11 on your setup: remove the override and keep it off X11 some other way.
 *   `--socket=wayland`: This grants access strictly to the native Wayland compositor socket.
 *   `--nofilesystem=host` and `--nofilesystem=home`: These parameters block the application from reading your host root and home directories. 
-*   `--persist=.zoom`: Since you blocked home directory access, the application will fail to save local settings. This flag creates a dedicated, isolated directory for Zoom configuration files inside `~/.var/app/us.zoom.Zoom/`, mapping it into the containerized namespace.
+*   `--persist=.zoom`: keeps Zoom's settings in `~/.var/app/us.zoom.Zoom/.zoom` (the package already does this; repeating it is harmless).
 
 ## Resolving Screensharing Requirements
 
@@ -113,7 +111,7 @@ sudo apt install xdg-desktop-portal xdg-desktop-portal-gnome pipewire wireplumbe
 sudo dnf install xdg-desktop-portal xdg-desktop-portal-gtk pipewire wireplumber
 ```
 
-Verify that the Zoom client configuration recognizes the Wayland environment. Open the application settings, navigate to the "Share Screen" advanced options, and ensure the screen capture mode utilizes PipeWire rather than legacy X11 capture methods. If the client fails to detect the portal, check `systemctl --user status xdg-desktop-portal.service` to confirm the portal daemon is active.
+Then test screen sharing in a meeting: on Wayland, the portal should show your desktop's own picker for choosing a screen or window. If the client fails to detect the portal, check `systemctl --user status xdg-desktop-portal.service` to confirm the portal daemon is active.
 
 By stripping X11 access and wrapping the binary in a tightly constrained Bubblewrap namespace, the application can no longer poll your clipboard or index your filesystem. The operating system forces the binary to request resources through mediated, user-approved channels, restoring control over your local data.
 
