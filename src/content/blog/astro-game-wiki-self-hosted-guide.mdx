@@ -58,14 +58,15 @@ This gives you a clean slate. The most important folders are `src/`, where your 
 
 This is where the magic happens. We'll use Astro's Content Collections to define the "schema" for our wiki entries. Let's say we're building a wiki for an RPG and want to document in-game items.
 
-First, enable content collections by creating `src/content/config.ts`:
+First, define a content collection in `src/content.config.ts` (the Content Layer API that Astro 5 and newer use):
 
 ```typescript
-// src/content/config.ts
+// src/content.config.ts
 import { defineCollection, z } from 'astro:content';
+import { glob } from 'astro/loaders';
 
 const itemsCollection = defineCollection({
-  type: 'content', // or 'data' for JSON/YAML
+  loader: glob({ pattern: '**/*.md', base: './src/content/items' }),
   schema: z.object({
     title: z.string(),
     itemType: z.enum(['Weapon', 'Armor', 'Consumable']),
@@ -84,8 +85,9 @@ This file tells Astro that any Markdown file inside `src/content/items/` must ha
 
 Now, create your first item as a Markdown file:
 
+`src/content/items/steel-longsword.md`:
+
 ```markdown
-// src/content/items/steel-longsword.md
 ---
 title: "Steel Longsword"
 itemType: "Weapon"
@@ -107,20 +109,19 @@ Create a new file at `src/pages/items/[...slug].astro`:
 
 ```astro
 ---
-import { getCollection }llback' };
-}
+import { getCollection, render } from 'astro:content';
 
 // Generate a page for each item in the collection
 export async function getStaticPaths() {
   const itemEntries = await getCollection('items');
   return itemEntries.map(entry => ({
-    params: { slug: entry.slug },
+    params: { slug: entry.id },
     props: { entry },
   }));
 }
 
 const { entry } = Astro.props;
-const { Content } = await entry.render();
+const { Content } = await render(entry);
 ---
 
 <!-- This is a basic layout. You would create a reusable Layout component. -->
