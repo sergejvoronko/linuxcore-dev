@@ -1,6 +1,6 @@
 ---
 title: "Astro Cloudflare Pages Caching: HTML & i18n Routes"
-description: "Fix stale state bugs with proper astro cloudflare pages caching. Learn to configure astro cache dynamic html and astro i18n edge cache headers."
+description: "How Cloudflare Pages caches an Astro site: prerendered HTML, hashed assets and on-demand routes, what _headers and _routes.json really do, and how to check it."
 pubDate: 2026-09-29
 readingTime: 8
 heroImage: "/images/astro-cloudflare-pages-html-caching-i18n-guide.webp"
@@ -9,164 +9,71 @@ section: "astro"
 tags: ["astro", "cloudflare", "caching", "i18n"]
 draft: false
 faqs:
-  - q: "Why is Cloudflare Pages serving stale HTML after a new deployment?"
-    a: "Your Cache-Control headers are instructing the browser to cache the HTML document locally. Always set browser max-age to 0 and must-revalidate for HTML files, relying on s-maxage for edge caching."
-  - q: "Does Cloudflare cache HTML pages by default?"
-    a: "No. Cloudflare's default behavior caches static assets like images, CSS, and JS. It treats HTML as dynamic content unless explicit Cache-Control or Cloudflare-CDN-Cache-Control headers dictate otherwise."
-  - q: "Can I use Astro middleware to cache static prerendered pages?"
-    a: "No. Astro middleware only executes for server-rendered routes or endpoints that hit the Cloudflare Pages Function. Static pages bypass the function entirely and require a _headers file for cache configuration."
+  - q: "Why do visitors see an old page after I deploy?"
+    a: "Usually not because of Pages: by default it serves HTML with Cache-Control public, max-age=0, must-revalidate, so browsers revalidate. Check for headers you added yourself, a service worker, or another cache in front. Cloudflare's docs suggest purging the zone cache if stale assets persist after a deploy."
+  - q: "Does Cloudflare cache my prerendered Astro pages?"
+    a: "Yes. Pages serves prerendered HTML as static assets, and according to Cloudflare's docs an asset stays cached on the CDN until your next deployment. You don't need s-maxage for that."
+  - q: "Are on-demand (server-rendered) responses cached?"
+    a: "Not by default. Responses from Pages Functions and Workers are not stored in Cloudflare's CDN cache just because they carry a Cache-Control header; caching them needs the Cache API in your code or a caching layer built for it."
 ---
 
-Deploying a hybrid Astro site to Cloudflare Pages exposes a glaring configuration gap in how the two systems interact. Static assets load fast, but localized HTML and server-rendered endpoints misbehave. They either bypass the edge cache entirely, driving up Cloudflare Function invocations, or they cache permanently in the browser, trapping users in stale site states. 
+Caching an Astro site on **Cloudflare Pages** goes wrong mostly because of wrong assumptions about what Pages does already. This guide sticks to what [Cloudflare documents](https://developers.cloudflare.com/pages/configuration/serving-pages/). (Cloudflare now also recommends Workers with static assets for new projects; the caching ideas below are similar there, but check its docs.)
 
-Fixing astro cloudflare pages caching requires overriding the default routing map and explicitly defining cache directives at both the edge and browser layers. Relying on default adapter behavior is insufficient for production workloads.
+## Three kinds of response
 
-## The Routing Trap: Bypassing the Worker
+An Astro site on Pages serves three different things:
 
-Astro uses the `@astrojs/cloudflare` adapter to build for Pages. When hybrid rendering is enabled, this adapter generates a `_routes.json` file. This file dictates which HTTP requests trigger the Cloudflare Pages Function (the serverless worker executing your SSR logic) and which requests serve static files directly from Cloudflare's storage.
+1. **Hashed build assets** (`/_astro/*.js`, `*.css`, images). The file name changes whenever the content changes.
+2. **Prerendered HTML**, including every locale's static pages (`/en/about/`, `/de/about/`). These are static files.
+3. **On-demand routes** (pages with `export const prerender = false`, API endpoints). These run in a **Pages Function**.
 
-The auto-generated routing map is overly conservative. It frequently routes statically pre-rendered i18n pages through the worker. This wastes your free tier execution limits and adds processing latency to pages that should serve instantly. 
+## What Pages does by default
 
-You fix this by taking control of the routing map. Cloudflare prioritizes a manual `public/_routes.json` file over the auto-generated version. Create this file to explicitly exclude your static paths.
+From Cloudflare's documentation:
 
-```json
-{
-  "version": 1,
-  "include": [
-    "/*"
-  ],
-  "exclude": [
-    "/_astro/*",
-    "/favicon.ico",
-    "/en/*",
-    "/de/*",
-    "/es/*"
-  ]
-}
-```
+- Every deployed asset **stays cached on the Cloudflare CDN until your next deployment** (served from Tiered Cache).
+- Cacheable HTML responses get **`Cache-Control: public, max-age=0, must-revalidate`** by default, so browsers revalidate every time but the CDN still serves them quickly.
 
-This configuration intercepts requests to the `/_astro` asset directory and all localized static routes, skipping the worker execution. The CDN serves these files directly. 
+That's already the right behaviour for HTML. Don't add long `max-age` values to HTML: that's what makes browsers show old pages after a deploy.
 
-## Writing the `_headers` File
+## `_headers`: make hashed assets immutable
 
-Bypassing the worker solves the execution cost, but it introduces a new problem. Cloudflare's default CDN behavior does not cache HTML files. If you do not explicitly instruct the CDN to cache the HTML, every request still fetches the file from the underlying storage layer, adding latency.
+The one header worth adding is a long cache for hashed assets, since their names change on every content change:
 
-You must provide strict instructions on how to handle the static HTML. Applying proper astro i18n edge cache headers requires creating a `public/_headers` file. 
-
-The strategy relies on separating browser caching from edge caching. You want the Cloudflare CDN to cache the page aggressively, but you want the browser to always revalidate with the server. This ensures returning visitors check for a new deployment without downloading the full HTML document if it remains unchanged.
-
-```text
-# Cache assets heavily
+```txt
+# public/_headers
 /_astro/*
   Cache-Control: public, max-age=31536000, immutable
-
-# i18n HTML Routes
-/en/*
-  Cache-Control: public, max-age=0, s-maxage=86400, must-revalidate
-/de/*
-  Cache-Control: public, max-age=0, s-maxage=86400, must-revalidate
 ```
 
-- **max-age=0**: Instructs the user's browser not to cache the HTML locally.
-- **must-revalidate**: Forces the browser to check for changes via ETag or Last-Modified headers.
-- **s-maxage=86400**: Instructs Cloudflare's edge nodes to cache the HTML for 24 hours.
+Leave HTML, including localized routes, on the default.
 
-This combination guarantees the edge cache serves the HTML fast, while preventing the dreaded "stale state" bug where users cannot see your latest deployment.
+## `_routes.json`: decide what hits the Function
 
-## Automating Header Generation
+When your project has on-demand routes, the Astro Cloudflare adapter generates a `_routes.json` that tells Pages which paths run the Function and which are served as static files. The adapter already excludes prerendered pages and build assets from the Function, and it has options to extend the include and exclude lists (see the `@astrojs/cloudflare` docs).
 
-Maintaining a static `_headers` file becomes tedious as you add more supported locales. A simple build hook automates this process. The following Bash script reads your configured locales and generates the `_headers` file dynamically before Astro runs the build process.
+Be careful with broad manual exclusions such as `/en/*`: anything excluded is **never** sent to the Function, so on-demand routes, endpoints or i18n middleware behaviour under that prefix stop working. Exclude only what you know is purely static.
+
+## On-demand routes
+
+Responses from a Pages Function or Worker are **not cached by Cloudflare's CDN** just because they have a `Cache-Control` header. That header still matters for browsers and other caches. If expensive on-demand pages need edge caching, do it explicitly: use the Workers **Cache API** in your code, or Astro's route caching (stable since Astro 7) with a CDN cache provider.
+
+Set headers for on-demand responses from Astro:
+
+```astro
+---
+export const prerender = false;
+Astro.response.headers.set('Cache-Control', 'private, no-store'); // e.g. per-user pages
+---
+```
+
+## Checking what happens
 
 ```bash
-#!/bin/bash
-# generate-headers.sh
-
-LOCALES=("en" "de" "es" "fr" "ja")
-HEADER_FILE="public/_headers"
-
-echo "/_astro/*" > $HEADER_FILE
-echo "  Cache-Control: public, max-age=31536000, immutable" >> $HEADER_FILE
-echo "" >> $HEADER_FILE
-
-for locale in "${LOCALES[@]}"; do
-  echo "/$locale/*" >> $HEADER_FILE
-  echo "  Cache-Control: public, max-age=0, s-maxage=86400, must-revalidate" >> $HEADER_FILE
-done
-
-echo "Headers generated successfully."
+curl -sI https://your-project.pages.dev/en/about/ | grep -iE 'cache-control|cf-cache-status|age'
 ```
 
-Execute this script in your CI/CD pipeline or add it to your `package.json` build script: `"build": "bash generate-headers.sh && astro build"`.
-
-## Caching Dynamic HTML via Middleware
-
-Static configuration files handle pre-rendered pages, but hybrid Astro sites often include genuine server-rendered pages. For these routes, you need to astro cache dynamic html programmatically. 
-
-Astro middleware provides direct control over the outgoing `Response` object before it transmits to Cloudflare. You apply cache headers based on the URL path or custom logic defined in `context.locals`.
-
-```javascript
-// src/middleware.js
-
-export const onRequest = async (context, next) => {
-  const response = await next();
-  const url = new URL(context.request.url);
-
-  // Skip modifying headers for static assets
-  if (url.pathname.startsWith('/_astro/')) {
-    return response;
-  }
-
-  // Apply short-lived edge caching for dynamic API endpoints
-  if (url.pathname.startsWith('/api/catalog')) {
-    response.headers.set(
-      'Cache-Control', 
-      'public, max-age=0, s-maxage=300, stale-while-revalidate=60'
-    );
-    return response;
-  }
-
-  // Apply standard hybrid caching for dynamic HTML routes
-  if (url.pathname.startsWith('/dashboard/public')) {
-    response.headers.set(
-      'Cache-Control', 
-      'public, max-age=0, s-maxage=3600, must-revalidate'
-    );
-    return response;
-  }
-
-  // Default fallback: No cache for all other dynamic routes
-  if (!response.headers.has('Cache-Control')) {
-    response.headers.set(
-      'Cache-Control', 
-      'no-store, no-cache, must-revalidate, proxy-revalidate'
-    );
-  }
-
-  return response;
-};
-```
-
-The `stale-while-revalidate` directive is highly effective for dynamic HTML. It instructs Cloudflare to serve stale content to the user immediately while triggering a background function invocation to update the cache for the next visitor. 
-
-## Verifying Cache Status
-
-Configuring headers requires validation. You verify Cloudflare's caching behavior using the `curl` command to inspect raw HTTP responses. 
-
-Run this command against your deployed Pages URL:
-
-```bash
-curl -I https://your-project.pages.dev/en/about
-```
-
-Inspect the output for specific headers:
-
-- **CF-Cache-Status: HIT**: The configuration works. Cloudflare served the HTML directly from the edge cache without invoking the worker.
-- **CF-Cache-Status: DYNAMIC**: Cloudflare refused to cache the request. This usually happens if the response lacks a public `Cache-Control` header or contains explicit `Set-Cookie` directives.
-- **CF-Cache-Status: BYPASS**: The client sent a header (like `Pragma: no-cache` or `Authorization`) instructing the CDN to skip the cache layer.
-
-If you encounter persistent `DYNAMIC` statuses on static i18n HTML, verify your `_routes.json` correctly excludes the path. If the request hits the worker and the worker does not set headers via middleware, Cloudflare defaults to dynamic bypass. 
-
-Proper caching isolates your infrastructure from traffic spikes and ensures fast TTFB (Time to First Byte) across global regions. Do not skip this step before putting an Astro site into production.
+For static pages you'd expect the default HTML `Cache-Control` and a CDN cache status. For on-demand routes, `cf-cache-status` typically shows `DYNAMIC`, which is normal for Function responses unless you added caching yourself.
 
 ## What's Next
 
