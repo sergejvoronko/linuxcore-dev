@@ -614,9 +614,19 @@ comprehensive homelab backup costs under €1/month. Less than a coffee.
 
 **Data transfer costs:**
 
-Uploading to S3 is free. Downloading (restore) costs €0.09/GB for the
-first 10TB. A full restore of 100GB costs €9. For a disaster recovery
-scenario, that's irrelevant.
+Uploading to S3 is free. For a restore, two costs apply:
+
+- **Retrieval from Glacier classes:** data in Glacier Flexible Retrieval or
+  Deep Archive must be restored first, which costs per GB and per request
+  and takes from minutes to hours (Deep Archive: up to 12 hours or more,
+  depending on the retrieval tier).
+- **Data transfer out:** the first 100GB per month out to the internet is
+  free across AWS; beyond that it's charged per GB (around $0.09/GB in EU
+  and US regions).
+
+Check the S3 pricing page for current figures. For a real disaster, the
+cost is small next to losing the data, but test a restore once so you know
+how long it takes.
 
 ---
 

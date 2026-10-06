@@ -1,20 +1,20 @@
 ---
-title: "The €10/Month AWS Stack: VPS, DNS, Monitoring, and Backups"
-description: "Build a useful AWS presence for under €10/month: t3.micro with Docker, Route 53 DNS, basic monitoring, and S3 backups, minimum viable cloud for homelab."
+title: "A Minimal AWS Stack: VPS, DNS, Monitoring, Backups"
+description: "A small AWS footprint for a homelab: one EC2 instance with Docker, Route 53 DNS, basic monitoring and S3 backups, with real list prices and how to keep it near €10/month."
 pubDate: 2026-04-18
 readingTime: 10
 section: "aws"
 heroImage: "/images/ten-euro-month-aws-stack.webp"
-heroImageAlt: "AWS console showing a t3.micro EC2 instance, Route 53 DNS, and S3 bucket making up a 10 euro per month cloud stack"
+heroImageAlt: "AWS console showing a small EC2 instance, Route 53 DNS and an S3 bucket"
 tags: ["aws", "ec2", "route53", "docker", "budget", "homelab"]
 draft: false
 faqs:
   - q: "Is a t3.micro powerful enough to run Docker containers?"
-    a: "Yes for lightweight services. A t3.micro has 1 vCPU and 1 GB RAM, enough for Caddy, a small web app, and basic monitoring. It can burst to 2 vCPUs briefly. Avoid memory-heavy containers like databases or LLMs. For a personal site, CI runner, or low-traffic API, t3.micro is a practical choice at €8-9/month."
+    a: "Yes for lightweight services. A t3.micro has 2 vCPUs (burstable) and 1 GB RAM, enough for Caddy, a small web app and basic monitoring. Avoid memory-heavy containers like databases or LLMs."
   - q: "Can I get a static IP for my EC2 instance for free?"
-    a: "Yes, using an Elastic IP. One Elastic IP associated with a running instance is free. You are charged €0.005/hour only when the EIP is allocated but not associated with a running instance, so release it when you stop the instance to avoid charges."
+    a: "Not anymore. Since February 2024 AWS charges $0.005 per hour (about $3.65/month) for every public IPv4 address, including an Elastic IP attached to a running instance. Alternatives: IPv6, or no public IP at all with a Cloudflare Tunnel or similar."
   - q: "How does a €10/month AWS stack compare to a Hetzner or DigitalOcean VPS?"
-    a: "A Hetzner CX22 (2 vCPU, 4 GB RAM) costs €4.85/month and offers significantly more raw compute. The AWS stack makes sense if you want to learn AWS services (EC2, Route 53, S3, CloudWatch) or need tight integration with other AWS resources. For pure VPS value, Hetzner or Contabo are cheaper."
+    a: "On raw compute per euro, a VPS from a provider such as Hetzner usually wins clearly. The AWS stack makes sense if you want to learn AWS services (EC2, Route 53, S3, CloudWatch) or need them next to other AWS resources."
   - q: "What services can I realistically run on a t3.micro?"
     a: "A personal website with Caddy, a small API or bot, a lightweight monitoring agent, or a Cloudflare Tunnel relay. You can run Gitea or a small n8n instance if you are careful with memory. Anything requiring more than 800 MB RAM will cause the instance to swap heavily and become unusable."
 ---
@@ -34,7 +34,7 @@ This guide builds a practical AWS setup that costs under €10/month. Not a toy 
 </figure>
 
 **Components:**
-- **EC2 t3.micro**: 2 vCPU, 1GB RAM, 30GB gp3 disk. Runs Docker with Caddy as a reverse proxy.
+- **EC2 t3.micro** (or t4g.micro): 2 vCPU, 1GB RAM, a small gp3 disk. Runs Docker with Caddy as a reverse proxy.
 - **Route 53**: DNS hosting for your domain. Optional but worth the €0.50/month for proper DNS management.
 - **S3**: Offsite backups of the EC2 instance config and logs.
 - **CloudWatch**: Free-tier metrics and a single alarm for CPU/disk.
@@ -46,21 +46,27 @@ covers the scheduling and the real monthly cost.
 
 ## The cost breakdown
 
-Before we start, here's exactly where the money goes:
+AWS lists prices in **US dollars**. On-demand list prices in Frankfurt (`eu-central-1`) at the time of writing:
 
-| Service | Monthly cost | Notes |
+| Item | Monthly cost | Notes |
 |---------|-------------|-------|
-| EC2 t3.micro | €0.00 (year 1) / €4.60 | Free tier for 12 months, then on-demand |
-| EBS 30GB gp3 | €2.76 | Storage for your instance |
-| Route 53 hosted zone | €0.50 | Per domain |
-| Route 53 queries | ~€0.10 | Based on typical traffic |
-| S3 (5GB) | ~€0.12 | Backup storage |
-| Data transfer | ~€0.50 | First 100GB/month is free |
-| CloudWatch | €0.00 | Free tier covers basic monitoring |
-| **Total (year 1)** | **~€4.00/month** | |
-| **Total (after free tier)** | **~€8.60/month** | |
+| EC2 t3.micro | ~$8.76 | $0.012/hr × 730 h |
+| *or* EC2 t4g.micro (ARM) | ~$7.01 | $0.0096/hr; same size, cheaper |
+| EBS gp3 volume | ~$0.10 per GB | 30 GB ≈ $3; 10–15 GB is enough for a small Docker host |
+| Public IPv4 address | ~$3.65 | $0.005/hr for every public IPv4 since February 2024 |
+| Route 53 hosted zone | $0.50 | per domain, plus small query charges |
+| S3 (a few GB of backups) | cents | depends on storage class |
+| Data transfer out | free up to 100 GB/month | across AWS, then charged per GB |
+| CloudWatch basic metrics | free | detailed metrics and alarms beyond the free allowance cost extra |
 
-If you're within the first 12 months of your AWS account, you're looking at about €4/month. After that, it's still under €10.
+On-demand with a t3.micro, 30 GB and a public IPv4 address that's about **$16/month**. To get near **€10**:
+
+- use **t4g.micro** (ARM: Docker images need arm64 builds, which most popular images have),
+- keep the root volume small (10–15 GB),
+- skip the public IPv4 address: use **IPv6**, or reach the instance through a **Cloudflare Tunnel** or Tailscale,
+- or commit with a **Savings Plan** if you'll run it for a year or more.
+
+**Free tier:** accounts created **before 15 July 2025** keep the old 12-month free tier (750 hours/month of t2/t3.micro). Newer accounts get a **credit-based Free Plan** (up to $200 in credits for 6 months) instead. Check which one your account has in the Billing console.
 
 ## Step 1: Launch the EC2 instance
 
@@ -218,7 +224,7 @@ ELASTIC_IP=$(aws ec2 describe-addresses \
 echo "Elastic IP: $ELASTIC_IP"
 ```
 
-> **Cost warning:** An Elastic IP attached to a **stopped** instance costs €0.005/hour (~€3.65/month). Always release it if you terminate the instance. AWS started charging for all public IPv4 addresses in 2024.
+> **Cost warning:** Every public IPv4 address costs $0.005/hour (~$3.65/month) since February 2024, attached or not. Release Elastic IPs you no longer use.
 
 ## Step 2: Set up DNS with Route 53
 
