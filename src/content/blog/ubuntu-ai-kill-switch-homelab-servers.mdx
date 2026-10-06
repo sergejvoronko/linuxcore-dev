@@ -1,6 +1,6 @@
 ---
 title: "Ubuntu's AI Kill Switch: Disable Canonical AI Features"
-description: "What Canonical's AI features install on Ubuntu Server 24.04/26.04, how the Snap-based kill switch works, and how to audit and disable AI components."
+description: "What Canonical actually announced about AI in Ubuntu (opt-in previews from 26.10, removal of snaps as the kill switch), what a server runs today, and how to audit it."
 pubDate: 2026-04-29
 readingTime: 8
 heroImage: "/images/ubuntu-ai-kill-switch-homelab-servers.webp"
@@ -9,119 +9,64 @@ section: "homelab"
 tags: ["ubuntu", "homelab", "canonical", "privacy"]
 draft: false
 faqs:
-  - q: "Does Ubuntu Server 24.04 install AI features by default?"
-    a: "Not by default on the minimal server ISO, but desktop and certain cloud images ship with snaps that pull in AI-adjacent components. The Ubuntu Pro and Landscape integrations can also phone home. Always audit with 'snap list' and 'systemctl list-units' after a fresh install."
-  - q: "What is the Ubuntu AI kill switch and how does it work?"
-    a: "Canonical's opt-in AI framework is Snap-packaged, meaning each AI component is an isolated snap or a snap service. The kill switch is effectively snap removal or snap service disabling combined with blocking the relevant systemd units. There is no single toggle. You need to audit and remove each component individually."
-  - q: "Should I switch from Ubuntu to Debian or Fedora for my homelab server because of this?"
-    a: "If you are already running Ubuntu Server LTS and managing it carefully, the AI components are easy to audit and remove. Debian remains the lower-noise alternative with no snap infrastructure by default. Fedora Server is a reasonable choice if you want cutting-edge packages without Canonical's ecosystem overhead. The decision comes down to your tolerance for upstream package freshness versus ecosystem simplicity."
+  - q: "Does Ubuntu Server 24.04 or 26.04 install AI features?"
+    a: "No. Canonical's plan, as reported by Phoronix on 28 April 2026, is to ship AI features as opt-in previews starting with Ubuntu 26.10, with a setup prompt from 27.04. Current releases don't include them."
+  - q: "What is the Ubuntu AI kill switch?"
+    a: "There isn't a global one. Canonical says the AI features will be delivered as snaps, so removing those snaps is how you turn them off. Default inference is meant to be local, against local models."
+  - q: "Should I switch to Debian for my homelab because of this?"
+    a: "Only if you want a distribution without snaps at all. Today nothing AI-related runs on an Ubuntu server, and the announced features are opt-in. Debian is the natural choice if you'd rather not depend on Canonical's plans."
 ---
 
-Canonical has been steadily expanding Ubuntu's AI footprint, AI-assisted package suggestions, Snap-delivered model runtimes, and Ubuntu Pro integrations that touch your system in ways that aren't immediately obvious from a minimal server install. The "kill switch" framing comes from Canonical's own acknowledgment that these features are opt-in and removable, but "opt-in" is doing a lot of work when some components land by default on cloud and desktop images.
+At the end of April 2026, Canonical's plans to bring AI features to Ubuntu had people asking for an "AI kill switch". Phoronix [reported the clarification](https://www.phoronix.com/news/Ubuntu-AI-Kill-Switch-Opt-In) from Canonical's VP of Engineering, Jon Seager:
 
-This guide is for homelab operators running Ubuntu Server 24.04 LTS (Noble Numbat) or planning for 26.04. Here is exactly what gets installed, how to audit it, and how to cleanly remove AI-related components without breaking your base system.
+- AI features arrive as a **preview, strictly opt-in**, starting with **Ubuntu 26.10**.
+- From **27.04**, the initial setup wizard is planned to **ask** which AI features you want.
+- There is **no global kill switch**: the features come as **snaps**, and removing them is how you turn them off.
+- The default is meant to **always** be **local inference against local models**.
 
-## What Canonical's AI Features Actually Install
+For a homelab **server** that means: nothing AI-related is installed on Ubuntu Server 24.04 or 26.04 today. The question is how to keep an eye on what a server talks to and installs, which applies with or without AI.
 
-On a **minimal Ubuntu Server ISO install**, you get less than you might fear. The danger zone is cloud images (AWS/GCP/Azure), the full server ISO, and anything pulled in by `ubuntu-advantage-tools` (now rebranded as `pro`).
-
-The components to know about:
-
-- **`ubuntu-pro-client` (`pro`)**, Manages Ubuntu Pro subscriptions. Since 23.10 it ships by default and includes hooks for AI-related services under the Pro umbrella.
-- **`snapd`**, The snap daemon. Not inherently AI, but it is the delivery mechanism for Canonical's AI snaps.
-- **`landscape-client`**, System management agent that reports inventory to Canonical's Landscape SaaS. Often auto-installed on cloud images.
-- **`ubuntu-report`**, Sends hardware/software telemetry on first boot.
-- **AI model snaps**: Things like `ollama`, `openai-cli`, or future Canonical-published model snaps are Snap-packaged. On 26.04, Canonical has signaled intent to publish curated AI snap bundles.
-
-The Phoronix coverage of the kill switch confirms that Canonical's position is: AI features are snap-delivered and snap-removal is the kill switch. That is accurate but incomplete, the telemetry and Pro client hooks persist unless you deal with them separately.
-
-## Step 1: Audit What's Running
-
-Run this immediately after a fresh install or on an existing server:
+## Audit what's there
 
 ```bash
-#!/usr/bin/env bash
-# audit-ubuntu-ai.sh — quick audit of AI/telemetry components
-
-echo "=== Snap packages ==="
-snap list 2>/dev/null || echo "snapd not installed"
-
-echo ""
-echo "=== Ubuntu Pro status ==="
-pro status 2>/dev/null || echo "ubuntu-pro-client not installed"
-
-echo ""
-echo "=== Landscape client ==="
-systemctl status landscape-client 2>/dev/null || echo "landscape-client not found"
-
-echo ""
-echo "=== Telemetry service ==="
-systemctl status ubuntu-advantage 2>/dev/null
-systemctl status ua-timer 2>/dev/null
-
-echo ""
-echo "=== Phoning-home candidates ==="
-ss -tlnp | grep -E '443|80' | grep -v "127.0.0"
-
-echo ""
-echo "=== /etc/ubuntu-advantage/uaclient.conf ==="
-cat /etc/ubuntu-advantage/uaclient.conf 2>/dev/null || echo "File not found"
+snap list                         # every installed snap
+pro status                        # Ubuntu Pro attachment and services
+systemctl list-timers --all | grep -Ei 'ua-|pro|motd|snap'
+apt list --installed 2>/dev/null | grep -Ei 'landscape|popularity-contest'
 ```
 
-Make it executable and run it: `chmod +x audit-ubuntu-ai.sh && sudo ./audit-ubuntu-ai.sh`
+What you might find on a server:
 
-## Step 2: Remove or Disable AI and Telemetry Components
+- **snapd** and its snaps: on Ubuntu Server, LXD, for example, comes as a snap.
+- **ubuntu-pro-client** (`pro`): manages Ubuntu Pro (ESM, Livepatch). It ships by default and runs periodic checks. Unattached, it doesn't give you anything extra.
+- **landscape-client**: only if you or your image installed it. It reports to a Landscape server.
+- **motd-news**: fetches news for the login message from Canonical.
 
-### Disable ubuntu-report (telemetry on first boot)
+## Turn off what you don't want
+
+**News in the login message and in apt output:**
 
 ```bash
-sudo ubuntu-report send no
+sudo sed -i 's/^ENABLED=1/ENABLED=0/' /etc/default/motd-news
+sudo pro config set apt_news=false
 ```
 
-That writes a suppression flag. To confirm it won't fire again:
-
-```bash
-cat ~/.config/ubuntu-report/ubuntu-report.json
-```
-
-### Remove the Ubuntu Pro client (if you don't need it)
-
-If you are not using Ubuntu Pro ESM patches or FIPS, the pro client is dead weight:
-
-```bash
-sudo apt purge ubuntu-pro-client ubuntu-advantage-tools
-sudo apt autoremove
-```
-
-> **Warning:** If you rely on `livepatch` or `esm-infra` repos, do not remove this. Most homelabbers running behind a patching schedule don't need it.
-
-### Disable Landscape
+**Landscape**, if it's installed and you don't use it:
 
 ```bash
 sudo systemctl disable --now landscape-client
-sudo apt purge landscape-client landscape-common
-sudo apt autoremove
+sudo apt purge landscape-client
 ```
 
-### Remove snapd entirely (the nuclear option)
+**Ubuntu Pro client:** leave it installed unless you know what depends on it. Removing it can pull Ubuntu metapackages out with it; check with `apt purge --simulate ubuntu-pro-client` first. If you don't attach a Pro subscription, it doesn't enable any services.
 
-If you have no snaps you need and want the cleanest possible system:
+**Snaps:** remove the ones you didn't install deliberately with `sudo snap remove --purge <name>`. When Canonical's opt-in AI snaps appear from 26.10, that's also how you remove them; check `snap list` after release upgrades.
+
+**Removing snapd completely** is possible, but anything you run as a snap (LXD on Ubuntu Server, for example) goes with it:
 
 ```bash
-# Remove all installed snaps first
-snap list | awk 'NR>1 {print $1}' | xargs -I {} sudo snap remove {}
-
-# Remove snapd
+sudo snap list                     # check what you'd lose
 sudo apt purge snapd
-sudo apt-mark hold snapd   # prevent reinstall via dependencies
-
-# Clean up snap directories
-sudo rm -rf /snap /var/snap /var/lib/snapd /var/cache/snapd ~/snap
-```
-
-After this, pin snapd to prevent it sneaking back in:
-
-```bash
 cat <<EOF | sudo tee /etc/apt/preferences.d/no-snapd
 Package: snapd
 Pin: release a=*
@@ -129,77 +74,15 @@ Pin-Priority: -1
 EOF
 ```
 
-### Remove specific AI snaps without nuking snapd
+The pin stops apt from installing snapd again as a dependency.
 
-If you want to keep snapd for other snaps (e.g., `lxd`):
+## Containers
 
-```bash
-sudo snap remove --purge ollama 2>/dev/null
-sudo snap remove --purge ubuntu-ai 2>/dev/null   # placeholder for future snap names
-```
+Ubuntu container images (`ubuntu:24.04`) don't run snapd, the Pro client's services or Landscape, so none of this applies inside them.
 
-Run `snap list` and remove anything you didn't deliberately install.
+## The bottom line
 
-## Docker-Based Approach: Isolate Everything
-
-If you are running homelab services in containers anyway, the cleanest approach is a minimal Ubuntu base with all of this handled at build time:
-
-```yaml
-# docker-compose.yml — minimal Ubuntu service with no AI/telemetry cruft
-services:
-  myservice:
-    build:
-      context: .
-      dockerfile: Dockerfile.minimal-ubuntu
-    restart: unless-stopped
-    network_mode: bridge
-```
-
-```dockerfile
-# Dockerfile.minimal-ubuntu
-FROM ubuntu:24.04
-
-# Suppress interactive prompts
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Remove telemetry and pro client from the base image
-RUN apt-get update && \
-    apt-get purge -y ubuntu-pro-client ubuntu-advantage-tools ubuntu-report && \
-    apt-get autoremove -y && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-
-# snapd doesn't run inside containers by default — confirm it's absent
-RUN apt-get list --installed 2>/dev/null | grep -v snapd || true
-
-CMD ["/bin/bash"]
-```
-
-Container images don't run `snapd` anyway (no D-Bus, no systemd by default), so the snap attack surface is zero inside Docker. The purge step handles the Pro client hooks.
-
-## Ubuntu vs Debian vs Fedora: Does This Change the Calculus?
-
-Honest take for homelabbers:
-
-**Ubuntu Server 24.04 LTS**, Still the path of least resistance if you need broad package availability, LXD integration, or cloud tooling that assumes Ubuntu. The AI components are removable. The 5-year LTS window matters if you set servers up and leave them.
-
-**Debian 12/13**, No snapd, no Canonical telemetry, no Pro client. `apt` and done. If your workload runs fine on Debian's package versions (which are conservative), this is the lower-noise option. The tradeoff is slower package updates and occasionally older versions of tools like Docker Engine requiring third-party repos anyway.
-
-**Fedora Server 41+**, Fresh packages, SELinux by default, no snap infrastructure. Good if you want rpm-ostree immutable deployments. Less ideal if your homelab scripts assume Debian/Ubuntu conventions.
-
-For a **headless homelab server you SSH into and forget**, Debian or Ubuntu minimal with the steps above applied. For a **homelab that doubles as a dev environment** where you want current packages, Ubuntu 24.04 with snapd removed and Pro client purged is still competitive.
-
-## Verifying Nothing Is Calling Home
-
-After your cleanup, confirm with a 60-second `tcpdump` or check with `ss`:
-
-```bash
-sudo tcpdump -i any -n 'host contracts.canonical.com or host landscape.canonical.com or host motd.ubuntu.com' -c 20 &
-sleep 60
-sudo kill %1
-```
-
-No output means no callbacks to Canonical endpoints. Also worth blocking at the DNS level in your homelab if you run Pi-hole or AdGuard Home: add `contracts.canonical.com`, `landscape.canonical.com`, and `motd.ubuntu.com` to your blocklist.
+As announced, Ubuntu's AI features are opt-in, local by default, delivered as removable snaps, and not part of current server releases. Keep auditing `snap list` after release upgrades. If you'd rather not depend on how Canonical's plans evolve, Debian is the snap-free alternative.
 
 ## What's Next
 
