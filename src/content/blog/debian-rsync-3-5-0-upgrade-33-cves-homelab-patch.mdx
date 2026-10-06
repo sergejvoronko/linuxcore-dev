@@ -1,6 +1,6 @@
 ---
 title: "Debian Rsync CVE: Upgrading to 3.5.0 in Your Homelab"
-description: "A massive Debian rsync CVE patch just dropped 3.5.0 to fix 33 flaws. Apply this rsync security update for strict homelab rsync backup security."
+description: "rsync 3.5.0 fixes 33 security issues and Debian 13 shipped it as a security update. What changed, which behaviour can break backups, and how to update."
 pubDate: 2026-10-01
 readingTime: 8
 heroImage: "/images/debian-rsync-3-5-0-upgrade-33-cves-homelab-patch.webp"
@@ -9,145 +9,64 @@ section: "homelab"
 tags: ["debian", "rsync", "cve", "backups"]
 draft: false
 faqs:
-  - q: "Do I need to update both the sender and receiver rsync binaries?"
-    a: "Yes. Rsync 3.5.0 introduces stricter protocol validations. Mismatched versions across your backup pipeline will cause immediate job failures."
-  - q: "Am I vulnerable if I only use rsync over SSH?"
-    a: "Yes. While SSH protects the transit layer, the 33 CVEs involve path parsing and memory corruption during the file list build process. A malicious sender can exploit a vulnerable receiver regardless of the transport method."
-  - q: "Why did Debian push a major version bump to stable?"
-    a: "The sheer volume of structural vulnerabilities made backporting patches impossible without rewriting the entire 3.2.x codebase. Pushing 3.5.0 was the only viable security path."
+  - q: "Which Debian releases have the fixed rsync?"
+    a: "At the time of writing, Debian 13 (trixie) got rsync 3.5.0+ds1-0+deb13u1 through the security archive (DSA-6527-1). Debian's security tracker still listed bookworm as vulnerable. Check the tracker for the current state."
+  - q: "Will 3.5.0 break my backup scripts?"
+    a: "Mostly not, but there are deliberate behaviour changes: a destination that is a symlink owned by another user is now refused, and paths are resolved with a stricter symlink walk. rsync 3.5.1 also fixed some 3.5.0 regressions, for example with --files-from paths and reading batch data from pipes."
+  - q: "Do I need the same rsync version on both ends?"
+    a: "No. rsync negotiates a protocol version between peers. But the security fixes only protect the side that runs the fixed version, so update both."
 ---
 
-Debian maintainers do not break stable releases. The entire point of running Debian in your homelab is the guarantee that `apt upgrade` applies tiny, backported security fixes without touching core application logic. 
+On **13 August 2026**, rsync **3.5.0** was released with fixes for **33 security issues**, the result of a focused audit of rsync's path handling and daemon protocol plus daemon-protocol fuzzing and external reports (including Trail of Bits). CVE IDs were assigned by VulnCheck. Debian then shipped it to **Debian 13 (trixie)** as a security update, **DSA-6527-1**, as version `3.5.0+ds1-0+deb13u1`. Debian normally backports individual fixes; replacing the upstream version in a stable release is unusual and shows how much changed.
 
-Yesterday, that rule shattered. Debian pushed rsync 3.5.0 directly into stable repositories to patch 33 separate CVEs. 
+## What was fixed
 
-The vulnerabilities range from out-of-bounds reads to critical path-traversal exploits where a malicious sender can write files outside the designated destination directory. The architectural flaws ran so deep in the 3.2.x codebase that maintainers abandoned backporting entirely. 
+Most of the issues are **symlink and path races**: a local user who controls part of a path plants or swaps in a symlink, and a more privileged rsync follows it. Examples from the [rsync NEWS file](https://download.samba.org/pub/rsync/NEWS):
 
-Applying this rsync security update requires more than a blind package upgrade. A major version bump in a core utility will break unmaintained bash scripts and misconfigured cron jobs. You need a strategy to upgrade your homelab rsync backup security without silently corrupting your nightly syncs.
+- **CVE-2026-53802 (high):** rsync followed attacker-planted symlinks in operator-supplied input files: filter merge files, `--files-from`, `--include-from`/`--exclude-from`, and password or secrets files.
+- **CVE-2026-53803 (high):** symlinked **output** paths (`--log-file`, `--write-batch`, daemon motd and lock files) could redirect writes, for example appending to `authorized_keys`.
+- **CVE-2026-53784 (high):** with `use chroot = no`, a daemon module could serve files from outside the module via a symlinked parent directory.
+- Several medium-severity races in the receiver and sender, including ACL/xattr application and `--remove-source-files`.
 
-## Assessing Your Homelab Exposure
+Most of these matter when **another user can write into the paths rsync touches**: shared machines, daemon modules others upload to, backups of directories other users own. A single-user homelab is less exposed, but backup servers often run rsync as root over other machines' data, which is exactly the privileged side these bugs target.
 
-The risk profile of a Debian rsync CVE depends entirely on how your servers talk to each other. 
+## Behaviour changes that can affect backups
 
-Running the rsync daemon (`rsyncd`) on public port 873 is leaving your server's front door wide open. If you expose the unencrypted daemon to the internet or even just a flat homelab IoT VLAN, you are highly exposed to unauthenticated memory corruption attacks. 
+From the 3.5.0 NEWS:
 
-If you strictly tunnel rsync over SSH, your exposure drops but does not disappear. The vulnerabilities trigger when the receiver processes the file list sent by the remote machine. If your central NAS pulls backups from a compromised VPS or an untrusted container via SSH, the compromised node can exploit your NAS during the sync process.
+- A non-daemon receiver only follows a **symlinked destination directory** if the symlink is owned by **root or the running user**. A destination symlinked by another user is refused. `--insecure-links` restores the old behaviour.
+- In-tree symlinked directories are now resolved by a single race-free walk on every platform, so `-K`, `-L`, `-k` and `-R` behave the same everywhere.
+- `support/rrsync` in a restricted subdirectory forces `--no-D` and denies `--copy-unsafe-links`.
+- A daemon with `proxy protocol = true` but no `proxy protocol hosts` now rejects all connections.
 
-You must audit your backup flow. Identify which machines act as receivers and update them first. 
+**rsync 3.5.1** (21 September) fixed regressions from 3.5.0. Explicit sender paths through symlinked parents work again. `--files-from` paths are treated as operator-supplied paths rather than paths beneath the transfer root. Reading batch data from a FIFO or process substitution works again. If a backup script broke after the update, check whether your distribution has a 3.5.1-based package yet.
 
-## The Protocol Mismatch Problem
-
-Rsync relies on a strict sender-receiver protocol negotiation. When you type `apt update && apt install --only-upgrade rsync` on your NAS, you upgrade the receiver to protocol version 33 (introduced in rsync 3.5.0). 
-
-If your remote servers still run older protocol versions, the new 3.5.0 receiver will apply strict path validation rules to the older sender's output. In many edge cases involving symlinks and implied directories, this causes the sync to hard crash with a fatal error.
-
-You must upgrade both ends of your backup pipeline simultaneously.
-
-Use this bash snippet to check the installed rsync versions across your local network before you begin patching. It requires passwordless SSH access to your nodes.
+## Update
 
 ```bash
-#!/bin/bash
-# check_rsync_versions.sh
+# Debian / Ubuntu
+sudo apt update && sudo apt install --only-upgrade rsync
+rsync --version | head -1
+```
 
-NODES=("pve-node1" "nas-core" "docker-host" "nextcloud-lxc")
+Check the fixed version for **your** release on the Debian tracker, e.g. `https://security-tracker.debian.org/tracker/CVE-2026-53802`. On other distributions, look for their advisory for the same CVEs.
 
-for node in "${NODES[@]}"; do
-    version=$(ssh -o BatchMode=yes "$node" "rsync --version | head -n 1 | awk '{print \$3}'" 2>/dev/null)
-    if [ -z "$version" ]; then
-        echo "[!] $node: Connection failed or rsync not installed"
-    else
-        echo "[-] $node: $version"
-    fi
+Update **every** machine that runs rsync in your backup chain, client and server. The fixes protect the side that runs the fixed version.
+
+## Check all hosts
+
+```bash
+for node in nas pve1 pve2 backup; do
+  printf '%s: ' "$node"
+  ssh -o BatchMode=yes "$node" 'rsync --version | head -n1'
 done
 ```
 
-Run this script. Any machine returning a version lower than 3.5.0 needs an immediate update.
+## While you're at it: don't expose the daemon
 
-## Script Compatibility and Broken Flags
+The rsync daemon protocol (`rsyncd`, port 873) is unencrypted. Don't expose it to the internet or untrusted networks. Run rsync **over SSH**, or keep `rsyncd` on a trusted network behind a firewall. For restricted backup accounts over SSH, rsync ships `rrsync`, which locks an SSH key to one directory.
 
-Rsync 3.5.0 changes default behaviors to close security holes. These changes will break sloppy backup scripts.
-
-### Strict Path Sanitization
-Older versions of rsync allowed ambiguous trailing slashes in `--files-from` lists. Rsync 3.5.0 enforces POSIX-compliant path sanitization. If your automated scripts generate file lists with redundant slashes (like `/var/www//html/`), the new parser will reject them or strip them aggressively, which changes how directories nest on the target machine.
-
-### Symlink Restrictions
-The most severe CVEs involve symlink manipulation. A rogue sender could use symlinks to trick the receiver into overwriting system files outside the backup directory. Rsync 3.5.0 introduces `--munge-symlinks` by default in daemon mode and restricts `--copy-links` behavior when running as root. 
-
-If your homelab backs up container volumes heavily reliant on internal symlinks, test your sync process manually. You will likely see `vanished file` or `symlink validation failed` errors in your logs. 
-
-### Fixing Your Cron Jobs
-Do not let your cron jobs fail silently. Update your scripts to capture the new exit codes. Rsync 3.5.0 introduces specific exit codes for path traversal rejections. 
-
-Modify your bash wrappers to handle these failures explicitly:
-
-```bash
-#!/bin/bash
-# secure_backup.sh
-
-SOURCE="/data/app-configs/"
-DEST="backup-user@nas-core:/volume1/backups/configs/"
-
-rsync -aHz --delete-after --numeric-ids -e "ssh -T -c aes256-gcm@openssh.com -o Compression=no -x" "$SOURCE" "$DEST"
-EXIT_CODE=$?
-
-if [ $EXIT_CODE -eq 0 ]; then
-    echo "Backup successful."
-elif [ $EXIT_CODE -eq 23 ]; then
-    echo "Partial transfer due to error (check symlink permissions)."
-    exit 1
-elif [ $EXIT_CODE -eq 35 ]; then
-    echo "CRITICAL: Rsync 3.5.0 path validation failure. Check paths for illegal characters."
-    exit 1
-else
-    echo "Rsync failed with code $EXIT_CODE"
-    exit 1
-fi
-```
-
-## Securing Docker Backup Pipelines
-
-Many homelab administrators isolate their backup jobs inside Docker containers. If your `docker-compose.yml` pulls a generic `alpine:latest` or `debian:bookworm-slim` image to run a cron-based rsync script, you are running vulnerable binaries until you rebuild those images.
-
-You must force a pull of the latest base images and rebuild your backup containers. Alpine patched rsync in their package repositories within hours of the Debian release.
-
-Here is a modern, isolated Docker Compose setup for a dedicated backup puller. It mounts the SSH keys read-only and explicitly uses the updated Alpine image.
-
-```yaml
-# docker-compose.yml
-services:
-  backup-puller:
-    image: alpine:3.20.3  # Ensure this specific patch level or higher
-    container_name: homelab-rsync-agent
-    restart: unless-stopped
-    command: >
-      /bin/sh -c "apk add --no-cache rsync openssh-client && 
-      crond -f -l 2"
-    volumes:
-      - ./cronjobs:/etc/crontabs/root:ro
-      - ./ssh-keys:/root/.ssh:ro
-      - /mnt/backup-storage:/data:rw
-    environment:
-      - TZ=Europe/Berlin
-    security_opt:
-      - no-new-privileges:true
-    read_only: true
-    tmpfs:
-      - /run
-      - /tmp
-```
-
-This configuration achieves three things. It guarantees the latest binary execution via `apk add`. It prevents the container from modifying its own execution environment by mounting the root filesystem as read-only. It drops privileges effectively, mitigating local escalation if the rsync process is compromised.
-
-## Verification and Rollout Strategy
-
-Do not blindly push the update to all 15 nodes in your Proxmox cluster at once. 
-
-Start with your primary backup destination. Run `apt update && apt install rsync`. 
-Pick one low-priority client node, update it, and manually trigger a sync job using the `--dry-run` flag. Watch the output for skipped files or permission errors. 
-
-If the dry run succeeds, remove the flag and run the actual transfer. Inspect the resulting file structure on the NAS to ensure trailing slashes or symlinks did not alter the directory tree. Only after verifying the physical files should you roll the update out via Ansible or your preferred automation tool to the rest of the network.
-
-Debian forcing a major version into stable is a painful anomaly. You will likely spend an hour fixing scripts that have run flawlessly for five years. Patching these 33 CVEs is non-negotiable. 
+After updating, run your backup jobs once by hand and read the output, so a changed behaviour shows up now rather than as a silent failure in a month.
 
 ## What's Next
 
