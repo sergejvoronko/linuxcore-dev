@@ -62,7 +62,7 @@ In the Cloudflare dashboard, you map the public hostname (`cloud.yourdomain.com`
 
 Cloudflare decrypts your traffic. The edge node terminates the SSL connection, inspects the payload, and re-encrypts it before sending it down the tunnel. You surrender total privacy.
 
-Furthermore, section 2.8 of Cloudflare's standard Terms of Service prohibits serving a disproportionate amount of non-HTML content. Routing heavy media streams from Plex or Jellyfin through a free Cloudflare Tunnel often results in account suspension. Use this method for web dashboards, wikis, and lightweight APIs.
+Furthermore, Cloudflare's terms restrict using its CDN for large amounts of video and other non-HTML content unless you use a product meant for it. The old "section 2.8" was replaced in 2023 by service-specific terms, so read the current ones for your plan. Streaming Plex or Jellyfin through a free tunnel is the classic way to run into that. Use this method for web dashboards, wikis and lightweight APIs.
 
 ## Option 2: The VPS WireGuard Relay
 
@@ -82,7 +82,7 @@ Address = 10.0.0.1/24
 ListenPort = 51820
 PrivateKey = <VPS_PRIVATE_KEY>
 
-# Forwarding rules for internet access
+# Only needed if the VPS forwards traffic for the homelab (not for a reverse proxy on the VPS)
 PostUp = iptables -A FORWARD -i wg0 -j ACCEPT
 PostDown = iptables -D FORWARD -i wg0 -j ACCEPT
 
