@@ -681,7 +681,7 @@ Rebuild initramfs: `update-initramfs -u -k all` and reboot. Once it shows
 
 What I run this on (affiliate links. They help fund the site at no extra cost to you):
 
-- [Beelink EQ12 Pro (N100 mini PC)](/go/beelink-eq12/): my main Proxmox node
+- [Beelink EQ12 Pro (i3-N305 mini PC)](/go/beelink-eq12/): a capable, low-power Proxmox node
 - [Samsung 990 Pro NVMe SSD](/go/samsung-990-pro/): fast VM/DB storage
 - [CyberPower UPS](/go/cyberpower-ups/): clean shutdowns, no corrupted pools
 

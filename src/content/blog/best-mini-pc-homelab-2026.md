@@ -1,5 +1,5 @@
 ---
-title: "Best Mini PC for a Homelab Server in 2026: Tested & Ranked"
+title: "Best Mini PC for a Homelab Server in 2026"
 description: "Which mini PC runs Proxmox, Docker, Ollama, and a full homelab stack without killing your electricity bill? N100, N305, Ryzen 7, and MS-01, honestly compared."
 pubDate: 2026-04-29
 heroImage: "/images/best-mini-pc-homelab-2026.webp"
@@ -16,7 +16,7 @@ faqs:
   - q: "Which mini PC is best for running Proxmox and Docker simultaneously?"
     a: "The Intel N305-based mini PCs (Beelink EQ12 Pro, MinisForum UN305) hit the sweet spot for a Proxmox host running 4-6 LXC containers. If you need GPU acceleration for Ollama or Plex transcoding, step up to a Ryzen 7 or Intel Core i5 model with integrated GPU."
   - q: "Can a mini PC run local AI models like Ollama?"
-    a: "Yes, but results vary by model size. An N100 mini PC can run llama3.2:3b at 12-18 tokens/sec on CPU. For 7B+ models at usable speed, you need a Ryzen 7 or a model with a discrete GPU. The MS-01 with an eGPU is the most capable mini PC option for local AI."
+    a: "Yes, with limits. On CPU-only N100/N150 boxes, small models (around 3B parameters) are usable but slow; 7B and larger models want more cores and fast memory, or a GPU. Mini PCs with OCuLink or USB4 can take an external GPU, which is the most capable mini PC option for local AI."
   - q: "What is the difference between Intel N100 and N305?"
     a: "The N100 is a 4-core/4-thread chip aimed at light workloads, good for 2-3 Docker containers or a single VM. The N305 is an 8-core/8-thread E-core design that handles Proxmox with multiple VMs, Docker stacks, and moderate transcoding without breaking a sweat."
   - q: "How much electricity does a mini PC homelab use per year?"
@@ -83,7 +83,7 @@ N355 rather than the N100 itself, the N150 is the refreshed successor
 shipping in current stock. Think of it as "N100 plus a little": the same
 core count and architecture with a 6–10% performance bump.
 
-**[Beelink EQ12 / EQ14](/go/beelink-mini-s12/)** (~€150–180)
+**Beelink EQ12 / EQ14 (N100/N150)** (~€150–180)
 
 The Beelink EQ12 with dual 2.5GbE NICs is popular for pfSense/OPNsense
 firewalls and general homelabbing. N100-based models are the best value
@@ -120,19 +120,18 @@ than 3 simultaneous VMs, or anything CPU-intensive at sustained load.
 
 ### Tier 2–€200–350: The N305/Ryzen Performance Jump
 
-**Beelink EQi3-N305** (~€220–250)
+**[Beelink EQ12 Pro (Intel Core i3-N305)](/go/beelink-eq12/)** (~€220–250)
 
-The EQi3-N305 pairs the 8-core CPU with 16GB DDR5 RAM, a 500GB NVMe
-SSD, and dual Ethernet. A good all-rounder if you want the Beelink
+The EQ12 Pro pairs the 8-core i3-N305 with 16GB DDR5 RAM, a 512GB NVMe
+SSD and dual 2.5GbE. A good all-rounder if you want the Beelink
 ecosystem but need more cores for Proxmox or multi-user workloads.
 
-The N305 has 8 efficiency cores vs the N100's 4. The N305 can handle
-30–40 containers without breaking a sweat. Most homelab users run fewer
+The N305 has 8 efficiency cores vs the N100's 4, roughly twice the multi-threaded headroom for the same kind of workload. Most homelab users run fewer
 than 15 containers, making the N100 perfectly adequate, but if you're
 planning a Proxmox cluster or need multiple VMs running simultaneously,
 the N305's extra cores become essential.
 
-Power draw is roughly double the N100 at 12–18W idle. Still extremely
+ServeTheHome measured the EQ12 Pro at about 9–12W idle, depending on the power mode. Still extremely
 efficient compared to anything with a desktop CPU.
 
 **Beelink SER5 / SER6 (AMD Ryzen 5000/6000 series)** (~€220–300)
@@ -142,8 +141,7 @@ to 64GB of RAM inexpensively, which is why it sits at the top of many
 homelabbers' shortlists.
 
 The Ryzen 5 5500U (6 cores, 12 threads) outperforms the N305 on
-multi-threaded workloads. Better for Ollama without a GPU, the 7b
-models become genuinely usable at useful token speeds. Slightly higher
+multi-threaded workloads. Better for Ollama without a GPU: 7B models become usable, if not fast. Slightly higher
 idle power than N-series at 15–20W.
 
 **Who this tier is for:** You're running Proxmox with 4–6 VMs, you want
@@ -157,17 +155,14 @@ building a two-node cluster and need each node to carry more weight.
 **MinisForum UM790 Pro (AMD Ryzen 9 7940HS)** (~€400–450)
 
 The MinisForum UM790 Pro with AMD Ryzen 9 7940HS has 8 cores, 16
-threads, 32GB RAM, and Oculink for eGPU connectivity, a beast in a
-small box.
+threads and up to 64GB RAM: a lot of CPU in a small box.
 
-The Oculink port is what makes this special for AI homelabbers. Attach
-an eGPU enclosure with an NVIDIA RTX card and you have a proper GPU
-server in a 1-litre box. Run Ollama with 13b or 70b models at real speed.
+For an external GPU, look at models with **OCuLink** (such as the newer UM890 Pro) or use USB4/Thunderbolt with an eGPU enclosure (lower bandwidth). With a 16–24GB NVIDIA card, Ollama runs 7B–14B models quickly; the largest models (70B) need far more VRAM than a single consumer card has.
 Idle power around 20–25W.
 
 **Beelink SER9 Pro (AMD Ryzen AI 9 365)** (~€450–500)
 
-The Beelink SER9 Pro combines AMD Ryzen AI 9 365 with a 73 TOPS NPU
+The Beelink SER9 Pro combines the AMD Ryzen AI 9 365 with a 50 TOPS NPU (AMD quotes up to 73 TOPS for the whole chip)
 for local AI workloads, designed for users who want to run AI
 applications, handle multiple 4K streams, and manage complex workloads
 simultaneously.
@@ -180,7 +175,7 @@ Not yet essential, but relevant if you're planning a 3–5 year machine.
 ### Tier 4–€600+: The MinisForum MS-01
 
 The MinisForum MS-01 is the homelab darling. Dual 10GbE SFP+, dual
-2.5GbE, three M.2 slots, and space for a 2.5-inch drive. It's a mini
+2.5GbE, three M.2 slots and a low-profile PCIe slot. It's a mini
 server, not just a mini PC, and arguably the best purpose-built mini
 homelab server available.
 
@@ -351,9 +346,9 @@ will be better and cheaper than what's available today.
 
 ## Recommended hardware
 
-What I'd buy today (affiliate links. They help fund the site at no extra cost to you):
+Recommended (affiliate links. They help fund the site at no extra cost to you):
 
-- [Beelink EQ12 Pro (N100)](/go/beelink-eq12/): my pick for a first node
+- [Beelink EQ12 Pro (i3-N305)](/go/beelink-eq12/): a strong first node with dual 2.5GbE
 - [Minisforum MS-01](/go/minisforum-ms01/): if you need more power/PCIe
 - [Crucial 32GB DDR5 SO-DIMM](/go/crucial-ddr5/): max out the RAM early
 - [Samsung 990 Pro NVMe SSD](/go/samsung-990-pro/): fast boot + VM storage

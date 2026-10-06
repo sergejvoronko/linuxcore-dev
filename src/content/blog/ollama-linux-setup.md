@@ -242,7 +242,7 @@ A split (e.g. `48%/52% CPU/GPU`) means the model didn't fit in VRAM and Ollama o
 For GPU-accelerated local inference (affiliate links. They help fund the site at no extra cost to you):
 
 - [NVIDIA RTX 3060 12GB](/go/rtx-3060-12gb/): the value pick for 7B–13B models
-- [Beelink EQ12 Pro (N100)](/go/beelink-eq12/): fine for CPU-only 3B models
+- [Beelink EQ12 Pro (i3-N305)](/go/beelink-eq12/): fine for CPU-only small models
 
 Once Ollama is running, a few natural next steps from this site:
 

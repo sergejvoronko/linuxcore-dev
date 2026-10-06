@@ -1,6 +1,6 @@
 ---
 title: "10GbE on a Budget: USB Adapters for Your Homelab"
-description: "Add 10GbE networking to your homelab using budget USB adapters. Linux driver setup, real-world Proxmox throughput tests, and PCIe comparisons covered."
+description: "USB 10GbE for mini PC homelabs: the Realtek RTL8159, the 20 Gbps USB port it needs, Linux driver and firmware, Proxmox setup, and when PCIe or Thunderbolt is better."
 pubDate: 2026-04-26
 readingTime: 8
 heroImage: "/images/10gbe-usb-adapter-homelab-upgrade-guide.webp"
@@ -11,58 +11,41 @@ draft: false
 affiliate: true
 faqs:
   - q: "Do USB 10GbE adapters work out of the box on Linux?"
-    a: "Most new USB 10GbE adapters based on the Realtek RTL8156 or similar chipsets are supported in Linux kernel 5.15 and later. On Ubuntu 22.04+ and Proxmox 7+ you typically get plug-and-play detection, though you may need to install firmware packages on some distros."
-  - q: "Can I actually saturate 10GbE over USB 3.2 Gen 2?"
-    a: "USB 3.2 Gen 2 provides ~10 Gbps theoretical bandwidth, but real-world overhead limits you to roughly 8–9 Gbps of usable throughput. In practice, NFS and SMB transfers on a Proxmox host top out around 700–900 MB/s depending on CPU and storage speed, still a massive upgrade over gigabit."
-  - q: "Should I use a USB 10GbE adapter or a PCIe card for my homelab?"
-    a: "PCIe cards deliver lower latency and more consistent throughput, making them the better choice for dedicated NAS or high-traffic VM hosts with an available slot. USB adapters win for small-form-factor nodes like Intel NUCs or mini PCs where PCIe isn't an option, or for temporary high-speed connections between machines."
+    a: "The common one, Realtek's RTL8159, is handled by the r8152 driver, with mainline support added in Linux 7.2; older kernels need Realtek's out-of-tree driver. It also needs PHY firmware for 10G link speed; without it, reports show only 5G links."
+  - q: "Can a USB adapter really do 10GbE?"
+    a: "Only on a fast enough port. The RTL8159 is designed for USB 3.2 Gen 2x2 (20 Gbps), Thunderbolt or USB4. A test on a 20 Gbps port reached about 9 Gbps with iperf3. On a 10 Gbps USB 3.2 Gen 2 port you won't reach full 10GbE."
+  - q: "Should I use a USB 10GbE adapter or a PCIe card?"
+    a: "PCIe if the machine has a slot: lower CPU overhead, no USB quirks, and passthrough options. USB or Thunderbolt adapters are for mini PCs and laptops without a slot."
 ---
+Gigabit Ethernet quietly throttles NFS mounts, VM migrations and backups in many homelabs. On mini PCs without a PCIe slot, USB is the only way to add faster networking. But be careful what you buy: many "fast" USB adapters are 2.5 or 5 GbE.
 
-Gigabit Ethernet stopped being the bottleneck in the datacenter years ago. In the homelab, it's still quietly throttling your NFS mounts, your VM live migrations, and your backups, not because 10GbE hardware is expensive anymore, but because getting it into a small-form-factor node has always been awkward. A new wave of compact USB 10GbE adapters changes that calculus. They're small, they're cheap, and Linux support is finally solid.
+## Know your chips
 
-Here's how to actually put them to work.
+| Chip | Speed | Linux driver |
+|---|---|---|
+| Realtek RTL8156 / RTL8156B / RTL8156BG | **2.5 GbE** | `r8152` |
+| Realtek RTL8157 | **5 GbE** | `r8152` (support added in 2026) |
+| Aquantia/Marvell AQC111U | **5 GbE** | `aqc111` |
+| Realtek **RTL8159** | **10 GbE** | `r8152`, mainline from **Linux 7.2** ([Phoronix](https://www.phoronix.com/news/Realtek-RTL8159-Linux-7.2)) |
+| Marvell AQC107/AQC113 (Thunderbolt adapters) | 10 GbE | `atlantic` |
 
-## What's Available Right Now
+For true 10GbE over USB, the RTL8159 is the chip to look for. Thunderbolt 10GbE adapters with Marvell chips are the other option on machines with Thunderbolt or USB4.
 
-As of early 2026, the market has consolidated around a few chipsets. The most common in budget adapters (typically $40–$70 USD) are:
+## The port matters
 
-- **Realtek RTL8156BG**: the workhorse, broadly supported
-- **AQtion AQC111U**: slightly better performance ceiling, patchier driver history
-- **Marvell AQtion** variants appearing in newer OEM designs
+The RTL8159 is designed for **USB 3.2 Gen 2x2 (20 Gbps)**, **Thunderbolt 3/4** or **USB4**. Plugged into an ordinary **USB 3.2 Gen 2 (10 Gbps)** port it still works, but can't reach full 10GbE once protocol overhead is counted. In a test posted with the Linux driver patches, an RTL8159 on a 20 Gbps port reached about **8.96 Gbps** with `iperf3`. Check which USB ports your mini PC actually has before buying.
 
-Jeff Geerling's hands-on coverage of [the newest batch of adapters](https://www.jeffgeerling.com/blog/2026/new-10-gbe-usb-adapters-cooler-smaller-cheaper/) confirms they run cooler and smaller than earlier generations, which matters when you're stuffing them into a rack shelf alongside four other mini PCs.
-
-For Linux homelabs, stick to RTL8156-based adapters unless you enjoy patching out-of-tree drivers. Brands shipping these include ASUS, UGREEN, and several no-name options on the usual import sites.
-
-## Linux Driver Support
-
-The RTL8156 family is handled by the `r8152` kernel module. Check what you have loaded:
+## Linux driver and firmware
 
 ```bash
+uname -r                       # 7.2 or newer for mainline RTL8159 support
 lsmod | grep r8152
+dmesg | grep -i r8152
+ip -br link                    # new interface, usually enx<mac>
+ethtool enx<mac> | grep Speed  # check the negotiated link speed
 ```
 
-On Ubuntu 22.04/24.04 and Proxmox 8.x, the module loads automatically on plug-in. Verify the adapter was recognized:
-
-```bash
-dmesg | grep -i "r8152\|usb 10g\|RTL8156"
-ip link show
-```
-
-You should see a new interface, usually `enx<mac>` or `eth1` depending on your udev rules. If nothing shows up, install the firmware package:
-
-```bash
-# Debian/Ubuntu/Proxmox
-sudo apt update && sudo apt install firmware-realtek
-```
-
-For AQC111U adapters, the driver is `aqc111` and has been mainlined since kernel 5.3, but firmware files are separate:
-
-```bash
-sudo apt install firmware-misc-nonfree
-```
-
-After installing firmware, unplug and replug the adapter. No reboot required.
+The RTL8159 needs **PHY firmware** to link at 10G; according to the driver discussion, without it you only get 5G. On Debian and Proxmox the Realtek firmware comes from `firmware-realtek` (non-free-firmware). On kernels older than 7.2 you'd need Realtek's out-of-tree driver, which you have to rebuild with every kernel update. Stick with a kernel that supports it natively.
 
 ## Configuring a Static IP on Proxmox
 
@@ -95,29 +78,16 @@ iface vmbr1 inet static
 
 Restart networking or reboot the node. VMs can now be assigned `vmbr1` as a second NIC on your 10GbE segment.
 
-## Real-World Throughput Testing
+## Test throughput yourself
 
-Before trusting it with production workloads, benchmark it. `iperf3` is the fastest sanity check:
+Before trusting it with real workloads, measure:
 
 ```bash
-# On the receiving machine
-iperf3 -s
-
-# On the sending machine
-iperf3 -c 10.0.10.5 -t 30 -P 4
+iperf3 -s                         # on the other machine
+iperf3 -c 10.0.10.5 -t 30 -P 4    # on the USB adapter's host
 ```
 
-Typical results on a Proxmox 8.2 host with an RTL8156BG adapter over USB 3.2 Gen 2:
-
-| Test | Result |
-|---|---|
-| iperf3 single stream | ~6.2 Gbps |
-| iperf3 4 parallel streams | ~8.8 Gbps |
-| NFS sequential read (dd) | ~780 MB/s |
-| SMB read (Windows client) | ~720 MB/s |
-| Proxmox VM live migration | ~3.2 min for 32GB RAM VM |
-
-That NFS number alone justifies the upgrade. On gigabit, the same NFS read caps at ~112 MB/s.
+Compare a single stream and several parallel streams, and watch CPU load on the mini PC: USB networking costs more CPU than a PCIe NIC. Check `ethtool` for the link speed if results look capped at 5 Gbps (firmware) or around 2.5 Gbps (wrong adapter).
 
 ## Setting Up a Fast NFS Share
 
@@ -141,7 +111,7 @@ sudo systemctl restart nfs-kernel-server
 On the client side, mount with options tuned for high throughput:
 
 ```bash
-sudo mount -t nfs -o rw,hard,intr,rsize=1048576,wsize=1048576,async \
+sudo mount -t nfs -o rw,hard,rsize=1048576,wsize=1048576 \
   10.0.10.5:/data/nfs-fast /mnt/fast-nfs
 ```
 
@@ -159,7 +129,7 @@ volumes:
     driver: local
     driver_opts:
       type: nfs
-      o: "addr=10.0.10.5,rw,hard,intr,rsize=1048576,wsize=1048576,nfsvers=4"
+      o: "addr=10.0.10.5,rw,hard,rsize=1048576,wsize=1048576,nfsvers=4"
       device: ":/data/nfs-fast"
 ```
 
@@ -168,7 +138,7 @@ volumes:
 USB adapters aren't the right tool for every node. Here's where each makes sense:
 
 **Go USB when:**
-- Your node is a mini PC, NUC, or Raspberry Pi, no PCIe slot available
+- Your node is a mini PC or NUC with no PCIe slot (check it has a 20 Gbps USB, USB4 or Thunderbolt port)
 - You need temporary 10GbE for a backup run or migration
 - You're testing whether 10GbE even helps your workload before committing to a PCIe upgrade
 - Budget is tight and you need multiple nodes upgraded at once
@@ -179,17 +149,15 @@ USB adapters aren't the right tool for every node. Here's where each makes sense
 - You're running SR-IOV or need the NIC directly attached to a VM via PCIe passthrough
 - The workload is storage-intensive 24/7 (USB adapters get warm under sustained load)
 
-PCIe 10GbE cards have dropped to $30–$50 for used Intel X550-T1 or Mellanox ConnectX-3 cards on eBay. If you have the slot, use it. But for a shelf of five NUCs serving as Proxmox nodes, five USB adapters at $50 each beats the alternative of buying five new machines with PCIe slots.
+Used PCIe 10GbE cards (for example Intel X550 for RJ45, or Mellanox ConnectX cards for SFP+) are often cheap on the second-hand market. If you have the slot, use it.
 
-## Thermal Considerations
+## Heat
 
-The new generation of adapters runs meaningfully cooler than the 2023/2024 crop, but "cooler" is relative. Under sustained 10GbE load, expect the adapter body to reach 45–55°C. In an enclosed rack shelf with poor airflow, that's worth monitoring.
-
-If you're running constant high-throughput workloads, add a small fan or ensure the adapter has airflow. For burst workloads, backups, migrations, occasional large transfers, thermal throttling is not a practical concern.
+10GbE adapters, USB or PCIe, run warm under sustained load. Give USB adapters some airflow rather than burying them behind a mini PC in a closed cabinet, especially for long transfers.
 
 ## Recommended hardware
 
-The gear I run for this (affiliate links. They help fund the site at no extra cost to you):
+Related hardware (affiliate links. They help fund the site at no extra cost to you):
 
 - [2.5GbE USB Ethernet adapter](/go/usb-25gbe-adapter/)
 - [TP-Link TL-SG3210XHP-M2 2.5GbE managed switch](/go/tplink-25gbe-switch/)

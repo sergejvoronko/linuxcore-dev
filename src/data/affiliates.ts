@@ -41,8 +41,8 @@ export const affiliates: AffiliateLink[] = [
   //    they earn immediately; swap each to a specific /dp/<ASIN> when chosen) ──
   {
     slug:        'beelink-eq12',
-    destination: 'https://www.amazon.com/s?k=Beelink+EQ12+Pro+N100&tag=aircom01f20-20',  // TODO ASIN: swap to /dp/<ASIN>/?tag=aircom01f20-20
-    label:       'Beelink EQ12 Pro (N100 mini PC)',
+    destination: 'https://www.amazon.com/s?k=Beelink+EQ12+Pro+N305&tag=aircom01f20-20',  // TODO ASIN: swap to /dp/<ASIN>/?tag=aircom01f20-20
+    label:       'Beelink EQ12 Pro (i3-N305 mini PC)',
   },
   {
     slug:        'minisforum-ms01',
