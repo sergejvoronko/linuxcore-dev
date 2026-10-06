@@ -1,6 +1,6 @@
 ---
 title: "Samba 4.25 SMB3 Persistent Handles: Homelab NAS Setup"
-description: "Configure Samba 4.25 with SMB3 persistent handles in your homelab NAS setup to stop network drops from killing Proxmox and Windows share connections."
+description: "Samba 4.25 adds experimental SMB3 persistent handles. What they do, the exact smb.conf settings, the locking and performance trade-offs, and client mounts."
 pubDate: 2026-09-26
 readingTime: 8
 heroImage: "/images/samba-4-25-smb3-persistent-handles-homelab-nas.webp"
@@ -9,144 +9,80 @@ section: "homelab"
 tags: ["samba", "nas", "storage", "proxmox"]
 draft: false
 faqs:
-  - q: "Do I need a clustered file system for persistent handles?"
-    a: "No. Samba 4.25 supports persistent handles on standalone nodes, provided you disable POSIX locking translation in the configuration."
-  - q: "Will this fix dropped connections on macOS clients?"
-    a: "Sometimes. macOS Finder uses a proprietary SMB client. While it negotiates SMB3, Apple's implementation often drops connections for unrelated reasons. Windows and Linux clients see much higher reliability."
-  - q: "Does this configuration work on top of ZFS datasets?"
-    a: "Yes. The underlying file system does not matter for standalone persistent handles because Samba manages the handle state and locking database internally."
+  - q: "Are Samba persistent handles production-ready?"
+    a: "No. The Samba 4.25 release notes call the feature experimental and warn that it adds a significant performance cost, because handle state is written to durable storage on every open, update, lease and close."
+  - q: "Do I need a cluster for persistent handles?"
+    a: "No. The release notes describe both single servers and ctdb clusters. On a cluster, the 'persistent handles durability' option chooses between surviving a full-cluster outage and better performance."
+  - q: "Can the same directory still be used over NFS or by local programs?"
+    a: "Not safely. Persistent handles require kernel oplocks, kernel share modes and posix locking to be off, which removes interoperability with local POSIX access and NFS on that share."
 ---
 
-Anyone running a Linux NAS knows the pain of a dropped SMB connection. You update `smb.conf`, restart the service to apply the changes, and suddenly Windows Explorer hangs. If you mount that share in Proxmox to host virtual machine disks or store backups, the disruption ruins your running jobs. 
+Anyone running a Linux NAS knows the pain of a dropped SMB connection. Restart Samba to apply a change and Windows Explorer hangs, or a VM disk on an SMB share throws I/O errors. **SMB3 persistent handles** are the protocol feature meant to fix exactly that, and Samba 4.25 is the first release to include them.
 
-Standard SMB connections are highly sensitive to network state. If the TCP socket closes for even a second, the server destroys the active file handles. The client attempts to reconnect, but the server sees the file as locked or unavailable. The transfer fails, the media stream buffers indefinitely, and your hypervisor reports a storage error.
+The important caveat first, straight from the [Samba 4.25 release notes](https://www.samba.org/samba/history/samba-4.25.0.html): the feature is **experimental**, and it has a **significant performance cost**. The release notes say it's meant only for workloads that need continuous availability, and not for general-purpose file servers.
 
-Samba 4.25 changes this dynamic. It stabilizes SMB3 persistent handles for standalone servers, allowing connections to survive network glitches, container rebuilds, and service reloads. 
+## What persistent handles do
 
-## The Mechanics of Persistent Handles
+With persistent handles, Samba writes the state of every open file handle to durable on-disk storage. If the server restarts or the connection is lost, a client that supports them can reconnect and keep using its open files, instead of every handle being invalidated. The release notes name virtual machine storage and clustered databases as the target workloads.
 
-Persistent handles are an optional feature negotiated between an SMB3 client and server. The client requests a durable state when it opens a file. The server writes this state, along with a unique handle GUID, to its internal locking database (usually stored in `/var/lib/samba/lock`). 
+The price is latency: Samba has to persist handle metadata **synchronously on every open, update, lease and close**. On a ctdb cluster, the new `persistent handles durability` option chooses between `full_outage` (the default: handles survive the whole cluster going down) and `partial_outage` (cheaper; handles survive as long as one node is up).
 
-If the TCP connection drops, the server retains the handle data instead of immediately discarding it. The client has a predefined timeout window to re-establish the connection. When the client reconnects, it presents the GUID to claim the orphaned handle and resumes the operation exactly where it left off.
+## The locking trade-off
 
-Historically, configuring this required a complex clustered file system setup using CTDB (Cluster Trivial Database). Samba 4.25 refines the standalone implementation. You can run a single Samba daemon on a basic Linux host and achieve high-availability connection persistence.
+Persistent handles only work on shares that Samba controls exclusively. The release notes require these share settings:
 
-## The POSIX Locking Trade-Off
+```ini
+kernel oplocks = no
+kernel share modes = no
+posix locking = no
+```
 
-You cannot just toggle a single switch in `smb.conf` to enable this. To make persistent handles work on a standalone Linux host, you must sever Samba's integration with the host operating system's native file locking.
-
-Linux uses POSIX `fcntl` locks and kernel share modes to prevent two local processes from corrupting a file. By default, Samba maps SMB byte-range locks to these POSIX locks. This mapping fundamentally breaks persistent handles. If Samba restarts, the Linux kernel drops the POSIX locks, destroying the handle state before the client can reconnect.
-
-To fix this, you must instruct Samba to ignore POSIX locking and handle all file locks internally. 
-
-This introduces a massive caveat for your homelab NAS setup. If you disable POSIX locking, local Linux applications bypassing Samba will not respect SMB locks. If you export the same directory via NFS and SMB concurrently, an NFS client and an SMB client can write to the same file simultaneously. The result is data corruption. 
-
-Use persistent handles only on dedicated SMB shares where Samba acts as the sole gatekeeper for data modification.
+That turns off interoperability with **local POSIX file access and NFS** on the share. If anything else (an NFS export, a container writing to the same path, a local backup script) touches those files, Samba's locks no longer protect it. Use a dedicated share that only Samba writes to.
 
 ## Configuring Samba 4.25
 
-To configure persistent handles, you need to adjust the `[global]` section for lease support and the specific share definitions for locking overrides.
-
-Edit your `smb.conf` with the following parameters:
+Two switches are needed: the global `persistent handles` option and the per-share `continuous availability` option.
 
 ```ini
 [global]
     server min protocol = SMB3
-    smb2 leases = yes
-    
-    # Optional but recommended for modern networks
-    server smb encrypt = desired
-    deadtime = 15
+    persistent handles = yes
 
-[Data]
-    path = /mnt/storage/data
+[vmstore]
+    path = /tank/vmstore
     read only = no
-    guest ok = no
-
-    # Enable SMB3 Persistent Handles
-    durable handles = yes
-    
-    # Disable OS-level lock integration
-    kernel share modes = no
+    continuous availability = yes
     kernel oplocks = no
+    kernel share modes = no
     posix locking = no
-    
-    # Force Samba to strictly manage file operations
-    strict locking = yes
-    oplocks = yes
-    level2 oplocks = yes
 ```
 
-### Parameter Breakdown
+Check `testparm` after editing: it validates the file and shows the options Samba actually understood. Because the feature is new and experimental, read the `smb.conf` man page **of your installed version** for these options before relying on them.
 
-- **smb2 leases = yes**: Permits the server to grant SMB2/SMB3 leases, allowing clients to heavily cache read and write operations locally.
-- **durable handles = yes**: Tells the server to keep file handles alive in its local database when a connection drops.
-- **kernel share modes = no**: Stops Samba from translating SMB share modes into Linux kernel file leases.
-- **posix locking = no**: Prevents Samba from mapping SMB byte-range locks to POSIX `fcntl` locks.
+## Running it
 
-## Homelab NAS Setup in Docker Compose
+You need **Samba 4.25 or later**: check with `smbd --version`. Distribution packages and container images lag behind upstream releases. At the time of writing, for example, the `servercontainers/samba` image shipped Samba 4.23, which doesn't have the feature at all. Whatever you run, keep Samba's state directories on persistent storage: the handle state has to survive a restart for persistent handles to be of any use.
 
-Running Samba in a container isolates your dependencies and simplifies updates. However, it requires careful volume mapping for the lock directory. If the container shuts down and destroys the lock database, clients cannot resume their connections.
+## Clients
 
-Here is a working `compose.yaml` for deploying a persistent Samba 4.25 instance:
-
-```yaml
-services:
-  samba:
-    image: servercontainers/samba:4.25
-    container_name: smb-nas
-    network_mode: host
-    restart: unless-stopped
-    environment:
-      - SAMBA_GLOBAL_CONFIG_server_min_protocol=SMB3
-      - SAMBA_GLOBAL_CONFIG_smb2_leases=yes
-      - SAMBA_CONF_INCLUDE=/etc/samba/custom.conf
-    volumes:
-      - /tank/nas-data:/mnt/data
-      - /opt/samba/config:/etc/samba
-      # Critical: Map the lock directory to persistent host storage
-      - /opt/samba/locks:/var/lib/samba/lock
-      - /opt/samba/cache:/var/cache/samba
-    command: >
-      -s "Storage;/mnt/data;yes;no;no;all;none;;durable handles=yes,kernel share modes=no,kernel oplocks=no,posix locking=no"
-```
-
-Using `network_mode: host` bypasses the Docker bridge network. This guarantees proper handling of WS-Discovery packets so your NAS automatically populates in the Windows Network Explorer. 
-
-Mapping `/var/lib/samba/lock` to the host ensures that if you execute `docker compose down` and then `docker compose up -d`, the new container reads the existing lock database. Reconnecting clients will find their orphaned handles waiting for them.
-
-## Verifying Client Reconnection
-
-Testing this setup requires simulating a failure during an active file operation. 
-
-1. Mount the SMB share on a Windows 11 client.
-2. Begin transferring a large file (e.g., a 20GB Linux ISO) to the share.
-3. Open your NAS terminal and restart the Samba daemon or Docker container: `docker restart smb-nas`.
-
-On a standard configuration, the Windows transfer dialog instantly drops to 0 bytes per second, hangs for 30 seconds, and throws an error code (0x8007003B). 
-
-With persistent handles properly configured, the transfer dialog pauses. The speed drops to zero while the container reboots. Once the Samba service comes back online (usually within 3-5 seconds), the Windows client re-authenticates, submits its handle GUID, and the transfer resumes without user intervention.
-
-### Proxmox VE Integration
-
-Proxmox handles SMB storage through the native Linux `cifs-utils` package. To ensure Proxmox utilizes persistent handles, enforce SMB3 in the storage configuration.
-
-Navigate to **Datacenter -> Storage -> Add -> SMB/CIFS**. Set the **SMB Version** dropdown strictly to `3.0` or `3.1.1`. Do not leave it on `Default`. 
-
-If you are modifying `/etc/pve/storage.cfg` manually, it looks like this:
+- **Windows** negotiates persistent handles itself when the share advertises continuous availability over SMB3.
+- **Linux (`mount.cifs`)** has a `persistenthandles` mount option. The man page also documents a `handletimeout` option for how long the server keeps handles for a reconnecting client.
+- **Proxmox VE** CIFS storage accepts extra mount options through the `options` property in `/etc/pve/storage.cfg`. With `smbversion` unset or `default`, it negotiates the highest SMB2+ version both sides support:
 
 ```text
-cifs: Backup-NAS
+cifs: vmstore
     server 192.168.1.100
-    share Storage
-    content backup,iso
-    smbversion 3.11
+    share vmstore
+    content images
     username proxmox
+    options persistenthandles
 ```
 
-When you restart the NAS during a Proxmox backup task, the `vzdump` process blocks, waiting on I/O. As soon as the Samba container returns, the backup continues writing the archive chunk. 
+Note that Proxmox always mounts CIFS storage with the `soft` option, so long outages still end in I/O errors on the client side. Persistent handles help with short interruptions, not with a NAS that's down for minutes.
 
-By offloading the locking mechanics entirely to Samba, you trade the safety of multi-protocol POSIX locks for extreme network resiliency. For a homelab storage backend serving VMs, containers, and media files, eliminating random disconnects makes the trade highly beneficial.
+## How to test it
+
+Copy a large file from a client, restart Samba on the server, and watch whether the copy pauses and continues or fails. Test this on non-critical data first, and measure the slowdown on your hardware before putting VM disks on such a share. For most homelab file shares, a plain share without persistent handles remains the better choice.
 
 ## What's Next
 
