@@ -1,6 +1,6 @@
 ---
-title: "Linux 7.4 Steal Governor: Fix Proxmox vCPU Overcommit"
-description: "Reduce KVM CPU steal time latency in your homelab. Learn how the Linux 7.4 steal governor optimizes Proxmox vCPU overcommit for virtual machines."
+title: "Linux 7.4 Steal Governor: What It Means for Proxmox VMs"
+description: "The steal governor queued for Linux 7.4 steers guest tasks away from contended vCPUs. What it does, its status, how to measure steal time today, and Proxmox fixes."
 pubDate: 2026-09-30
 readingTime: 8
 heroImage: "/images/linux-7-4-steal-governor-proxmox-kvm-vcpu-optimization.webp"
@@ -10,96 +10,52 @@ tags: ["proxmox", "linux kernel", "virtualization", "performance"]
 draft: false
 faqs:
   - q: "What is CPU steal time in Linux?"
-    a: "Steal time is the percentage of time a virtual CPU waits for the hypervisor to allocate physical CPU cycles while the hypervisor services other tasks."
-  - q: "How do I check CPU steal time in Proxmox?"
-    a: "Run `top` or `htop` inside your guest virtual machine. Look for the `%st` metric in the CPU utilization breakdown."
-  - q: "Does the steal governor improve LXC container performance?"
-    a: "No. Containers share the host kernel directly and do not rely on a hypervisor scheduling virtual CPUs. Steal time only applies to virtual machines."
+    a: "The time a virtual CPU was ready to run but the hypervisor was running something else, usually other VMs on the same physical cores. Guests see it as the st value in top, vmstat or /proc/stat."
+  - q: "How do I check CPU steal time in a Proxmox VM?"
+    a: "Inside the guest: vmstat 1 (st column), top (st in the CPU line) or mpstat from the sysstat package (%steal). Sustained steal above a few percent means the host's cores are oversubscribed at that moment."
+  - q: "Can I use the steal governor now?"
+    a: "Not in a released kernel yet. At the end of September 2026 it was queued for the Linux 7.4 merge window. It will reach distributions only once they ship 7.4 or newer kernels, which for Debian stable means much later."
 ---
 
-Every homelab administrator overcommits CPU resources. You install Proxmox on a 16-thread mini PC and immediately deploy forty virtual CPUs across a dozen virtual machines. This topology works fine until three different services execute heavy background tasks simultaneously.
+When several VMs on a Proxmox host want more CPU than the physical cores can give, each guest's virtual CPUs get paused while other VMs run. Inside the guest that shows up as **steal time**, `st` in `top` or `vmstat`. The guest's scheduler doesn't know which of its vCPUs are being starved, so it keeps putting work on them: latency spikes, lock holders get preempted, databases slow down far more than the lost CPU time alone suggests.
 
-The immediate result is severe latency. SSH sessions stall. Web interfaces timeout. If you run `htop` inside one of the affected virtual machines, you will see a massive spike in the `%st` metric. That is KVM CPU steal time. Your virtual CPU is ready to process data, but the Proxmox host hypervisor has paused it to give cycles to a noisy neighbor.
+The **steal governor** is a new kernel feature aimed at exactly that. As of 28 September 2026 it was [queued for the Linux 7.4 merge window](https://www.phoronix.com/news/Linux-7.4-Land-Steal-Governor), so it isn't in a released kernel yet.
 
-Historically, the Linux kernel handled CPU steal time poorly inside guest operating systems. The guest scheduler operated on the assumption that it had 100% control over its assigned CPUs. The Linux 7.4 kernel introduces a dedicated steal governor to address this exact scheduling failure. 
+## What the steal governor does
 
-## The Mechanics of KVM CPU Steal Time
+Per the Phoronix report and the patch series, it pairs a scheduler mechanism with a virtualisation driver:
 
-In a Proxmox KVM environment, a virtual processor is just a thread running on the host system. When you allocate four vCPUs to a guest, Proxmox creates four host threads. 
+- it tracks **steal time per vCPU**,
+- and dynamically adjusts a **preferred CPU mask**, so the scheduler **avoids placing tasks on heavily contended vCPUs**: the VM "backs off" from the CPUs that are being stolen from.
 
-When physical core contention occurs, the host scheduler suspends guest threads. Inside the guest VM, the Linux scheduler still attempts to assign processes to the suspended vCPU. It registers the hardware as idle and available. 
+The patch authors target workloads where preemption costs more than the lost time, such as lock-holder preemption, critical sections, TLB and cache misses, and database workloads in particular. They also note that **pure CPU-crunching workloads may regress slightly**. It's a tool for latency-sensitive guests on oversubscribed hosts, not a free speed-up.
 
-By the time the hypervisor resumes the vCPU, a backlog of tasks has piled up. The guest scheduler relies on a metric called `util_avg` (utilization average) to track task load. Under heavy steal time, the wall clock advances while the vCPU is paused. The guest scheduler registers this time gap and generates entirely inaccurate calculations for task load, causing severe task placement errors.
+Details such as how it's enabled and its defaults are best taken from the kernel documentation once 7.4 is released.
 
-## Enter the Linux 7.4 Steal Governor
+## When you'll get it
 
-Kernel 7.4 fundamentally alters guest scheduling under hypervisor contention. The new steal governor dynamically adjusts the capacity rating of a vCPU based on paravirtualized steal time metrics reported by KVM.
+It runs in the **guest**, so the VM's kernel needs it. That means 7.4 or newer inside the VM: distributions that follow mainline closely (Fedora, Arch) will get it soonest. **Debian 13 ships 6.12** and LTS distributions stay on their kernel series, so on those it won't arrive through normal updates.
 
-If Proxmox pauses a vCPU for 40% of a given time window, the guest kernel applies the steal governor to subtract that stolen capacity from the internal CPU rating. The vCPU registers internally as operating at 60% capacity. 
-
-The guest scheduler reads this modified capacity metric. Instead of piling tasks onto the stalled vCPU, it aggressively migrates pending tasks to other vCPUs experiencing lower steal time. The guest scales its internal operations to match physical reality. It caps the maximum CPU frequency illusion, preventing processes from crashing into I/O timeouts and network drops.
-
-## Upgrading the Proxmox Guest Environment
-
-Upgrading your Proxmox host kernel does not activate the steal governor. The host simply reports the steal time via `kvm-clock`. The governor must operate inside the guest operating system.
-
-You need a Linux distribution running kernel 7.4 or higher inside your virtual machine. Debian 13 "Trixie", Ubuntu 26.04, and recent Fedora releases provide this natively. 
-
-Once your VM runs a compatible kernel, you must ensure Proxmox passes the correct paravirtualization flags to the guest. The default `kvm64` CPU type obscures physical hardware capabilities. 
-
-Edit your VM configuration via the Proxmox web interface or modify the configuration file directly:
+## Measure steal time today
 
 ```bash
-# Edit the VM configuration on the Proxmox host
-nano /etc/pve/qemu-server/100.conf
+vmstat 1 10          # "st" column = % of time stolen
+mpstat -P ALL 1 5    # per-vCPU %steal (sysstat package)
 ```
 
-Ensure the CPU type is set to `host` and NUMA is enabled if your hardware supports it:
+A few percent now and then is normal on a shared host. Sustained double digits during your busy periods means your VMs are competing for cores.
 
-```ini
-cores: 4
-cpu: host
-numa: 1
-sockets: 1
-```
+## What helps on Proxmox now
 
-Reboot the virtual machine entirely. A simple reboot from within the guest is insufficient when changing CPU types. Stop the VM from the Proxmox host and start it again to apply the QEMU hardware changes.
+The real fix for steal time is less contention:
 
-## Verifying the Steal Governor
+- **Don't give every VM many vCPUs.** Idle vCPUs are cheap, but a VM with more vCPUs than it needs competes harder when it gets busy. Size VMs to their real load.
+- **Prioritise important VMs** with CPU units (relative weight under contention, default 100): `qm set <vmid> --cpuunits 200`.
+- **Cap noisy VMs** with a CPU limit (in cores): `qm set <vmid> --cpulimit 2`.
+- **Pin latency-critical VMs** to dedicated cores with `qm set <vmid> --affinity 4-7`, and keep other VMs off those cores.
+- **Watch the host:** if the node itself sits near 100% CPU, no guest-side scheduler change can create cores that aren't there.
 
-Inside the guest VM, verify your kernel version first:
-
-```bash
-uname -r
-# Output should be 7.4.x or higher
-```
-
-Next, monitor your steal time metrics using `vmstat`. Run this command to sample system performance every second:
-
-```bash
-vmstat 1 10 | awk '{print $16}'
-```
-
-The output displays the raw steal time percentage. If your homelab is idle, this number will read `0`. To see the steal governor in action, you need to artificially constrain the VM.
-
-Lower the CPU execution cap for the VM in Proxmox to 20% (`cpulimit: 0.2`). Run a stress test inside the guest:
-
-```bash
-apt install stress-ng
-stress-ng --cpu 4 --timeout 60s
-```
-
-Watch the steal time spike in another terminal. In kernels prior to 7.4, this test causes extreme terminal lag. On kernel 7.4, the steal governor hooks into the CPU frequency subsystem. The terminal remains responsive because the scheduler avoids mapping crucial background processes to the heavily throttled vCPUs.
-
-## Real-World Gotchas and Limitations
-
-The steal governor mitigates scheduling errors. It does not manufacture physical cores. If your entire Proxmox node is pegged at 100% CPU utilization across all physical threads, the steal governor merely shuffles delays around the guest kernel. It optimizes task placement, but it cannot execute tasks without physical cycles.
-
-Homelab administrators frequently mix LXC containers and KVM virtual machines. Make a hard distinction here. Containers do not rely on a hypervisor abstracting CPU cycles. LXC processes share the host scheduler directly. Steal time does not exist in LXC. The steal governor provides zero benefit to your Docker instances running inside a Proxmox unprivileged container.
-
-Additionally, if you heavily pin vCPUs to physical cores using CPU affinity masks, steal time naturally drops to zero. CPU pinning prevents overcommit entirely. The steal governor only provides value when you let the hypervisor float vCPUs across the available hardware topology. Pinning restricts flexibility; the steal governor embraces flexibility while mitigating the latency penalties.
-
-For a heavily overcommitted Proxmox homelab, updating your core infrastructure VMs to Linux 7.4 eliminates the worst symptoms of noisy neighbor syndrome. Keep your base system load reasonable, pass through the host CPU flags, and let the guest scheduler map tasks accurately based on physical availability.
+Containers (LXC) don't have steal time in this sense: they're processes on the host kernel and share its scheduler directly. Use CPU limits and units on them in the same way.
 
 ## What's Next
 
