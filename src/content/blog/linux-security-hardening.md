@@ -156,17 +156,19 @@ MaxSessions 5
 # Disconnect after 20 seconds if no successful login
 LoginGraceTime 20
 
-# ── Ciphers and algorithms (modern, strong only) ──────────────
-PubkeyAcceptedKeyTypes ssh-ed25519,ecdsa-sha2-nistp256,rsa-sha2-512,rsa-sha2-256
+# ── Accepted public key types (modern only) ───────────────────
+# (named PubkeyAcceptedKeyTypes before OpenSSH 8.5)
+PubkeyAcceptedAlgorithms ssh-ed25519,ecdsa-sha2-nistp256,rsa-sha2-512,rsa-sha2-256
 
-# ── Idle session timeout ──────────────────────────────────────
-# Disconnect idle sessions after 10 minutes
+# ── Dead connection detection ─────────────────────────────────
+# Drop connections whose client stops responding for ~10 minutes
+# (this does not log out an idle but healthy session)
 ClientAliveInterval 300
 ClientAliveCountMax 2
 
 # ── Disable features you're not using ────────────────────────
 X11Forwarding no
-AllowTcpForwarding no
+AllowTcpForwarding no      # disables SSH tunnels; remove if you use them
 AllowAgentForwarding no
 PermitEmptyPasswords no
 ```
@@ -174,7 +176,7 @@ PermitEmptyPasswords no
 Apply the changes:
 
 ```bash
-sudo systemctl reload sshd
+sudo sshd -t && sudo systemctl reload ssh   # the service is "ssh" on Debian/Ubuntu
 ```
 
 **Test in a new terminal before closing your current session.** If you
@@ -234,31 +236,19 @@ sudo ufw allow from 192.168.1.0/24 to any port 5678
 Adjust the ports to match your setup. The principle: every service is
 LAN-only unless there's a specific reason for it to be public.
 
-**Important, Docker bypasses UFW by default:**
+**Important, Docker bypasses UFW for published ports:**
 
-Docker modifies iptables directly and bypasses UFW rules for exposed
-ports. If you run Docker, add this to prevent Docker from opening
-ports to the internet:
+Docker writes its own iptables rules for published ports, and they're evaluated before UFW's. A container started with `-p 8080:80` is reachable from everywhere, whatever UFW says.
 
-```bash
-# Edit Docker daemon config
-sudo nano /etc/docker/daemon.json
-```
+**Don't** set `"iptables": false` in `/etc/docker/daemon.json` to work around this: Docker's documentation warns that it breaks container networking (no NAT for outbound traffic, broken port publishing).
 
-```json
-{
-  "iptables": false
-}
-```
+Instead:
 
-```bash
-# Restart Docker — existing containers need to be restarted too
-sudo systemctl restart docker
-```
+- **Publish ports only on the interface you mean.** In Compose, `"127.0.0.1:8080:80"` (local only, behind a reverse proxy) or `"192.168.1.10:8080:80"` (LAN address only) instead of `"8080:80"`.
+- **Don't publish ports that don't need to be reached from outside.** Containers on the same Compose network reach each other by service name without any `ports:` entry.
+- For finer control, Docker provides the **`DOCKER-USER`** iptables chain for your own rules, which Docker evaluates before its own (see Docker's "Packet filtering and firewalls" documentation).
 
-Then manage Docker port access through UFW as above. This is a
-significant security improvement for any internet-facing machine
-running Docker.
+Check what's really exposed with `sudo ss -tlnp` and a port scan from another machine.
 
 ---
 
@@ -284,10 +274,12 @@ Find the `[DEFAULT]` section and set:
 
 ```ini
 [DEFAULT]
-bantime  = 1h       # ban for 1 hour
-findtime = 10m      # look back 10 minutes
-maxretry = 5        # ban after 5 failures
-backend  = systemd  # use systemd journal for log parsing
+# ban for 1 hour after 5 failures within 10 minutes
+bantime  = 1h
+findtime = 10m
+maxretry = 5
+# read the systemd journal
+backend  = systemd
 ```
 
 Enable the SSH jail by finding and setting:
@@ -297,8 +289,9 @@ Enable the SSH jail by finding and setting:
 enabled  = true
 port     = 22
 filter   = sshd
-maxretry = 3        # stricter than default — ban after 3 SSH failures
-bantime  = 24h      # SSH bans last 24 hours
+# stricter for SSH: 3 failures, 24-hour ban
+maxretry = 3
+bantime  = 24h
 ```
 
 Start and enable:
@@ -377,8 +370,8 @@ fail2ban bans IPs that attack your machine. CrowdSec goes further, it shares thr
 have attacked other homelabs are pre-emptively blocked on yours.
 
 ```bash
-# Install CrowdSec
-curl -s https://packagecloud.io/install/repositories/crowdsec/crowdsec/script.deb.sh | sudo bash
+# Add the CrowdSec repository (official install script) and install
+curl -s https://install.crowdsec.net | sudo sh
 sudo apt install crowdsec -y
 
 # Install the firewall bouncer (this does the actual blocking)
@@ -394,12 +387,7 @@ sudo cscli collections list
 You should see collections for Linux, SSH, and more. CrowdSec
 automatically detects your running services and adds relevant parsers.
 
-**Add Docker protection:**
-
-```bash
-sudo cscli collections install crowdsecurity/docker
-sudo systemctl reload crowdsec
-```
+CrowdSec on its own only **detects**; the firewall bouncer installed above is what blocks. For container logs, CrowdSec reads them through an **acquisition** entry with `source: docker` (see CrowdSec's acquisition documentation), plus the hub collection for the application in the container.
 
 **Check CrowdSec status:**
 
@@ -414,9 +402,7 @@ sudo cscli decisions list
 sudo cscli bouncers list
 ```
 
-CrowdSec's community blocklist contains millions of known-malicious IPs
-contributed by users worldwide. As soon as you install it, your machine
-benefits from collective defence without doing anything else.
+Instances that share their signals receive a community blocklist of IPs reported by other CrowdSec users, so some attackers are blocked before they ever reach you. Check CrowdSec's documentation for what the free tier includes.
 
 ---
 
@@ -585,15 +571,19 @@ sudo nano /etc/ssh/sshd_config
 ```
 
 ```ini
-ChallengeResponseAuthentication yes
+# replaces the "no" set in Step 4
+KbdInteractiveAuthentication yes
+UsePAM yes
 AuthenticationMethods publickey,keyboard-interactive
 ```
 
+On Debian and Ubuntu, `/etc/pam.d/sshd` also includes `@include common-auth`, which asks for the account **password** as well. If you want key + TOTP only, comment that line out (`# @include common-auth`).
+
 ```bash
-sudo systemctl reload sshd
+sudo sshd -t && sudo systemctl reload ssh
 ```
 
-Test in a new terminal. It should ask for your key AND your TOTP code.
+Test in a new terminal, keeping your current session open. It should use your key and then ask for the TOTP code.
 
 ---
 
@@ -617,7 +607,7 @@ FIREWALL
 [ ] UFW default deny incoming
 [ ] SSH allowed from LAN only
 [ ] All services restricted to LAN (except intentional exceptions)
-[ ] Docker iptables bypass disabled (/etc/docker/daemon.json)
+[ ] Docker ports published only on 127.0.0.1 or LAN addresses
 [ ] UFW enabled
 
 INTRUSION DETECTION

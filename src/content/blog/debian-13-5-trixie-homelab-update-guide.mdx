@@ -19,26 +19,21 @@ faqs:
 
 import Comparison from '../../components/Comparison.astro';
 
-Debian 13.5 dropped in May 2026. It's a point release, which means no new features, no surprises - just accumulated security fixes and updated installer images. That's exactly what you want from a server OS.
+Debian 13.5 was released on 16 May 2026. It's a point release, which means no new features, no surprises - just accumulated security fixes and updated installer images. That's exactly what you want from a server OS.
 
-If you've been sitting on a Trixie install waiting to see if something breaks before you update, you can stop waiting. Here's what changed, what CVEs got patched, and how to run the update without losing a Saturday.
+If you've been sitting on a Trixie install waiting to see if something breaks before you update, you can stop waiting. Here's what changed and how to run the update without losing a Saturday.
 
 ## What Actually Changed in 13.5
 
-Point releases in Debian are boring by design. The 13.5 update rolls up all security advisories published since 13.4, updates the installer media, and fixes a handful of serious package-level bugs. Per the Phoronix report and the official release notes, highlights include:
+Point releases in Debian are boring by design. The [13.5 announcement](https://www.debian.org/News/2026/20260516) describes it as mainly corrections for security issues, along with a few adjustments for serious problems. The security fixes were already published as separate advisories, so a server that installs updates from `security.debian.org` regularly has most of them already. The point release also refreshes the installer images.
 
-- **Linux kernel** updated to address multiple CVEs including local privilege escalation bugs and network stack issues
-- **OpenSSL** patched for a timing side-channel vulnerability (tracked as high severity)
-- **curl** updated - the perennial punching bag of CVE reporters got another round
-- **GnuTLS**, **libgcrypt**, and **nghttp2** all received security updates
-- **Xorg** and **Mesa** patches if you're running a desktop (unlikely on a server, but noted)
-- Installer ISOs refreshed to include all fixes through 13.5, useful for new deployments
+The list of updated packages is long (well over a hundred). Among those a homelab server is likely to have: `openssl`, `curl`, `glibc`, `gnutls28`, `systemd`, `sudo`, `rsync`, `qemu`, `lxc`, `docker.io`, `grub2` and `tzdata`. Read the announcement for what each fix is about.
 
-Nothing in this list should scare you. None of these are zero-days being actively exploited in homelab-typical scenarios. But a local privilege escalation CVE in the kernel matters if you're running untrusted containers or multi-user systems - and most homelab setups are one shell mistake away from running as root anyway, so patching is still worth doing.
+If your server runs untrusted code (containers, other users), the security updates matter more than on a single-user box. Either way, the update itself is routine.
 
 ## The Right Way to Update a Running Homelab Server
 
-Don't just `apt upgrade` on a machine serving things your household actually uses. The two-minute extra work of snapshotting first has saved me from a borked NFS mount more than once.
+Don't just `apt upgrade` on a machine serving things your household actually uses. Snapshotting first takes two minutes and gives you an easy way back.
 
 ### Step 1: Snapshot in Proxmox First
 
@@ -99,22 +94,15 @@ systemctl --failed
 journalctl -p err -b --since "10 minutes ago"
 ```
 
-That second command has caught more problems for me than any monitoring dashboard. If systemd logged errors in the first ten minutes after boot, you want to know now.
+If systemd logged errors in the first ten minutes after boot, you want to know now.
 
 ## A Note on Docker Compose Stacks
 
-If you're running containerized services - and at this point most homelabs are - your containers don't automatically pick up host kernel security fixes, but they do inherit the patched glibc and OpenSSL from the host if you're not running scratch images. For actual application security, your Dockerfiles need updating separately.
+Containers share the **host kernel**, so kernel fixes reach them as soon as the host reboots into the new kernel. Their **userland** is different: libraries such as glibc and OpenSSL inside a container come from its **image**, not from the host. Updating the host doesn't patch them. Pull updated images and recreate the containers:
 
-That said, after a kernel update you should restart your containers to let them re-attach to the new kernel's namespaces and cgroups cleanly:
-
-```yaml
-# If you're using Compose, restart affected stacks:
-# docker compose down && docker compose up -d
-# Or for a specific service:
-# docker compose restart myservice
+```bash
+docker compose pull && docker compose up -d
 ```
-
-Most of the time they'll keep running fine. But if you applied a kernel patch that changes cgroup behavior, a container that was started on the old kernel can occasionally misbehave. It's rare, but restarting stacks after a kernel update is good hygiene.
 
 ## Debian Trixie vs Ubuntu 24.04 LTS for Homelab: The Honest Answer
 
@@ -127,7 +115,7 @@ This question comes up constantly. Here's where each one actually wins:
     { label: "Support window",        values: ["~5 years", "5 yr LTS / 10 w/ Pro"] },
     { label: "Baseline RAM (minimal)", values: ["Lower", "Higher"], winner: 0 },
     { label: "Newer mainline kernel",  values: ["no", "yes"], winner: 1 },
-    { label: "No Snap / cloud-init",   values: ["yes", "no"], winner: 0 },
+    { label: "No Snap by default",   values: ["yes", "no"], winner: 0 },
     { label: "Predictable / no surprises", values: ["yes", "no"], winner: 0 },
     { label: "Ecosystem & docs coverage", values: ["Large", "Larger"], winner: 1 },
     { label: "MicroK8s / Snap store",   values: ["no", "yes"], winner: 1 },
