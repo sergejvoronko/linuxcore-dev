@@ -40,26 +40,26 @@ If you can get one and don't mind the cost, do it. It eliminates an entire categ
 
 Most of us are stuck with a dynamic IP. The solution is Dynamic DNS (DDNS). A small client running on your network constantly checks your public IP. When it detects a change, it automatically updates your DNS record to point to the new address.
 
-It sounds complex, but it's a solved problem. Services like DuckDNS (free) or your domain registrar's own tools can handle this. I prefer using Cloudflare to manage my DNS, since its API is fantastic and well-supported.
+It sounds complex, but it's a solved problem. Services like DuckDNS (free) or your domain registrar's own tools can handle this. Cloudflare is a common choice for managing DNS, since its API is fantastic and well-supported.
 
-You can run a DDNS client in a simple Docker container. Here's a `docker-compose.yml` for the popular `cloudflare-ddns` client. It's lightweight and reliable.
+You can run a DDNS client in a small Docker container. A well-maintained option for Cloudflare is [`favonia/cloudflare-ddns`](https://github.com/favonia/cloudflare-ddns); this follows its README. (The older `oznu/cloudflare-ddns` image you'll find in many guides is archived and hasn't been updated since 2021.)
 
 ```yaml
 # docker-compose.yml
 services:
   cloudflare-ddns:
-    image: oznu/cloudflare-ddns:latest
-    container_name: cloudflare-ddns
+    image: favonia/cloudflare-ddns:1
+    network_mode: host        # optional; makes IPv6 easier
     restart: always
+    user: "1000:1000"
+    read_only: true
+    cap_drop: [all]
+    security_opt: [no-new-privileges:true]
     environment:
-      # Required: Create an API Token with Zone:DNS:Edit permissions
-      - API_TOKEN=YOUR_CLOUDFLARE_API_TOKEN
-      # Required: Your root domain
-      - ZONE=yourdomain.com
-      # Optional: Comma-separated list of subdomains to update
-      # Use '@' for the root domain
-      - SUBDOMAINS=homelab,nas,vpn
-      # Optional: Set to true to proxy through Cloudflare
+      # API token with Zone:DNS:Edit permission for your zone
+      - CLOUDFLARE_API_TOKEN=YOUR_CLOUDFLARE_API_TOKEN
+      # Comma-separated list of records to keep updated
+      - DOMAINS=homelab.yourdomain.com,vpn.yourdomain.com
       - PROXIED=false
 ```
 
