@@ -326,7 +326,7 @@ GPU passthrough, or a non-Linux OS.
 ```bash
 # From Proxmox host — download Ubuntu Server ISO directly
 wget -P /var/lib/vz/template/iso/ \
-  https://releases.ubuntu.com/22.04/ubuntu-22.04.4-live-server-amd64.iso
+  https://releases.ubuntu.com/22.04/ubuntu-22.04.5-live-server-amd64.iso
 ```
 
 Or upload from your laptop: **local storage → ISO Images → Upload**.

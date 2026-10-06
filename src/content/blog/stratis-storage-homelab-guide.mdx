@@ -125,29 +125,16 @@ The key lives in the kernel keyring for the session. On reboot, you'll need to r
 
 This is the 3.9 improvement worth caring about for homelabs. You run a Tang server (can be a cheap VM or container) and Stratis pools unlock automatically on boot when they can reach it.
 
-**Stand up a Tang server (Docker Compose):**
-
-```yaml
-version: "3.9"
-services:
-  tang:
-    image: latchset/tang
-    container_name: tang
-    ports:
-      - "7500:80"
-    volumes:
-      - tang-keys:/var/db/tang
-    restart: unless-stopped
-
-volumes:
-  tang-keys:
-```
+**Stand up a Tang server** (on another machine or VM, per the Tang README):
 
 ```bash
-docker compose up -d
-# Get the Tang server thumbprint
-curl -sf http://localhost:7500/adv | jose fmt -j- -g payload -y -o- | jose fmt -j- -g keys -A -o- | jose jwk thp -i-
+sudo dnf install tang          # Debian/Ubuntu: sudo apt install tang
+sudo systemctl enable tangd.socket --now
+# tangd listens on port 80 by default; get the thumbprint clients pin to:
+sudo tang-show-keys
 ```
+
+Keep the Tang keys off the disk they protect: the Tang README warns against storing them on the same physical medium.
 
 **Create a Clevis-bound encrypted Stratis pool:**
 
@@ -155,15 +142,17 @@ curl -sf http://localhost:7500/adv | jose fmt -j- -g payload -y -o- | jose fmt -
 # Install clevis integration
 sudo dnf install clevis clevis-luks clevis-dracut
 
-# Create pool with Clevis Tang binding
+# Create a pool bound to Tang, plus a keyring passphrase as fallback
+sudo stratis key set --capture-key mykey
 sudo stratis pool create \
-  --clevis '{"pin":"tang","config":{"url":"http://192.168.1.50:7500"}}' \
+  --key-desc mykey \
+  --clevis tang --tang-url http://192.168.1.50 --thumbprint <thp-from-tang-show-keys> \
   secure-pool /dev/sde
 
 sudo stratis filesystem create secure-pool backups
 ```
 
-On reboot, as long as the Tang server is reachable, the pool unlocks without a passphrase prompt. If the Tang server is unavailable, it falls back to a recovery passphrase you set at creation time.
+On reboot, as long as the Tang server is reachable, the pool unlocks without a passphrase prompt. If the Tang server is unavailable, you can still unlock with the keyring passphrase (`--key-desc`), which is why it is worth setting both.
 
 ## Taking and Using Snapshots
 

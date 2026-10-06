@@ -141,7 +141,7 @@ sudo systemctl restart docker
 Verify GPU is accessible inside containers:
 
 ```bash
-docker run --rm --gpus all nvidia/cuda:12.0-base nvidia-smi
+docker run --rm --gpus all ubuntu nvidia-smi
 ```
 
 ## Step 5, Expose via Tailscale (Remote Access)

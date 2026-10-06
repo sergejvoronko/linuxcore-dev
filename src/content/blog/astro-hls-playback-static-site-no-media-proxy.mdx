@@ -41,34 +41,40 @@ Your Astro server's job is done after serving the initial HTML and JavaScript. I
 
 This whole idea depends on you having a device or service on your network that provides an HLS stream. You can't just point it at a raw video file. HLS breaks video into small `.ts` chunks and provides a `.m3u8` playlist file that tells the player where to find them.
 
-Many homelab tools can do this:
+Many homelab tools can do this. A common one is **go2rtc**, which re-streams RTSP cameras and other sources and serves each stream as HLS from its built-in API on port 1984. Its README documents both the HLS URL format and a CORS switch, which is exactly what a static site needs.
 
-*   **go2rtc:** Excellent for re-streaming RTSP camera feeds as HLS.
-*   **xTeVe:** A popular choice for proxying HDHomeRun tuners and IPTV playlists.
-*   **IPTV-Screener:** A simple Docker container that can take an IPTV playlist and generate clean HLS streams.
-
-I used `IPTV-Screener` for testing because it's so simple to deploy. Here's a `docker-compose.yml` to get it running. You'll need to provide your own `playlist.m3u` file.
+A minimal `compose.yaml`:
 
 ```yaml
-# docker-compose.yml
-version: "3.7"
 services:
-  iptv-screener:
-    image: maltejur/iptv-screener:latest
-    container_name: iptv-screener
-    ports:
-      - "4044:4044"
+  go2rtc:
+    image: alexxit/go2rtc
+    container_name: go2rtc
+    network_mode: host
     volumes:
-      - ./playlist.m3u:/app/playlist.m3u:ro
-      - ./config.json:/app/config.json:ro
+      - ./go2rtc.yaml:/config/go2rtc.yaml
     restart: unless-stopped
 ```
 
+And `go2rtc.yaml`, with one stream and CORS enabled for the API:
+
+```yaml
+api:
+  origin: "*"   # send Access-Control-Allow-Origin for browser players
+
+streams:
+  camera1: rtsp://user:password@192.168.1.60:554/stream1
+```
+
+The HLS playlist for that stream is then `http://<go2rtc-host>:1984/api/stream.m3u8?src=camera1` (add `&mp4` for fMP4 segments).
+
 **The Critical Part: CORS Headers**
 
-Your browser, for security reasons, will block a script on `dashboard.your.domain` from fetching a video stream from `192.168.1.50:4044` unless the server at that IP explicitly allows it. This is Cross-Origin Resource Sharing (CORS).
+Your browser, for security reasons, will block a script on `dashboard.your.domain` from fetching a video stream from `192.168.1.50:1984` unless the server at that IP explicitly allows it. This is CORS (Cross-Origin Resource Sharing).
 
-Your HLS source *must* be configured to send the `Access-Control-Allow-Origin` header in its HTTP responses. For `IPTV-Screener`, this is handled in its `config.json`. For other tools, you might need to configure a reverse proxy like Nginx or Caddy to add the header. A lazy but effective header is `Access-Control-Allow-Origin: *`, which allows any domain. If you don't configure this, your browser's developer console will scream about CORS errors, and nothing will work.
+Your HLS source *must* send the `Access-Control-Allow-Origin` header in its HTTP responses. In go2rtc that's the `api.origin` setting above. For other tools, check their documentation, or put them behind a reverse proxy that adds the header.
+
+Also note that go2rtc's API has no authentication by default: anyone on your network can watch the streams. Keep it on the LAN or behind authentication.
 
 ### Building the Astro Component
 
@@ -169,7 +175,7 @@ Now, you can use this component anywhere on your Astro site.
 import HlsPlayer from '../components/HlsPlayer.astro';
 
 const securityCamFeed = "http://192.168.1.110:8083/stream.m3u8";
-const localNewsFeed = "http://192.168.1.50:4044/stream/1.m3u8";
+const localNewsFeed = "http://192.168.1.50:1984/api/stream.m3u8?src=camera1";
 ---
 
 <html lang="en">
