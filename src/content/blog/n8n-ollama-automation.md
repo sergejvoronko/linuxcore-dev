@@ -110,10 +110,6 @@ services:
       - GENERIC_TIMEZONE=Europe/Prague
       # Persist encryption key across restarts
       - N8N_ENCRYPTION_KEY=change-this-to-a-random-string-32chars
-      # Optional: basic auth to protect the UI
-      - N8N_BASIC_AUTH_ACTIVE=true
-      - N8N_BASIC_AUTH_USER=admin
-      - N8N_BASIC_AUTH_PASSWORD=changeme
     volumes:
       - n8n-data:/home/node/.n8n
     extra_hosts:
@@ -129,11 +125,19 @@ Start it:
 docker compose up -d
 ```
 
-Open **`http://localhost:5678`**. You'll see the n8n editor. Create an account
-(stored locally, not sent anywhere).
+Open **`http://localhost:5678`** and create the owner account (stored locally).
+n8n 1.x uses its own user accounts; the old `N8N_BASIC_AUTH_*` variables were
+removed in n8n 1.0.
 
-> **The `extra_hosts` line is critical.** Ollama runs on your host machine.
-> Without it, n8n can't reach `host.docker.internal:11434` where Ollama listens.
+> **The `extra_hosts` line is critical.** Ollama runs on your host machine, and
+> `host.docker.internal` only resolves inside the container because of that line.
+>
+> **Ollama must also listen where the container can reach it.** By default it
+> listens on `127.0.0.1` only, which containers can't reach. Set
+> `OLLAMA_HOST=0.0.0.0:11434` with `sudo systemctl edit ollama` (an
+> `[Service]` section with `Environment="OLLAMA_HOST=0.0.0.0:11434"`), restart
+> it, and make sure your firewall blocks port 11434 from other machines: the
+> Ollama API has no authentication.
 
 ---
 

@@ -13,7 +13,7 @@ heroImage: "/images/ollama-linux-setup.webp"
 heroImageAlt: "Terminal showing Ollama pulling a Llama 3 model on Linux with GPU acceleration active and Open WebUI running"
 faqs:
   - q: "Can Ollama run without a GPU?"
-    a: "Yes. Ollama falls back to CPU inference automatically if no GPU is detected. Smaller models like llama3.2:3b run at 12-18 tokens/sec on a modern CPU, which is usable for most tasks. Larger 7B+ models are slow on CPU, plan for 2-4 tokens/sec without GPU acceleration."
+    a: "Yes. Ollama falls back to CPU inference automatically if no GPU is detected. Small models (around 3B parameters) are usable on a modern CPU; 7B and larger get slow, and speed depends heavily on core count and memory bandwidth. Run ollama run <model> --verbose to see the tokens per second on your hardware."
   - q: "What is Open WebUI?"
     a: "Open WebUI is a self-hosted web interface for Ollama that works like ChatGPT, conversation history, model switching, system prompts, and file uploads. It runs as a Docker container and connects to your local Ollama instance over its API."
   - q: "Which Ollama models work best without a GPU?"
@@ -127,12 +127,18 @@ docker compose up -d
 
 ## Step 4, GPU Passthrough (NVIDIA)
 
+Ollama installed natively (Step 1) uses the GPU directly once the NVIDIA driver is installed. The Container Toolkit is only needed if you run Ollama or other GPU workloads **in Docker**. NVIDIA's install steps for Debian/Ubuntu:
+
 ```bash
-# Install NVIDIA Container Toolkit
+# Add NVIDIA's repository and key
 curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | \
   sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
+  sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
+  sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
 
-# Add repo and install
+# Install and wire it into Docker
+sudo apt-get update
 sudo apt-get install -y nvidia-container-toolkit
 sudo nvidia-ctk runtime configure --runtime=docker
 sudo systemctl restart docker
@@ -152,7 +158,7 @@ curl -fsSL https://tailscale.com/install.sh | sh
 sudo tailscale up
 
 # Serve Open WebUI on your Tailnet with HTTPS
-tailscale serve --bg https / http://localhost:3000
+tailscale serve --bg 3000
 ```
 
 Now you can access `https://your-hostname.tailnet-name.ts.net` from any device on your Tailscale network, phone, laptop, anywhere.
