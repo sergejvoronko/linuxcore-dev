@@ -60,7 +60,7 @@ services:
     tty: true
 ```
 
-Save this file, create a `./project` directory for your code and data, and run `docker-compose up -d`. You now have a shell inside a perfectly configured environment: `docker exec -it ml-lab /bin/bash`.
+Save this file, create a `./project` directory for your code and data, and run `docker compose up -d`. You need the NVIDIA driver and the NVIDIA Container Toolkit on the host. Check the container's release notes for the GPU architectures it supports: framework builds drop old GPUs over time, so a Pascal-era card may need an older tag. You now have a shell inside a perfectly configured environment: `docker exec -it ml-lab /bin/bash`.
 
 ## Your Toolkit for Low-VRAM Training
 
@@ -79,11 +79,15 @@ Implementing it with Hugging Face's TRL is straightforward. You define a `BitsAn
 import torch
 from transformers import AutoModelForCausalLM, BitsAndBytesConfig
 
+# bfloat16 needs an Ampere (RTX 30xx) or newer GPU; older cards such as
+# GTX 10xx and RTX 20xx should compute in float16 instead
+compute_dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
+
 # Configure 4-bit quantization
 quantization_config = BitsAndBytesConfig(
     load_in_4bit=True,
     bnb_4bit_quant_type="nf4",
-    bnb_4bit_compute_dtype=torch.bfloat16,
+    bnb_4bit_compute_dtype=compute_dtype,
     bnb_4bit_use_double_quant=True,
 )
 

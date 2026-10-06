@@ -43,7 +43,7 @@ Here's a basic `docker-compose.yml` to get you started. Save this on your VPS.
 ```yaml
 services:
   mailserver:
-    image: docker.io/mailserver/docker-mailserver:latest
+    image: ghcr.io/docker-mailserver/docker-mailserver:latest
     container_name: mailserver
     hostname: mail.yourdomain.com # This MUST match your MX record's target
     env_file: mailserver.env
@@ -59,7 +59,9 @@ services:
       - ./docker-data/dms/mail-logs/:/var/log/mail/
       - ./docker-data/dms/config/:/tmp/docker-mailserver/
       - /etc/localtime:/etc/localtime:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro   # certificates for SSL_TYPE=letsencrypt
     restart: always
+    stop_grace_period: 1m
     cap_add:
       - NET_ADMIN # Needed for fail2ban to work correctly
 ```
@@ -67,36 +69,34 @@ services:
 You'll also need a `mailserver.env` file to hold your configuration:
 
 ```env
-# mailserver.env
+# mailserver.env (a subset; start from the project's full mailserver.env)
 # Warning: Do not use quotes around values!
 
-# Use Let's Encrypt for TLS. Set to 1 to enable.
+# Use certificates from /etc/letsencrypt (obtained with certbot or similar
+# for the container's hostname, e.g. mail.yourdomain.com)
 SSL_TYPE=letsencrypt
 
-# Your mail domain. If you have multiple, separate with commas.
-DOMAIN_LIST=yourdomain.com
-
-# Postmaster address
 POSTMASTER_ADDRESS=postmaster@yourdomain.com
 
-# Enable spam filtering and virus scanning
+# Rspamd for spam filtering, DKIM signing and SPF/DMARC checks.
+# The project recommends disabling the older components it replaces:
 ENABLE_RSPAMD=1
+ENABLE_OPENDKIM=0
+ENABLE_OPENDMARC=0
+ENABLE_POLICYD_SPF=0
+ENABLE_AMAVIS=0
+
+# Virus scanning (needs extra RAM) and brute-force protection
 ENABLE_CLAMAV=1
 ENABLE_FAIL2BAN=1
-
-# Set to 1 if you want mail clients to use username@yourdomain.com format
-# Set to 0 if you want mail clients to use just 'username'
-ONE_DIR=1
-
-# Permitted networks for Docker
-PERMIT_DOCKER=network
 ```
 
-Before you run `docker-compose up -d`, you need to create your first email account. The container provides a script for this.
+Start the container and create your first account right away (docker-mailserver expects at least one account shortly after first start):
 
 ```bash
-# Create a user 'contact' with a strong password
-docker-compose run --rm mailserver setup email add contact@yourdomain.com your-super-secret-password
+docker compose up -d
+docker exec -ti mailserver setup email add contact@yourdomain.com
+# you'll be prompted for the password, so it doesn't end up in your shell history
 ```
 
 Now, bring the stack online. It will automatically fetch a Let's Encrypt certificate for `mail.yourdomain.com`.
@@ -114,7 +114,7 @@ This is where most people fail. Your software can be perfect, but without correc
 *   **SPF Record:** A TXT record that lists which servers are allowed to send mail for your domain.
     *   `yourdomain.com. IN TXT "v=spf1 mx -all"` (This says "only the server listed in my MX record can send mail.")
 *   **DKIM Record:** A cryptographic signature to verify the sender. `docker-mailserver` generates this for you.
-    *   Run: `docker-compose run --rm mailserver setup config dkim`
+    *   Run: `docker exec -ti mailserver setup config dkim`, then publish the generated TXT record shown in the output (or in `docker-data/dms/config/`).
     *   Copy the output, which will be a TXT record for `mail._domainkey.yourdomain.com`, and add it to your DNS.
 *   **DMARC Record:** A policy that tells receiving servers what to do if SPF or DKIM fails. Start with a reporting-only policy to avoid accidentally blocking your own mail.
     *   `_dmarc.yourdomain.com. IN TXT "v=DMARC1; p=none; rua=mailto:postmaster@yourdomain.com"`
@@ -129,7 +129,7 @@ Your server is running and your DNS is set. Now the real work begins.
 
 **Microsoft is the Final Boss:** Getting email delivered to `outlook.com` and `hotmail.com` is notoriously difficult. Their filters are aggressive and opaque. If your mail is rejected, check the bounce message for a link to their delisting form. Be polite, persistent, and patient. It can take weeks.
 
-**Monitor Your Logs:** If mail isn't being delivered, the logs are your only source of truth. Use `docker-compose logs -f mailserver` to see the live transaction logs. Rejection messages are often cryptic but contain the clues you need.
+**Monitor Your Logs:** If mail isn't being delivered, the logs are your only source of truth. Use `docker compose logs -f mailserver` to see the live transaction logs. Rejection messages are often cryptic but contain the clues you need.
 
 **Backups, Backups, Backups:** Your `docker-data` directory contains all your mail and configuration. Back it up regularly. A simple `tar` command in a cron job, pushing the archive to another location (like an S3 bucket or your NAS), is a good start.
 
