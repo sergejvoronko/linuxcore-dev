@@ -12,7 +12,7 @@ faqs:
   - q: "Are Docker containers safe enough for homelab use?"
     a: "For low-risk, internal-only services, Docker with seccomp and AppArmor profiles is acceptable. But containers share the host kernel, so a kernel exploit or misconfigured privileged container can compromise the entire host. If you're running untrusted workloads or exposing services to the internet, microVMs or Kata Containers offer meaningfully stronger isolation."
   - q: "What is the difference between a microVM and a regular VM?"
-    a: "A microVM uses a stripped-down hypervisor (like Firecracker's KVM-based VMM) to boot a minimal Linux kernel in milliseconds with very low memory overhead, typically under 5 MB of memory per VM. A traditional VM like a QEMU/KVM guest includes a full BIOS, emulated hardware, and takes seconds to boot. MicroVMs give you VM-level kernel isolation at near-container startup speed."
+    a: "A microVM uses a stripped-down hypervisor (like Firecracker's KVM-based VMM) to boot a minimal Linux kernel in milliseconds with very low memory overhead, with under 5 MiB of overhead per microVM, according to the Firecracker project. A traditional VM like a QEMU/KVM guest includes a full BIOS, emulated hardware, and takes seconds to boot. MicroVMs give you VM-level kernel isolation at near-container startup speed."
   - q: "Can I run Firecracker directly on Proxmox?"
     a: "Firecracker requires bare-metal KVM access, which means it runs best on a dedicated host or inside a Proxmox VM with nested virtualization enabled. You cannot run Firecracker inside a Proxmox LXC container. A practical homelab approach is to dedicate one Proxmox VM with KVM passthrough for Firecracker workloads, or use Kata Containers on top of containerd on a standard VM."
 ---
@@ -54,7 +54,7 @@ There are three meaningful options beyond raw Docker:
 
 ### Firecracker MicroVMs
 
-[Firecracker](https://firecracker-microvm.github.io/) is Amazon's open-source VMM, built on KVM. It boots a minimal Linux kernel in under 125ms with a ~5 MB memory footprint per VM. Each microVM has its own kernel. A kernel exploit inside one VM cannot touch another VM or the host kernel directly. It has to go through the hypervisor.
+[Firecracker](https://firecracker-microvm.github.io/) is Amazon's open-source VMM, built on KVM. According to the project it starts a microVM in as little as 125 ms, with under 5 MiB of memory overhead per microVM on top of the guest's own memory. Each microVM has its own kernel. A kernel exploit inside one VM cannot touch another VM or the host kernel directly. It has to go through the hypervisor.
 
 Firecracker is what powers AWS Lambda and Fargate. You can run it in your homelab on any machine with KVM support.
 
@@ -83,16 +83,17 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
-    cap_add:
-      - NET_BIND_SERVICE
     read_only: true
     tmpfs:
       - /tmp
     user: "1000:1000"
+    environment:
+      # a non-root user can't bind port 80, so listen on 8080 inside
+      - ROCKET_PORT=8080
     volumes:
       - ./data:/data
     ports:
-      - "8080:80"
+      - "127.0.0.1:8080:8080"
 ```
 
 `no-new-privileges` prevents privilege escalation via `setuid` binaries. `cap_drop: ALL` removes every Linux capability and you add back only what's needed. `read_only: true` with a tmpfs for `/tmp` prevents an attacker from writing to the container filesystem.
@@ -124,19 +125,18 @@ If you want to go further and start running actual microVM workloads, here's the
 # Verify KVM is available
 ls /dev/kvm
 
-# Download Firecracker
-ARCH=$(uname -m)
+# Download the latest Firecracker release (from the project's getting-started guide)
+ARCH="$(uname -m)"
 release_url="https://github.com/firecracker-microvm/firecracker/releases"
-latest=$(curl -s "${release_url}/latest" | grep -oP '(?<=tag/)[^"]+')
-curl -Lo firecracker "${release_url}/download/${latest}/firecracker-${latest}-${ARCH}.tgz"
-tar -xzf firecracker-*.tgz
-sudo mv release-*/firecracker-* /usr/local/bin/firecracker
+latest=$(basename $(curl -fsSLI -o /dev/null -w %{url_effective} ${release_url}/latest))
+curl -L ${release_url}/download/${latest}/firecracker-${latest}-${ARCH}.tgz | tar -xz
+sudo mv release-${latest}-${ARCH}/firecracker-${latest}-${ARCH} /usr/local/bin/firecracker
 
 # Verify
 firecracker --version
 ```
 
-From here, you use the Firecracker API (a Unix socket) to configure a kernel image, rootfs, network interface, and boot the microVM. For managing multiple microVMs, [Flintlock](https://github.com/weaveworks/flintlock) and [Ignite](https://github.com/weaveworks/ignite) provide higher-level orchestration.
+From here, you use the Firecracker API (a Unix socket) to configure a kernel image, rootfs, network interface, and boot the microVM. Managing many microVMs by hand gets tedious; Kata Containers (above) is the most practical way to get microVM isolation with a container workflow. Older tools such as Weaveworks Ignite are archived.
 
 For a Proxmox homelab, create a dedicated VM with CPU type set to `host` and nested virtualization enabled, then run Firecracker inside that VM.
 
@@ -145,11 +145,11 @@ For a Proxmox homelab, create a dedicated VM with CPU type set to `host` and nes
 If you do nothing else:
 
 1. Audit every container running with `--privileged` or with `/var/run/docker.sock` mounted. Remove it.
-2. Add `no-new-privileges: true` and `cap_drop: ALL` to every compose file.
+2. Add `no-new-privileges: true` to every service, and `cap_drop: ALL` where the image works without capabilities (many images that start as root need a few back).
 3. Run containers as non-root users wherever possible.
 4. If you're on Proxmox, move internet-facing services into proper KVM VMs rather than LXC containers.
 
-If you want stronger isolation without abandoning your workflow, install `gvisor` and switch your high-risk containers to the `runsc` runtime. It's a single config change in `/etc/docker/daemon.json` and your compose files stay the same.
+If you want stronger isolation without abandoning your workflow, install gVisor and register its `runsc` runtime with Docker (gVisor's installer can add it to `/etc/docker/daemon.json`). Then set `runtime: runsc` on the high-risk services in your compose files. Test them: some software doesn't work with gVisor's syscall emulation.
 
 MicroVMs are the right long-term answer for homelab services you care about protecting. Containers are fast and convenient. They're just not sandboxes.
 
