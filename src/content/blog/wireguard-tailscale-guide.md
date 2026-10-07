@@ -15,7 +15,7 @@ faqs:
   - q: "Do I need to open ports in my router for WireGuard or Tailscale?"
     a: "WireGuard requires one UDP port forwarded from your router to the server (default 51820). Tailscale requires no port forwarding at all: it uses NAT traversal to punch through firewalls, making it the simpler option for most homelab setups."
   - q: "Is Tailscale free?"
-    a: "Tailscale is free for personal use with up to 3 users and 100 devices. For a homelab, the free tier is more than sufficient. The paid plans add more users, RBAC, and compliance features that most homelabbers don't need."
+    a: "Yes, for personal use. At the time of writing, the free Personal plan covers up to 6 users with unlimited user devices, plus a quota of tagged devices such as servers. Check tailscale.com/pricing, since the limits have changed over the years."
   - q: "What is the difference between WireGuard and Tailscale?"
     a: "WireGuard is a VPN protocol you configure yourself: you manage keys, IP addressing, routing, and peer configs. Tailscale builds on WireGuard but automates all of that: key exchange, NAT traversal, and device management happen automatically. WireGuard gives more control; Tailscale is faster to set up."
   - q: "Can I use WireGuard and Tailscale simultaneously on the same server?"
@@ -80,7 +80,7 @@ Both B and C are the right answer. Which one depends on your requirements.
 | Setup time | 30–60 min | 5 min |
 | External dependency | None, fully self-hosted | Tailscale's control plane |
 | Works through strict NAT | Needs port forward | Yes, no port forward needed |
-| Device limit (free) | Unlimited | 3 devices (free), 20 on Personal |
+| Device limit (free) | Unlimited | Free Personal plan: up to 6 users, unlimited user devices (at the time of writing) |
 | Subnet routing | Manual config | Built-in, 2 clicks |
 | Exit node (route all traffic) | Manual config | Built-in |
 | Auditability | Complete, you own everything | Partial, key exchange via Tailscale |
@@ -180,8 +180,8 @@ Replace `eth0` with your actual network interface name (check with `ip link`).
 Enable IP forwarding permanently:
 
 ```bash
-echo "net.ipv4.ip_forward=1" | sudo tee -a /etc/sysctl.conf
-sudo sysctl -p
+echo "net.ipv4.ip_forward = 1" | sudo tee /etc/sysctl.d/99-wireguard.conf
+sudo sysctl --system
 ```
 
 ---
