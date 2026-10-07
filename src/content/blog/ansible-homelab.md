@@ -30,7 +30,7 @@ Ansible solves this permanently. You describe what you want, and every machine c
 ## Prerequisites
 
 - A control machine running Linux (your laptop or a dedicated node)
-- Ansible installed: `pip install ansible` or `apt install ansible`
+- Ansible installed: `sudo apt install ansible`, or `pipx install --include-deps ansible` for a newer version (plain `pip install` into the system Python is blocked on current Debian and Ubuntu)
 - SSH key-based access to your target hosts (password auth works but keys are required for automation)
 - Target hosts running Debian 12 or Ubuntu 22.04+
 - Python 3 installed on each target host (`apt install python3`)
@@ -97,9 +97,6 @@ Variables shared across all roles go in `group_vars/all.yml`. Keeping them here 
 # System
 timezone: "Europe/Bratislava"
 admin_user: "admin"
-
-# Docker
-docker_compose_version: "2.24.0"
 
 # Monitoring
 grafana_port: 3000
@@ -230,14 +227,24 @@ Handlers are tasks that only run when notified, here, restarting sshd only when 
       - lsb-release
     state: present
 
+# apt-key is deprecated (and gone in Debian 13), so store the key in
+# /etc/apt/keyrings and reference it with signed-by, as Docker's docs do
+- name: Create keyrings directory
+  file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
 - name: Add Docker GPG key
-  apt_key:
-    url: https://download.docker.com/linux/ubuntu/gpg
-    state: present
+  get_url:
+    url: "https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg"
+    dest: /etc/apt/keyrings/docker.asc
+    mode: "0644"
 
 - name: Add Docker repository
   apt_repository:
-    repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+    repo: "deb [arch={{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} stable"
+    filename: docker
     state: present
 
 - name: Install Docker CE

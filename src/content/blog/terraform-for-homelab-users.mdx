@@ -12,7 +12,7 @@ faqs:
   - q: "What is the difference between Terraform and Ansible?"
     a: "Terraform provisions infrastructure, it creates and destroys cloud resources like EC2 instances, VPCs, and S3 buckets. Ansible configures software on existing machines, it installs packages, writes config files, and starts services. They are complementary: Terraform builds the server, Ansible sets it up."
   - q: "Is Terraform free?"
-    a: "The Terraform CLI and all AWS providers are free and open source. HashiCorp's Terraform Cloud (for remote state and team collaboration) has a free tier for small teams. OpenTofu is a fully open source fork of Terraform that is also free, with no licensing restrictions."
+    a: "Free to use, yes. Since August 2023 the Terraform CLI is under the Business Source License (source-available, not open source), which doesn't restrict personal or homelab use. The AWS provider is open source (MPL 2.0). OpenTofu is the open-source fork under the Linux Foundation and runs the same configuration in this guide."
   - q: "Do I need prior cloud experience to use Terraform?"
     a: "Basic AWS console familiarity helps, knowing what an EC2 instance, VPC, and security group are makes the Terraform configuration much more intuitive. If you have set up a server manually in the AWS console, you have enough context to follow a Terraform guide."
   - q: "What happens if I accidentally run terraform destroy?"
@@ -443,7 +443,7 @@ terraform {
     bucket         = "your-terraform-state-bucket"
     key            = "homelab-cloud/terraform.tfstate"
     region         = "eu-central-1"
-    dynamodb_table = "terraform-locks"
+    use_lockfile   = true   # S3-native locking (Terraform 1.10+); no DynamoDB table needed
     encrypt        = true
   }
 }
