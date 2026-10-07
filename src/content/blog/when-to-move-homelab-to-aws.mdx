@@ -74,38 +74,38 @@ Let's price out equivalent setups. All prices are EU (Frankfurt, `eu-central-1`)
 
 ### Always-on compute
 
-A `t3.small` (2 vCPU, 2GB RAM), the minimum for running a few Docker containers:
+A `t3.small` (2 vCPU, 2GB RAM), the minimum for running a few Docker containers. AWS bills in US dollars; Frankfurt (`eu-central-1`) list prices at the time of writing:
 
 ```
-t3.small on-demand:      €0.023/hr × 730 hrs = €16.79/month
-30GB gp3 EBS storage:                          €2.76/month
-Elastic IP:                                     €3.65/month (if not attached to running instance)
-Data transfer (50GB out):                       €4.50/month
+t3.small on-demand:      $0.024/hr × 730 hrs = ~$17.50/month
+30GB gp3 EBS storage:                          ~$3/month
+Public IPv4 address:                           ~$3.65/month (charged for every public IPv4 since 2024)
+Data transfer out:                             first 100GB/month free
 ──────────────────────────────────────────────────────────
-Total:                                          ~€28/month
+Total:                                          ~$24/month
 ```
 
-That gets you 2GB of RAM. Your €350 mini PC has 16GB. A `t3.xlarge` (4 vCPU, 16GB) to match? That's €73/month on-demand. With a 1-year reserved instance you're looking at around €45/month, still comparable to your homelab total cost, but with far less storage and no GPU.
+That gets you 2GB of RAM. Your mini PC has 16GB. A `t3.xlarge` (4 vCPU, 16GB) to match lists at about $140/month on-demand in Frankfurt; a 1-year Savings Plan or reserved instance brings that down substantially, but it stays well above a homelab's running cost, with far less storage and no GPU.
 
 ### Burst GPU compute
 
 This is where AWS shines. A `g5.xlarge` (1 NVIDIA A10G GPU, 24GB VRAM) on a spot instance:
 
 ```
-g5.xlarge spot price:    ~€0.35/hr (fluctuates)
-2 hours/day × 30 days:   €21/month
+g5.xlarge spot price:    ~$0.50/hr in Frankfurt when checked (fluctuates; on-demand ~$1.26/hr)
+2 hours/day × 30 days:   ~$30/month
 ```
 
-Compare that to buying an RTX 4070 (€550) that you use 2 hours a day. You'd need to run it for 26 months before the card pays for itself vs. spot pricing. If you only need GPU compute occasionally, spot instances win.
+Compare that to buying a mid-range GPU for around €550 that you use 2 hours a day: it pays for itself against spot pricing in well under two years, before electricity. If you only need GPU compute occasionally, spot instances win.
 
 ### Storage
 
-S3 is almost always cheaper than local storage for archival data:
+S3 is often cheaper than local storage for archival data (us-east-1 list prices in USD; EU regions are somewhat higher):
 
 ```
-1TB S3 Standard:                     €23.55/month
-1TB S3 Glacier Instant Retrieval:    €4.10/month
-1TB S3 Glacier Deep Archive:         €1.02/month
+1TB S3 Standard:                     ~$23.55/month
+1TB S3 Glacier Instant Retrieval:    ~$4.10/month
+1TB S3 Glacier Deep Archive:         ~$1.02/month
 ```
 
 Compare to a 4TB NAS drive at €100 amortized over 5 years: €1.67/month per TB. Local storage is cheaper per TB for hot data you access constantly, but S3 Glacier wins for backups and archives you rarely touch, and it doesn't require electricity or hardware replacement.
@@ -149,8 +149,8 @@ Some services work best with a foot in each world:
 
 Some AWS services are designed for enterprise scale and aren't worth the complexity for a solo operator:
 
-- **ECS/EKS** for a handful of containers, Docker Compose is fine, and ECS adds €30–60/month in orchestration overhead plus hours of setup
-- **RDS** for a single Postgres database, a managed instance starts at €25/month; a container on your existing EC2 costs nothing extra
+- **ECS/EKS** for a handful of containers: Docker Compose is fine. EKS charges a control-plane fee (about $73/month per cluster) before any nodes, and ECS still costs hours of setup for little gain at this scale
+- **RDS** for a single Postgres database: even the smallest managed instance is a monthly cost on top of your EC2, while a container on your existing instance costs nothing extra
 - **CloudWatch** for monitoring 2 servers, Prometheus is free, more flexible, and doesn't charge per metric ingestion
 - **Lambda** for workloads that run constantly, a function running 24/7 costs more than a t3.micro EC2 instance and is harder to debug
 
