@@ -88,7 +88,7 @@ Anyway, I also recommend to check  [racknotes's 8 step checklist after installin
 ## Step 1, Download and Write the ISO
 
 Download the latest Proxmox VE ISO from **proxmox.com/downloads**.
-As of 2026, that's Proxmox VE 8.x.
+As of autumn 2026 that's Proxmox VE 9.x, based on Debian 13 "Trixie" (9.2 also added an official ARM64 build).
 
 Write it to a USB drive using your Ubuntu laptop:
 
@@ -97,7 +97,7 @@ Write it to a USB drive using your Ubuntu laptop:
 lsblk
 
 # Write the ISO (replace sdX with your USB device — be careful here)
-sudo dd if=proxmox-ve_8.x-x.iso of=/dev/sdX bs=1M status=progress conv=fdatasync
+sudo dd if=proxmox-ve_9.x-x.iso of=/dev/sdX bs=1M status=progress conv=fdatasync
 ```
 
 Or use the graphical **Balena Etcher** app if you prefer a GUI.
@@ -167,27 +167,40 @@ sed -i.bak "s/data.status !== 'Active'/false/g" \
 systemctl restart pveproxy
 ```
 
-Refresh your browser, no more popup.
+Refresh your browser, no more popup. This edits a file shipped by a Proxmox package, so updates put the popup back and the pattern can change between versions; it's purely cosmetic, so skipping it is fine too.
 
 **Switch to the free repository:**
 
-By default Proxmox points at the enterprise repository which requires
-a paid subscription. Switch to the free community repo:
+By default Proxmox points at the enterprise repositories, which require
+a paid subscription. The simplest way to switch is the web UI: **your node
+→ Updates → Repositories**: disable the `enterprise` entries (Proxmox VE and
+Ceph) and **Add** the `No-Subscription` repository.
+
+On the command line, Proxmox VE 9 uses deb822 `.sources` files. Per the
+[Proxmox package repository docs](https://pve.proxmox.com/wiki/Package_Repositories):
 
 ```bash
-# Disable enterprise repo
-echo "# disabled" > /etc/apt/sources.list.d/pve-enterprise.list
+# Disable the enterprise repositories
+sed -i '1i Enabled: no' /etc/apt/sources.list.d/pve-enterprise.sources
+[ -f /etc/apt/sources.list.d/ceph.sources ] && sed -i '1i Enabled: no' /etc/apt/sources.list.d/ceph.sources
 
-# Add the free no-subscription repo
-echo "deb http://download.proxmox.com/debian/pve bookworm pve-no-subscription" \
-  > /etc/apt/sources.list.d/pve-no-subscription.list
+# Add the no-subscription repository
+cat > /etc/apt/sources.list.d/proxmox.sources <<'EOF'
+Types: deb
+URIs: http://download.proxmox.com/debian/pve
+Suites: trixie
+Components: pve-no-subscription
+Signed-By: /usr/share/keyrings/proxmox-archive-keyring.gpg
+EOF
 
 # Update
-apt update && apt dist-upgrade -y
+apt update && apt full-upgrade -y
 
 # Reboot to apply any kernel updates
 reboot
 ```
+
+Proxmox recommends the no-subscription repository for testing and non-production use, which describes a homelab well.
 
 You now have a fully updated, free Proxmox installation with no subscription nag and no enterprise repo.
 
