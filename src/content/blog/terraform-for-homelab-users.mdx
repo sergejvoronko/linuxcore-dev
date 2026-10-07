@@ -40,7 +40,7 @@ Three reasons:
 
 **Reproducibility.** When you provision infrastructure through the console, you make 30 decisions (instance type, security group rules, subnet CIDR, tags) that exist only in your head and the AWS API. Terraform captures every decision in a file you can version-control, review, and re-run. Blow away your entire AWS setup and rebuild it identically in 2 minutes.
 
-**Drift detection.** Someone (probably you at 11 PM) opens a port in a security group through the console "temporarily." Terraform knows the desired state and will flag the change next time you run `plan`. This has saved me more times than I want to admit.
+**Drift detection.** Someone (probably you at 11 PM) opens a port in a security group through the console "temporarily." Terraform knows the desired state and will flag the change next time you run `plan`. It's the step that catches mistakes before they cost money.
 
 **Documentation that doesn't rot.** A Terraform file is always accurate because it's the thing that creates the infrastructure. Wiki pages and READMEs about your setup go stale the moment you change something.
 

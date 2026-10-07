@@ -1,10 +1,10 @@
 ---
-title: "Migrate Next.js to Astro 5: Performance and Cost Deep Dive"
-description: "Migrating from Next.js to Astro 5 on Cloudflare: real performance gains, lower hosting cost, and the gotchas, from a homelab perspective."
+title: "Migrating Next.js to Astro: What Changes and Why"
+description: "Moving a content site from Next.js to Astro on Cloudflare: why static HTML with islands is lighter, how components and data fetching translate, and where a homelab API fits."
 pubDate: 2026-08-20
 readingTime: 8
 heroImage: "/images/nextjs-to-astro-5-migration-homelab-cost-performance.webp"
-heroImageAlt: "A diagram showing a server rack with a Next.js logo being replaced by an Astro logo connected to a fast-loading globe, representing performance and cost savings."
+heroImageAlt: "Diagram of a Next.js site being replaced by a static Astro site served from a global edge network"
 section: "astro"
 tags: ["astro", "nextjs", "performance", "jamstack", "cloudflare"]
 draft: false
@@ -14,30 +14,17 @@ faqs:
   - q: "My Next.js site has a contact form. How do I handle that in a static Astro site?"
     a: "You can't run a backend endpoint on a static host. The best options are using a serverless function (Cloudflare Pages Functions are perfect for this) or pointing the form to a small, self-hosted API endpoint in your homelab."
   - q: "Is Astro 5 a huge change from older versions? Does this guide still apply?"
-    a: "Astro 5 refined features like the Dev Toolbar and View Transitions. The core concepts of static generation, zero-JS by default, and component islands are foundational. This migration strategy is durable and applies across modern Astro versions."
+    a: "The approach in this guide (static pages, islands for interactivity, build-time data fetching) is Astro's core model and applies to Astro 5 and later versions. Check the upgrade guide of the version you use for API details such as content collections."
 ---
+Many personal sites and portfolios built with Next.js are, in practice, static content: text, images, a list of projects. Next.js brings server-side rendering, API routes and a client-side React runtime that hydrates the page in the browser. For a content site, much of that work buys nothing.
 
-My Next.js portfolio was a solution in search of a problem. It had server-side rendering, API routes, and a complex build process because, well, that's the Next.js way. It was deployed on Vercel, and while the free tier is generous, the entire setup felt like overkill. I was shipping a multi-megabyte React runtime to display what was essentially static text and images. The complexity was a hidden cost. The real cost was slow builds and mediocre mobile performance scores.
+**Astro** takes the opposite default: pages are rendered to static HTML at build time and ship **no JavaScript** unless you opt in, component by component ("islands"). For content-heavy sites that usually means less JavaScript to download and execute, which is what Core Web Vitals such as Total Blocking Time and Largest Contentful Paint measure. How big the difference is depends on your site, so measure your own before and after with Lighthouse or PageSpeed Insights.
 
-I ripped it all out and moved to Astro 5.
+Hosting a static build is cheap too: Cloudflare Pages, for example, serves static sites on its free plan.
 
-The goal wasn't just to try a new framework. It was to build a site that was brutally fast, cost nothing to host, and required minimal mental overhead. Astro's philosophy is simple: ship zero JavaScript by default. Your site is static HTML and CSS, and you can opt-in to interactivity with "islands" of your preferred framework (React, in my case). For a portfolio, blog, or documentation site, this model just makes more sense.
+## Why the difference exists
 
-## The Hard Numbers: Before and After
-
-Talk is cheap. Let's look at the metrics. The "Before" is my Next.js 14 App Router site. The "After" is the same content migrated to Astro 5. Both are deployed on Cloudflare Pages' free tier for an apples-to-apples comparison of the final asset delivery.
-
-| Metric | Next.js 14 (App Router) | Astro 5 (Static) | Result |
-| :--- | :--- | :--- | :--- |
-| PageSpeed Insights (Mobile) | 78 | 99 | **+27%** |
-| Largest Contentful Paint (LCP) | 2.1s | 0.8s | **62% Faster** |
-| Total Blocking Time (TBT) | 180ms | 0ms | **100% Reduction** |
-| First Contentful Paint (FCP) | 1.3s | 0.6s | **54% Faster** |
-| Total JS Shipped (Homepage) | ~115 KB | ~4 KB | **96% Smaller** |
-| Build Time (CI/CD) | 2m 15s | 35s | **74% Faster** |
-| Monthly Hosting Cost | $0 (but with limits) | $0 (with higher limits) | **Effectively Zero** |
-
-The results aren't surprising if you understand the underlying tech. The Next.js site required hydration, where the server-rendered HTML is made interactive on the client by executing JavaScript. Astro spits out pure, static HTML. There's no hydration to perform and no JavaScript to parse unless I explicitly add an interactive component. The Total Blocking Time dropping to zero tells the whole story: the main thread is free.
+A Next.js page is server-rendered and then **hydrated**: the browser downloads the React runtime and the page's components and runs them to make the HTML interactive. An Astro page without client directives is just HTML and CSS: there's nothing to hydrate, so the main thread stays free. Interactive parts are added only where you mark them, and only their JavaScript ships.
 
 ## The Migration: It's a Mindset Shift
 
@@ -99,11 +86,11 @@ const projects = await response.json();
 </html>
 ```
 
-The `client:visible` directive is the key. It tells Astro: "This is a React component. Don't ship its JavaScript to the browser until the component itself scrolls into the viewport." If your component is purely presentational (no state, no effects), you can omit the `client:*` directive entirely. Astro will render it to HTML and ship zero JavaScript for it. This is the source of the massive performance gains.
+The `client:visible` directive is the key. It tells Astro: "This is a React component. Don't ship its JavaScript to the browser until the component itself scrolls into the viewport." If your component is purely presentational (no state, no effects), you can omit the `client:*` directive entirely. Astro will render it to HTML and ship zero JavaScript for it. That's where most of the savings come from.
 
 ## Connecting to Your Homelab API
 
-Most of us have a dynamic data source, even for a portfolio. Maybe it's a headless CMS like Strapi or a custom API running in a container on our Proxmox server. This is where the homelab angle gets interesting. Your site is static, but your *data* is dynamic at build time.
+Many sites have a dynamic data source, even a portfolio: a headless CMS like Strapi, or a small API running in a container on a Proxmox server. This is where the homelab angle gets interesting. Your site is static, but your *data* is dynamic at build time.
 
 During development (`npm run dev`), Astro can fetch from `http://localhost:1337`. But during a build on Cloudflare, it needs a public URL. You can expose your homelab API via a Cloudflare Tunnel or a reverse proxy.
 
@@ -161,13 +148,13 @@ Deploying to Cloudflare Pages is almost insultingly simple.
 3.  Set the build command to `npm run build` and the output directory to `/dist`.
 4.  Add your `API_BASE_URL` environment variable in the dashboard.
 
-That's it. Every `git push` triggers a new build and deployment, which now takes seconds instead of minutes. The site is served from Cloudflare's global edge network, so it's fast everywhere.
+That's it. Every `git push` triggers a new build and deployment. The site is served from Cloudflare's global edge network, so it's fast everywhere.
 
-## Was It Worth It?
+## Is It Worth It?
 
-Unequivocally, yes. The performance benefits are real and measurable. My Lighthouse scores are consistently 99-100. The hosting cost is zero and the build limits are so high I'll never hit them.
+For a content site, usually yes: less JavaScript, simpler code, cheap static hosting and a clear split between static content and the few interactive islands. Measure before and after on your own pages to see the real gain.
 
-The biggest win, however, is simplicity. The Astro project is easier to reason about. There's less boilerplate and a clear separation between static content and interactive islands. I'm no longer fighting a complex framework designed for web apps just to serve a simple content site. I chose the right tool for the job. If your Next.js site feels heavy for what it does, you owe it to yourself to try this migration.
+Stay on Next.js if the site is really an application: lots of client-side state, authenticated dashboards, server actions everywhere. Astro can do on-demand rendering too, but its strength is content.
 
 ## What's Next
 

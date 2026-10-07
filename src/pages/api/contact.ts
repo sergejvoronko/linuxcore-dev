@@ -12,6 +12,11 @@ const CORS = {
 export const OPTIONS: APIRoute = () =>
   new Response(null, { status: 204, headers: CORS });
 
+// User input goes into the email's HTML, so it must be escaped
+const esc = (v: string) =>
+  v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+   .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
 export const POST: APIRoute = async ({ request, locals }) => {
   let body: { name?: string; email?: string; subject?: string; message?: string };
   try {
@@ -22,9 +27,12 @@ export const POST: APIRoute = async ({ request, locals }) => {
     });
   }
 
-  const { name, email, subject, message } = body;
+  const name    = String(body.name ?? '').trim().slice(0, 200);
+  const email   = String(body.email ?? '').trim().slice(0, 200);
+  const subject = String(body.subject ?? '').trim().slice(0, 200).replace(/[\r\n]+/g, ' ');
+  const message = String(body.message ?? '').trim().slice(0, 5000);
 
-  if (!name || !email || !subject || !message) {
+  if (!name || !email || !subject || !message || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return new Response(JSON.stringify({ error: 'All fields are required.' }), {
       status: 400, headers: { ...CORS, 'Content-Type': 'application/json' },
     });
@@ -45,13 +53,13 @@ export const POST: APIRoute = async ({ request, locals }) => {
         <div style="font-family:monospace;background:#18120a;color:#e8dcc8;padding:32px;border-radius:8px;max-width:560px">
           <div style="color:#f0a500;font-size:11px;letter-spacing:0.1em;margin-bottom:16px">[CONTACT FORM]</div>
           <table style="width:100%;border-collapse:collapse;margin-bottom:24px">
-            <tr><td style="padding:6px 0;color:rgba(232,220,200,0.5);width:80px">From</td><td style="padding:6px 0;color:#e8dcc8">${name}</td></tr>
-            <tr><td style="padding:6px 0;color:rgba(232,220,200,0.5)">Email</td><td style="padding:6px 0"><a href="mailto:${email}" style="color:#f0a500">${email}</a></td></tr>
-            <tr><td style="padding:6px 0;color:rgba(232,220,200,0.5)">Subject</td><td style="padding:6px 0;color:#e8dcc8">${subject}</td></tr>
+            <tr><td style="padding:6px 0;color:rgba(232,220,200,0.5);width:80px">From</td><td style="padding:6px 0;color:#e8dcc8">${esc(name)}</td></tr>
+            <tr><td style="padding:6px 0;color:rgba(232,220,200,0.5)">Email</td><td style="padding:6px 0"><a href="mailto:${esc(email)}" style="color:#f0a500">${esc(email)}</a></td></tr>
+            <tr><td style="padding:6px 0;color:rgba(232,220,200,0.5)">Subject</td><td style="padding:6px 0;color:#e8dcc8">${esc(subject)}</td></tr>
           </table>
           <div style="background:#1e1710;border:1px solid rgba(240,165,0,0.15);border-left:3px solid #f0a500;border-radius:4px;padding:20px">
             <div style="font-size:10px;letter-spacing:0.1em;color:#f0a500;margin-bottom:12px">MESSAGE</div>
-            <pre style="white-space:pre-wrap;margin:0;color:#e8dcc8;font-family:monospace;line-height:1.7;font-size:14px">${message}</pre>
+            <pre style="white-space:pre-wrap;margin:0;color:#e8dcc8;font-family:monospace;line-height:1.7;font-size:14px">${esc(message)}</pre>
           </div>
         </div>
       `,

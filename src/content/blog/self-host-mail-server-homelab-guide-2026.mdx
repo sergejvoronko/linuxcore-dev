@@ -27,7 +27,7 @@ Running your own mail isn't about saving a few bucks a month. It's about control
 Forget everything else for a moment. If you ignore these three points, your project is dead on arrival.
 
 1.  **You need your own domain name.** This is non-negotiable. `you@yourdomain.com` is the entire point.
-2.  **You cannot use your home's residential IP address.** I don't care how "static" your ISP claims it is. It's on a block list somewhere, it has no reverse DNS (rDNS) entry you can control, and major providers will reject your mail on sight.
+2.  **You cannot use your home's residential IP address.** However "static" your ISP says it is. It's on a block list somewhere, it has no reverse DNS (rDNS) entry you can control, and major providers will reject your mail on sight.
 3.  **You need a server with a clean, static IP.** This means a cheap VPS from a provider like Hetzner, Vultr, or DigitalOcean. A $5/month box is more than enough. This will be your mail server's public-facing address.
 
 The simplest path is to run your entire mail stack on this VPS. You can also set up a VPN like WireGuard between your homelab and the VPS, using the VPS as a mail gateway, but that adds another point of failure. Start with the VPS.

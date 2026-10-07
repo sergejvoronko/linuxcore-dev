@@ -23,7 +23,7 @@ import { Image } from 'astro:assets';
 
 Local backups are good. Local backups plus offsite backups are what separate "inconvenient hardware failure" from "catastrophic data loss."
 
-I've seen both sides of this, enterprise SAP systems with multi-region replication and homelabbers who lost years of data because their backup drive was sitting next to the NAS it was protecting. When the power supply blew, it took both with it.
+The classic failure is a backup drive sitting next to the NAS it protects: one fire, flood or theft, and years of data are gone. When the power supply blew, it took both with it.
 
 AWS S3 is the cheapest, most durable offsite storage available to individuals. Combined with restic, which handles encryption, deduplication, and incremental snapshots, you get a backup system that rivals enterprise setups for a fraction of the cost.
 

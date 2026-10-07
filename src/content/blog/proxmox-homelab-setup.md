@@ -692,7 +692,7 @@ Rebuild initramfs: `update-initramfs -u -k all` and reboot. Once it shows
 
 ## Recommended hardware
 
-What I run this on (affiliate links. They help fund the site at no extra cost to you):
+Hardware that suits this setup (affiliate links. They help fund the site at no extra cost to you):
 
 - [Beelink EQ12 Pro (i3-N305 mini PC)](/go/beelink-eq12/): a capable, low-power Proxmox node
 - [Samsung 990 Pro NVMe SSD](/go/samsung-990-pro/): fast VM/DB storage

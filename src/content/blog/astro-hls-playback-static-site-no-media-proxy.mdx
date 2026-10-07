@@ -207,7 +207,7 @@ This setup works incredibly well, but you have to respect the architecture.
 *   **No Transcoding:** This is a raw feed. If your camera outputs a 20 Mbps 4K stream, that's what the browser will try to download. There's no server in the middle to downscale it for a slow connection. You get what the source gives you.
 *   **Authentication:** The stream URL is sitting in plain text in the HTML/JS source. This method is not suitable for streams that require robust authentication. It's designed for trusted networks.
 
-I was surprised by how little code it took. The hardest part wasn't Astro or HLS, it was digging through the documentation for my camera's firmware to figure out how to get a clean HLS stream out of it in the first place. The Astro side of things was trivial once the source was solid.
+It takes surprisingly little code. Often the hardest part isn't Astro or HLS, but getting a clean stream out of the camera or tuner in the first place: check its firmware documentation for RTSP or HLS output. The Astro side of things was trivial once the source was solid.
 
 ## What's Next
 

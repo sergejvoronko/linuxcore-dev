@@ -21,7 +21,7 @@ You've seen the error. Buried in the logs of Uptime Kuma, Home Assistant, or som
 
 If other tools read these SQLite databases directly, like a Grafana dashboard or a monitoring script, they can contribute to the problem. WAL mode is fantastic for concurrency, but its checkpoint mechanism can lead to a bizarre form of reader starvation, where your read-only tools cause the entire database to lock up.
 
-This isn't a theoretical issue. I've seen it take down monitoring dashboards and cause intermittent failures across my homelab. Here's how to identify the problem, understand why it happens, and actually fix it.
+This isn't a theoretical issue. It can take down monitoring dashboards and cause intermittent failures across a homelab. Here's how to identify the problem, understand why it happens, and actually fix it.
 
 ## How WAL mode works
 

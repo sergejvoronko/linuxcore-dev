@@ -90,7 +90,7 @@ There's no single "best" option. It's about tradeoffs.
 
 *   **Choose Stratis if:** You are heavily invested in the Red Hat ecosystem (Fedora, RHEL, CentOS) and want a simpler way to manage storage volumes with data integrity. You trust XFS and `mdraid` and just want a better user interface on top. It's a good LVM replacement, but its lack of integrated RAID and replication makes it a poor choice for a multi-drive NAS or a dedicated backup server compared to ZFS.
 
-For my homelab, I use ZFS for my Proxmox host and primary NAS. The reliability is worth the initial learning curve. I use Btrfs on my laptop for its snapshot capabilities on a single drive. I've experimented with Stratis, but I've never found a use case where it was a better choice than the other two.
+A common homelab split: ZFS for the Proxmox host and the primary NAS. The reliability is worth the initial learning curve. Btrfs on a laptop, for snapshots on a single drive. Stratis is the niche choice: it makes most sense on RHEL-family systems where it's the supported option.
 
 ## What's Next
 

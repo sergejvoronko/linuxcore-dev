@@ -160,7 +160,7 @@ npm run build
 
 This command bundles everything and outputs a complete, production-ready static site into a `dist/` directory. This folder is all you need. It contains the HTML, CSS, JS, and any processed images.
 
-Now, let's serve it from our homelab using Docker. The simplest way is with an Nginx container. Create a `docker-compose.yml` file in your project's root:
+Now, let's serve it from a homelab using Docker. The simplest way is with an Nginx container. Create a `docker-compose.yml` file in your project's root:
 
 ```yaml
 # docker-compose.yml
@@ -191,9 +191,9 @@ Your wiki is now running on your server, accessible at `http://<your-server-ip>:
 
 ## Real-World Gotchas
 
-This setup is clean, but it's not a magical unicorn. Here are a few things I learned the hard way.
+This setup is clean, but it's not a magical unicorn. Here are a few things that commonly trip people up.
 
-*   **No Built-in Search:** Static sites have no backend, which means no server-side search. The best you can do is a client-side solution. I've had good results with [Pagefind](https://pagefind.app/), which you run after your Astro build. It creates a static search index that your front-end JS can query. It's surprisingly fast for small-to-medium sites.
+*   **No Built-in Search:** Static sites have no backend, which means no server-side search. The best you can do is a client-side solution. [Pagefind](https://pagefind.app/) works well here: you run it after your Astro build. It creates a static search index that your front-end JS can query. It's surprisingly fast for small-to-medium sites.
 *   **Image Bloat:** If your wiki has thousands of high-resolution images, checking them into your Git repository is a terrible idea. Your repo size will explode. A better approach is to store the images on an S3-compatible object store in your homelab (like MinIO) and simply store the URL to the image in your Markdown frontmatter.
 *   **Contribution Model:** This is a developer-centric workflow. Your contributors need to be comfortable with Markdown, Git, and pull requests. If you need a WYSIWYG editor for non-technical users, this isn't the right stack. For a small, dedicated team, it's perfect.
 

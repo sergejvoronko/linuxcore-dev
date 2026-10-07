@@ -86,9 +86,9 @@ Both B and C are the right answer. Which one depends on your requirements.
 | Auditability | Complete, you own everything | Partial, key exchange via Tailscale |
 | Best for | Production, privacy-first, full control | Rapid access, many devices, simplicity |
 
-**My actual setup:** Tailscale for daily access (phone, laptop, quick
+**A practical combination:** Tailscale for daily access (phone, laptop, quick
 remote work). WireGuard for the always-on tunnel from a VPS, and for
-anything where I don't want any external dependency.
+anything that shouldn't depend on an external service.
 
 You don't have to choose. Run both. They coexist without conflict.
 

@@ -126,7 +126,7 @@ You enable it through an `accelerate` config file or directly in your script.
 
 ## Common Pitfalls and Gotchas
 
-I've hit every one of these. You probably will, too.
+These are the usual ones. You probably will, too.
 
 *   **`CUDA out of memory`**: The error you will see a thousand times. It means exactly what it says. The fix is always the same: reduce memory usage. Decrease `per_device_train_batch_size`. If it's already 1, increase `gradient_accumulation_steps`. Enable 4-bit quantization if you haven't already.
 *   **Mismatched Drivers and Toolkits**: You ran `sudo apt upgrade` on your host and now Docker can't see your GPU. This is why you use Docker. It isolates you, but you still need a stable NVIDIA driver on the host. Pick one from a long-term support branch and don't touch it.
