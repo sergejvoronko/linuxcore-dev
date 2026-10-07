@@ -29,7 +29,7 @@ Monetising a static blog usually means reaching for a SaaS paywall service that 
 ## Prerequisites
 
 - Astro project already deployed to Cloudflare Pages (SSR mode, `output: 'server'`).
-- A Clerk account, free tier covers 10 000 MAU.
+- A Clerk account; the free tier is generous for a small site (check Clerk's pricing page for the current limits).
 - A Stripe account in test mode.
 - Node 20+ locally; `wrangler` CLI installed.
 
@@ -116,6 +116,7 @@ Add a `src/pages/api/checkout.ts` endpoint that creates a Stripe Checkout Sessio
 ```ts
 import type { APIRoute } from 'astro';
 import Stripe from 'stripe';
+import { env } from 'cloudflare:workers'; // runtime secrets on the Cloudflare adapter
 
 export const POST: APIRoute = async ({ request, locals }) => {
   const auth = locals.auth();
@@ -125,8 +126,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
     return new Response('Unauthorized', { status: 401 });
   }
 
-  const stripe = new Stripe(import.meta.env.STRIPE_SECRET_KEY, {
-    apiVersion: '2024-04-10',
+  const stripe = new Stripe(env.STRIPE_SECRET_KEY, {
+    httpClient: Stripe.createFetchHttpClient(), // fetch-based client for Workers
   });
 
   const session = await stripe.checkout.sessions.create({
@@ -140,7 +141,9 @@ export const POST: APIRoute = async ({ request, locals }) => {
     ],
     success_url: `${new URL(request.url).origin}/premium/welcome`,
     cancel_url: `${new URL(request.url).origin}/pricing`,
-    metadata: { clerkUserId: userId },
+    // Session metadata is NOT copied to the subscription; the webhook reads
+    // subscription events, so put the user ID on the subscription itself
+    subscription_data: { metadata: { clerkUserId: userId } },
   });
 
   return Response.redirect(session.url!, 303);
@@ -167,11 +170,12 @@ Create `src/pages/api/webhook.ts`:
 ```ts
 import type { APIRoute } from 'astro';
 import Stripe from 'stripe';
+import { env } from 'cloudflare:workers'; // runtime secrets on the Cloudflare adapter
 import { createClerkClient } from '@clerk/backend';
 
 export const POST: APIRoute = async ({ request }) => {
-  const stripe = new Stripe(import.meta.env.STRIPE_SECRET_KEY, {
-    apiVersion: '2024-04-10',
+  const stripe = new Stripe(env.STRIPE_SECRET_KEY, {
+    httpClient: Stripe.createFetchHttpClient(),
   });
 
   const sig = request.headers.get('stripe-signature') ?? '';
@@ -180,17 +184,20 @@ export const POST: APIRoute = async ({ request }) => {
   let event: Stripe.Event;
 
   try {
-    event = stripe.webhooks.constructEvent(
+    // Workers have no Node crypto: use the async variant with Web Crypto
+    event = await stripe.webhooks.constructEventAsync(
       body,
       sig,
-      import.meta.env.STRIPE_WEBHOOK_SECRET
+      env.STRIPE_WEBHOOK_SECRET,
+      undefined,
+      Stripe.createSubtleCryptoProvider(),
     );
   } catch {
     return new Response('Webhook signature verification failed', { status: 400 });
   }
 
   const clerk = createClerkClient({
-    secretKey: import.meta.env.CLERK_SECRET_KEY,
+    secretKey: env.CLERK_SECRET_KEY,
   });
 
   if (

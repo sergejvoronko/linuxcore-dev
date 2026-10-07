@@ -428,7 +428,7 @@ const basePrice = product ? getBasePrice(product) : 0;
           productId: window.location.pathname.split('/').at(-1),
           variantId: Number(variantSelect?.value ?? 0),
           quantity:  Number(qty?.value ?? 1),
-          price:     Number(variantSelect?.selectedOptions[0]?.dataset.price ?? 0),
+          // no price here: the server looks it up
         }),
       });
       const data = await res.json() as { url?: string; error?: string };
@@ -449,48 +449,65 @@ const basePrice = product ? getBasePrice(product) : 0;
 
 Create `functions/api/checkout.ts`:
 
+Never take the price from the browser: anyone can edit the request and pay €0.01. The function looks the price up in Printify itself, using only the product and variant IDs from the form.
+
 ```typescript
 // functions/api/checkout.ts
 
 interface Env {
-  STRIPE_SECRET_KEY: string;
-  SITE_URL:          string;
+  STRIPE_SECRET_KEY:  string;
+  PRINTIFY_API_TOKEN: string;
+  PRINTIFY_SHOP_ID:   string;
+  SITE_URL:           string;
 }
 
 interface CheckoutBody {
   productId: string;
   variantId: number;
   quantity:  number;
-  price:     number;   // in cents, passed from the frontend
 }
 
-const CORS = {
-  'Access-Control-Allow-Origin':  '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
-};
-
-export const onRequestOptions = () => new Response(null, { status: 204, headers: CORS });
-
 export async function onRequestPost({ request, env }: { request: Request; env: Env }) {
-  const { productId, variantId, quantity, price }: CheckoutBody = await request.json();
-
-  if (!productId || !variantId || !quantity || !price) {
-    return new Response(JSON.stringify({ error: 'Missing required fields' }), { status: 400, headers: CORS });
+  let body: CheckoutBody;
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: 'Invalid request' }, { status: 400 });
   }
+  const { productId, variantId } = body;
+  const quantity = Math.floor(Number(body.quantity));
+
+  if (!/^[a-f0-9]{24}$/.test(String(productId)) || !Number.isInteger(variantId) || quantity < 1 || quantity > 10) {
+    return Response.json({ error: 'Invalid product, variant or quantity' }, { status: 400 });
+  }
+
+  // Look up the real price and title server-side
+  const productRes = await fetch(
+    `https://api.printify.com/v1/shops/${env.PRINTIFY_SHOP_ID}/products/${productId}.json`,
+    { headers: { Authorization: `Bearer ${env.PRINTIFY_API_TOKEN}` } },
+  );
+  if (!productRes.ok) return Response.json({ error: 'Product not found' }, { status: 404 });
+
+  const product = await productRes.json() as {
+    title: string;
+    variants: { id: number; price: number; is_enabled: boolean; title: string }[];
+  };
+  const variant = product.variants.find((v) => v.id === variantId && v.is_enabled);
+  if (!variant) return Response.json({ error: 'Variant not available' }, { status: 400 });
 
   const params = new URLSearchParams({
     'line_items[0][price_data][currency]':                           'eur',
-    'line_items[0][price_data][product_data][name]':                 `Product ${productId}`,
-    'line_items[0][price_data][product_data][metadata][product_id]': productId,
-    'line_items[0][price_data][product_data][metadata][variant_id]': String(variantId),
-    'line_items[0][price_data][unit_amount]':                        String(price),
+    'line_items[0][price_data][product_data][name]':                 `${product.title} (${variant.title})`,
+    'line_items[0][price_data][unit_amount]':                        String(variant.price), // cents, from Printify
     'line_items[0][quantity]':                                       String(quantity),
     'mode':                                                          'payment',
+    'shipping_address_collection[allowed_countries][0]':             'DE', // list the countries you ship to
+    'shipping_address_collection[allowed_countries][1]':             'AT',
     'success_url':                                                   `${env.SITE_URL}/shop/success`,
-    'cancel_url':                                                     `${env.SITE_URL}/shop/product/${productId}`,
+    'cancel_url':                                                    `${env.SITE_URL}/shop/product/${productId}`,
     'metadata[product_id]':                                          productId,
     'metadata[variant_id]':                                          String(variantId),
+    'metadata[quantity]':                                            String(quantity),
   });
 
   const stripeRes = await fetch('https://api.stripe.com/v1/checkout/sessions', {
@@ -500,14 +517,16 @@ export async function onRequestPost({ request, env }: { request: Request; env: E
   });
 
   if (!stripeRes.ok) {
-    const err = await stripeRes.json() as any;
-    return new Response(JSON.stringify({ error: err?.error?.message ?? 'Stripe error' }), { status: 500, headers: CORS });
+    console.error('Stripe error', stripeRes.status, await stripeRes.text());
+    return Response.json({ error: 'Checkout is unavailable, please try again later' }, { status: 502 });
   }
 
   const session = await stripeRes.json() as { url: string };
-  return new Response(JSON.stringify({ url: session.url }), { status: 200, headers: { ...CORS, 'Content-Type': 'application/json' } });
+  return Response.json({ url: session.url });
 }
 ```
+
+The `variant.price` Printify returns is the retail price you set, in cents, in your shop's currency, so keep the Stripe `currency` in line with it. Shipping costs aren't included here: add them as a second line item or with Stripe shipping rates.
 
 ---
 
