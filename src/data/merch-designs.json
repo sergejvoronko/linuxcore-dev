@@ -1,5 +1,17 @@
 [
   {
+    "slug": "2-terminal-scythe-reaper",
+    "productId": "6ac5e937928f980d04033bfd",
+    "name": "Terminal Scythe Reaper",
+    "blurb": "When the late-night on-call page hits at 3 AM during a Halloween deployment. Printed in flat-vector retro terminal colors on a heavy black cotton tee.",
+    "tag": "New",
+    "products": [
+      "Tee"
+    ],
+    "w": 604,
+    "h": 900
+  },
+  {
     "slug": "1-patch-cable-knot",
     "productId": "6abcc08d72c6e1c02e06de82",
     "name": "Patch Cable Knot",
