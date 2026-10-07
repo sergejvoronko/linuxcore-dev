@@ -43,14 +43,14 @@ This is where the decision starts for most homelabbers. Your hardware dictates w
 |-----------|-----------|---------|
 | immich-server | ~500 MB | API, web UI, background jobs |
 | immich-machine-learning | 1.5–3 GB | Face recognition, CLIP search, object detection |
-| PostgreSQL (pgvecto-rs) | 500 MB–1 GB | Metadata, vector search indexes |
+| PostgreSQL (VectorChord) | 500 MB–1 GB | Metadata, vector search indexes |
 | Redis | ~30 MB | Job queue, caching |
 | **Total idle** | **~3–4 GB** | |
 | **During initial indexing** | **4–6+ GB** | ML model loads spike RAM significantly |
 
 Immich's machine learning container is the hungry one. It loads TensorFlow models into memory for face detection, object classification, and CLIP-based semantic search (search by description like "sunset at the beach"). During initial library indexing, CPU usage will spike to 100% across all cores for hours, sometimes days, depending on library size.
 
-**Minimum viable hardware:** 4-core CPU, 8 GB RAM, SSD for database storage.
+**Minimum hardware (Immich docs):** 2 CPU cores and 6 GB RAM; 4 cores and 8 GB recommended. With only 4 GB, Immich can run with machine learning disabled. The database belongs on local SSD storage, never a network share.
 
 **Comfortable hardware:** 6+ cores, 16 GB RAM. A GPU (even an Intel iGPU) dramatically speeds up ML processing.
 
@@ -65,7 +65,7 @@ Immich's machine learning container is the hungry one. It loads TensorFlow model
 
 PhotoPrism bundles its ML inference directly into the main Go binary, no separate container needed. It's less accurate than Immich's dedicated ML pipeline but far lighter on resources.
 
-With SQLite instead of MariaDB, the entire stack is a single container using under 1 GB at idle.
+With SQLite instead of MariaDB, the stack is a single container. PhotoPrism's own FAQ only recommends SQLite for small libraries: it locks frequently, which can cause timeouts during indexing, so use MariaDB for larger collections.
 
 **Minimum viable hardware:** 2-core CPU, 2 GB RAM. Runs on a Raspberry Pi 4 (4 GB model).
 
@@ -105,9 +105,9 @@ Simpler to deploy, simpler to back up, fewer things that can break. With SQLite,
 
 ### Where PhotoPrism Wins
 
-**Runs on minimal hardware.** A Raspberry Pi 4, an old laptop, a low-RAM NAS, PhotoPrism works where Immich simply can't fit. If your server has 2–4 GB of RAM, PhotoPrism is your only realistic option between the two.
+**Runs on minimal hardware.** A Raspberry Pi 4, an old laptop, a low-RAM NAS: PhotoPrism works where Immich gets tight. With 2–4 GB of RAM, PhotoPrism keeps its face recognition and classification, while Immich would have to run with machine learning disabled.
 
-**Simpler operations.** One or two containers, optional SQLite (a single file you can back up with `cp`), no vector database extensions, no separate ML service. Less to go wrong, less to understand.
+**Simpler operations.** One or two containers, optional SQLite for small libraries, no vector database extensions, no separate ML service. Less to go wrong, less to understand.
 
 **Existing library focus.** PhotoPrism excels at indexing and organizing a large existing photo collection stored on a NAS. You point it at a directory, it indexes everything, and you browse via the web UI. It doesn't try to be the primary storage, your files stay exactly where they are, organized however you already have them.
 
@@ -123,56 +123,17 @@ Both handle face recognition, GPS-based map views, video playback, EXIF metadata
 
 ### Immich
 
-```yaml
-# /opt/stacks/immich/compose.yml
-services:
-  immich-server:
-    image: ghcr.io/immich-app/immich-server:release
-    volumes:
-      - /srv/photos:/usr/src/app/upload
-      - /etc/localtime:/etc/localtime:ro
-    env_file: .env
-    ports:
-      - "2283:2283"
-    depends_on:
-      - redis
-      - database
-    restart: always
+Immich changes its stack between releases (it now uses Valkey and its own PostgreSQL image with the VectorChord extension), so don't copy a compose file from a blog post, this one included. The [Immich docs](https://docs.immich.app/install/docker-compose) say to download the files for the current release:
 
-  immich-machine-learning:
-    image: ghcr.io/immich-app/immich-machine-learning:release
-    volumes:
-      - model-cache:/cache
-    env_file: .env
-    restart: always
-
-  database:
-    image: tensorchord/pgvecto-rs:pg14-v0.2.0
-    env_file: .env
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    restart: always
-
-  redis:
-    image: redis:6.2-alpine
-    healthcheck:
-      test: redis-cli ping || exit 1
-      interval: 30s
-      timeout: 5s
-      retries: 3
-    restart: always
-
-volumes:
-  pgdata:
-  model-cache:
+```bash
+mkdir -p /opt/stacks/immich && cd /opt/stacks/immich
+wget -O docker-compose.yml https://github.com/immich-app/immich/releases/latest/download/docker-compose.yml
+wget -O .env https://github.com/immich-app/immich/releases/latest/download/example.env
+# edit .env: UPLOAD_LOCATION (your photo storage), DB_DATA_LOCATION (local SSD), DB_PASSWORD
+docker compose up -d
 ```
 
-```env
-# /opt/stacks/immich/.env
-DB_PASSWORD=change-me-to-something-secure
-DB_USERNAME=postgres
-DB_DATABASE_NAME=immich
-```
+Keep `DB_DATA_LOCATION` on local storage, not a network share. Before every Immich upgrade, read the release notes: breaking changes are announced there.
 
 ### PhotoPrism
 
@@ -258,9 +219,9 @@ Restoring means importing that SQL dump into a fresh PostgreSQL container. It's 
 
 ### PhotoPrism
 
-Back up the photo files (same as Immich) and the database. With MariaDB, you'd use `mariadb-dump`. But with SQLite, the "database" is a single file inside the storage volume. You can back it up with `cp` or include it in your regular NAS backup routine.
+Back up the photo files (same as Immich) and the database. With MariaDB, use `mariadb-dump`. With SQLite, stop PhotoPrism (or use `sqlite3 index.db ".backup backup.db"`) before copying: copying a live SQLite file can give you a corrupt backup.
 
-This is a real operational advantage for PhotoPrism. SQLite backups are trivially simple compared to managing PostgreSQL dumps.
+For small libraries that's a genuine operational advantage for PhotoPrism.
 
 ## Which One Should You Choose?
 
@@ -269,13 +230,13 @@ This is a real operational advantage for PhotoPrism. SQLite backups are triviall
   options={["Immich", "PhotoPrism"]}
   rows={[
     { label: "Idle RAM",              values: ["3–4 GB", "0.8–1.5 GB"], winner: 1 },
-    { label: "Minimum RAM",           values: ["8 GB", "2 GB"], winner: 1 },
-    { label: "Runs on Raspberry Pi 4", values: ["no", "yes"], winner: 1 },
+    { label: "Minimum RAM",           values: ["6 GB (4 GB without ML)", "2 GB"], winner: 1 },
+    { label: "Fits a 4 GB machine with all features", values: ["no", "yes"], winner: 1 },
     { label: "Containers",            values: ["4–5", "1–2"], winner: 1 },
     { label: "Native mobile backup app", values: ["yes", "no"], winner: 0 },
     { label: "Multi-user & sharing",  values: ["yes", "no"], winner: 0 },
     { label: "Semantic (CLIP) search", values: ["yes", "no"], winner: 0 },
-    { label: "Trivial SQLite backup", values: ["no", "yes"], winner: 1 },
+    { label: "Single-file DB option (small libraries)", values: ["no", "yes"], winner: 1 },
     { label: "Development pace",       values: ["Fast", "Stable"] },
   ]}
 />
