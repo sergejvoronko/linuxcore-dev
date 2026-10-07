@@ -32,7 +32,7 @@ If you've been in the Linux or sysadmin world for more than a few years, you've 
 
 I did it too. And then I stopped.
 
-This site, linuxcore.dev, runs on Astro, deployed via GitHub to Cloudflare Pages. No PHP. No database. No server to patch. No plugin hell. The only recurring cost is the domain: around €12 per year. Everything else is free.
+This site, linuxcore.dev, runs on Astro on Cloudflare (today as a Cloudflare Worker deployed with Wrangler; the static-site setup in this guide uses Cloudflare Pages). No PHP. No database. No server to patch. No plugin hell. The only recurring cost is the domain: around €12 per year. Everything else is free.
 
 This article explains why I made the switch, how the stack works, and how you can set up the same thing yourself, even if you've never touched JavaScript frameworks before.
 
@@ -46,7 +46,7 @@ Joost de Valk built Yoast SEO, the WordPress plugin that, for over a decade, was
 
 He switched to Astro.
 
-His personal blog now runs as a static site built with Astro and deployed on Cloudflare Pages. No database, no server, no PHP. And on the question of SEO, the thing his entire career was built around, he wrote that everything Yoast SEO does on WordPress, he can do directly in Astro. Sitemaps, meta tags, Open Graph, JSON-LD schema. All of it. And it's actually easier, because you control the raw HTML output without plugins fighting each other over your `<head>` tag.
+His personal blog, joost.blog, now runs on Astro, and he has published an in-depth guide to SEO in Astro: the work Yoast did inside WordPress, done directly in the site's own templates.
 
 When the person who created the most famous WordPress SEO plugin walks away from WordPress, that's worth paying attention to.
 
