@@ -1,6 +1,6 @@
 ---
 title: "K3s on Your Homelab: Lightweight Kubernetes That Works"
-description: "Deploy a K3s Kubernetes cluster on your homelab. Single-node to multi-node HA with Traefik ingress, Longhorn storage, and real workloads running in minutes."
+description: "Deploy a K3s Kubernetes cluster on your homelab. Single node to multi-node with Traefik ingress, Longhorn storage, and real workloads running in minutes."
 pubDate: 2026-04-11
 section: "homelab"
 pillar: "Homelab"
@@ -127,7 +127,7 @@ This is exactly how you'd ensure [Ollama runs on the node with your GPU](/homela
 K3s ships with `local-path-provisioner`, which works for single-node setups but doesn't replicate data across nodes. For anything production-like, install Longhorn, Rancher's distributed block storage:
 
 ```bash
-kubectl apply -f https://raw.githubusercontent.com/longhorn/longhorn/v1.6.0/deploy/longhorn.yaml
+kubectl apply -f https://raw.githubusercontent.com/longhorn/longhorn/v1.13.0/deploy/longhorn.yaml   # check the latest release first
 ```
 
 Wait for all pods to come up:
@@ -246,7 +246,7 @@ kubectl apply -f ollama-deployment.yaml
 GPU support requires the NVIDIA device plugin. Install it with:
 
 ```bash
-kubectl apply -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.14.3/nvidia-device-plugin.yml
+kubectl apply -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.20.1/deployments/static/nvidia-device-plugin.yml   # check the latest release
 ```
 
 Make sure the GPU node has the NVIDIA drivers and `nvidia-container-toolkit` installed at the OS level first.
@@ -303,7 +303,7 @@ spec:
 
 ## Configuring Traefik Ingress
 
-K3s bundles Traefik v2 as the default ingress controller. Expose your services with IngressRoute CRDs:
+K3s bundles Traefik (v3 in current releases) as the default ingress controller. Expose your services with IngressRoute CRDs:
 
 ```yaml
 # grafana-ingress.yaml
@@ -554,14 +554,14 @@ Don't switch just because Kubernetes is trendy. Switch when you actually need wh
 
 ## Backing Up Your Cluster
 
-K3s stores cluster state in `/var/lib/rancher/k3s/server/db/` (SQLite by default). Back it up alongside your regular [restic backup strategy](/aws/aws-s3-restic-homelab-backups/):
+K3s stores cluster state in `/var/lib/rancher/k3s/server/db/`: SQLite by default, or embedded etcd if the server was started with `--cluster-init` (needed for multiple server nodes). Back it up alongside your regular [restic backup strategy](/aws/aws-s3-restic-homelab-backups/), and keep a copy of the server token (`/var/lib/rancher/k3s/server/token`), which a restore needs.
 
 ```bash
-# Snapshot the K3s database
+# Embedded etcd only (servers started with --cluster-init):
 sudo k3s etcd-snapshot save --name homelab-backup
 
-# Or for SQLite mode, just back up the file
-sudo cp /var/lib/rancher/k3s/server/db/state.db /backup/k3s-state-$(date +%F).db
+# Default SQLite datastore: take a consistent copy, not a raw cp of a live file
+sudo sqlite3 /var/lib/rancher/k3s/server/db/state.db ".backup '/backup/k3s-state-$(date +%F).db'"
 ```
 
 For Longhorn volumes, enable the Longhorn backup target pointing to your NFS share or S3 bucket.
