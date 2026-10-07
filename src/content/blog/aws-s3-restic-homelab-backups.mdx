@@ -16,7 +16,7 @@ faqs:
   - q: "Can I restore individual files without downloading the full backup?"
     a: "Yes. Use restic restore latest --target /restore/path --include /specific/file to restore a single file or directory. restic only downloads the chunks needed for that file, not the entire repository."
   - q: "How much does S3 Standard storage cost per GB?"
-    a: "In eu-west-1 (Ireland), S3 Standard costs approximately €0.023 per GB per month. A 50 GB backup repository costs around €1.15/month. Adding a lifecycle policy to move data to S3 Glacier Instant Retrieval after 30 days cuts the cost to roughly €0.004/GB, under €0.25/month for the same 50 GB."
+    a: "At us-east-1 list prices, S3 Standard is about $0.023 per GB per month (EU regions slightly more), so 50 GB is around $1.15/month. Moving data older than 30 days to Glacier Instant Retrieval (about $0.004 per GB) cuts most of that further."
 ---
 
 import { Image } from 'astro:assets';
@@ -110,10 +110,6 @@ aws s3api put-bucket-lifecycle-configuration \
           {
             "Days": 30,
             "StorageClass": "GLACIER_IR"
-          },
-          {
-            "Days": 90,
-            "StorageClass": "DEEP_ARCHIVE"
           }
         ],
         "NoncurrentVersionTransitions": [
@@ -132,14 +128,15 @@ aws s3api put-bucket-lifecycle-configuration \
 
 What this does:
 
-| Age | Storage class | Cost per GB/month | Restore time |
-|-----|--------------|-------------------|--------------|
-| 0–30 days | S3 Standard | €0.0245 | Instant |
-| 30–90 days | Glacier Instant Retrieval | €0.004 | Milliseconds |
-| 90+ days | Glacier Deep Archive | €0.00099 | 12–48 hours |
-| Old versions > 180 days | Deleted | Free |, |
+| Age | Storage class | Access |
+|-----|--------------|--------|
+| 0–30 days | S3 Standard | Instant |
+| 30+ days | Glacier Instant Retrieval | Milliseconds, with a per-GB retrieval fee and a 90-day minimum storage charge |
+| Old object versions > 180 days | Deleted | |
 
-For 100GB of data, your steady-state monthly cost lands around €0.50–1.50 depending on the age distribution of your snapshots.
+**Don't add a transition to Glacier Flexible Retrieval or Deep Archive.** Restic reads its index, snapshot and lock files on every run, and objects in those classes can't be read without a manual restore first, so a lifecycle rule that moves the whole repository there breaks backups, checks and restores. Restic's FAQ describes experimental cold-storage support (`-o s3.storage-class=...`, which keeps metadata in Standard) for anyone who needs Deep Archive pricing; it's alpha and restores take hours.
+
+Glacier Instant Retrieval's 90-day minimum means data that `prune` deletes earlier is still charged for 90 days. With weekly or monthly pruning that's a small cost. Check the S3 pricing page for your region's per-GB prices.
 
 ## Step 3: Create a least-privilege IAM user
 
@@ -198,6 +195,12 @@ rm /tmp/backup-keys.json /tmp/backup-policy.json
 ### Why no delete permission matters
 
 If ransomware or an attacker compromises your homelab server, they can encrypt your local data, but they can't delete your S3 backups. The backup user physically cannot issue delete commands. To prune old snapshots, you'll use a separate admin credential manually or via a locked-down CI/CD pipeline.
+
+Consequences of the missing delete permission:
+
+- **Lock files stay behind.** Restic creates a lock file for each run and can't delete it without permission, so expect a warning about removing the lock. Stale locks don't block later backups, but `prune` needs an exclusive lock: run `restic unlock` with the admin credential first.
+
+Also note that `s3:PutObject` lets the server overwrite existing objects. With **versioning** enabled (the lifecycle rule above manages old versions), overwritten objects keep their previous version, which is what actually protects you; S3 Object Lock goes further if you need it.
 
 ## Step 4: Initialize the restic repository
 
@@ -267,11 +270,6 @@ ExecStart=/usr/bin/restic backup \
   --exclude='*.tmp' \
   --exclude='__pycache__' \
   --quiet
-ExecStartPost=/usr/bin/restic forget \
-  --keep-daily 7 \
-  --keep-weekly 4 \
-  --keep-monthly 6 \
-  --prune
 Nice=19
 IOSchedulingClass=idle
 EOF
@@ -298,13 +296,13 @@ A few details worth noting:
 - `Nice=19` and `IOSchedulingClass=idle` ensure backups don't compete with your services
 - `RandomizedDelaySec=1800` adds up to 30 minutes of jitter so multiple machines don't all hit S3 at the same time
 - `Persistent=true` means if the machine was off at 2:30 AM, the backup runs as soon as it boots
-- The `forget` command with `--prune` keeps 7 daily, 4 weekly, and 6 monthly snapshots, roughly 6 months of recovery points
+- The service only runs `backup`; pruning runs separately (below)
 
 ### A note on the forget command and delete permissions
 
 The `restic forget --prune` command needs to delete objects from S3. Since our backup IAM user intentionally lacks delete permission, you have two options:
 
-**Option A (recommended for most homelabs):** Create a second IAM user with delete permission, and run `forget --prune` manually once a month from a separate machine or your desktop.
+**Option A (recommended for most homelabs):** Create a second IAM user with delete permission, and run `restic unlock` and then `restic forget --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune` once a month from a separate machine or your desktop. That keeps roughly six months of recovery points.
 
 **Option B (convenience trade-off):** Add `s3:DeleteObject` to the backup policy. This is less secure, a compromised server could delete backups, but it's simpler for a single-person setup. Make your own risk assessment.
 

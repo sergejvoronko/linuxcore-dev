@@ -14,7 +14,7 @@ draft: false
 affiliate: true
 faqs:
   - q: "How much does S3 storage cost per month for a homelab?"
-    a: "S3 Standard costs approximately €0.023 per GB per month in eu-west-1. A 100 GB backup repository costs roughly €2.30/month. Adding a lifecycle policy to move data to Glacier after 30 days cuts the storage cost to €0.004 per GB, under €0.50/month for the same 100 GB."
+    a: "At us-east-1 list prices, S3 Standard is about $0.023 per GB per month, so 100 GB is about $2.30/month. Moving data older than 30–90 days to Glacier Instant Retrieval (about $0.004 per GB) brings most of that down to well under $1/month. EU regions are slightly more expensive."
   - q: "Does restic work with Glacier?"
     a: "Restic backs up to S3 Standard. Glacier is applied automatically via S3 lifecycle policies on the bucket, and restic is not aware of it. Restoring from Glacier requires initiating a retrieval first, which takes minutes to hours depending on the tier."
   - q: "Is my data encrypted before it leaves my homelab?"
@@ -40,8 +40,8 @@ the third.
 This guide builds a complete offsite backup pipeline using:
 
 - **restic**: fast, encrypted, deduplicated backups to any storage backend
-- **AWS S3**: object storage at €0.023/GB/month for active data
-- **S3 Glacier Instant Retrieval**: €0.004/GB/month for archival data
+- **AWS S3**: object storage at ~$0.023/GB/month for active data
+- **S3 Glacier Instant Retrieval**: ~$0.004/GB/month for archival data
 - **AWS IAM**: locked-down credentials that can only write to one bucket
 - **systemd timers**: reliable scheduling without cron's failure modes
 
@@ -111,8 +111,10 @@ Click **Create bucket**.
 
 ### Step 3, Configure Lifecycle Rules (Save Money on Old Backups)
 
-S3 Standard costs €0.023/GB/month. S3 Glacier Instant Retrieval costs
-€0.004/GB/month, 83% cheaper for data you rarely access.
+S3 Standard costs about $0.023/GB/month (us-east-1; EU regions are a bit
+higher). S3 Glacier Instant Retrieval costs about $0.004/GB/month, over 80%
+cheaper for data you rarely read, with a per-GB retrieval fee and a 90-day
+minimum storage charge.
 
 Set up lifecycle rules to automatically move old backups to Glacier:
 
@@ -128,18 +130,31 @@ Transitions:
   → S3 Glacier Instant Retrieval after 90 days
 
 Expiration:
-  → Delete objects after 365 days   (adjust to your retention needs)
+  → none for current objects (see warning below)
+  → optionally: permanently delete noncurrent versions after 90 days
 ```
 
-With this rule, backups from the last month stay in Standard for fast
-access. Older backups automatically migrate to Glacier. After a year,
-they're deleted automatically.
+> **Never let a lifecycle rule expire current objects in a restic
+> repository.** Restic deduplicates: data uploaded once is referenced by
+> every later snapshot, and the repository's `config` and `keys` files are
+> written once at `init`. An "expire after 365 days" rule would delete
+> those after a year and destroy every backup, including recent ones.
+> Retention belongs to `restic forget --prune`, which only removes data no
+> snapshot needs.
+>
+> Also don't transition to Glacier Flexible Retrieval or Deep Archive: restic
+> must be able to read its files directly. Standard-IA and Glacier Instant
+> Retrieval are fine.
+
+With this rule, recently written data stays in Standard and older data
+moves to cheaper classes that restic can still read directly. Old snapshots
+are removed by `restic forget --prune`, not by S3.
 
 **Estimated monthly cost for 100GB total backup data:**
-- 10GB recent (Standard): €0.23
-- 90GB archive (Glacier): €0.36
-- S3 API requests: ~€0.05
-- **Total: ~€0.64/month**
+- 10GB recent (Standard): ~$0.23
+- 90GB archive (Glacier Instant Retrieval): ~$0.36
+- S3 API requests: a few cents
+- **Total: well under $1/month** (us-east-1 prices; EU regions slightly higher)
 
 ---
 
