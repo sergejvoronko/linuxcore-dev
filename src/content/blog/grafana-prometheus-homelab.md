@@ -141,7 +141,7 @@ scrape_configs:
   - job_name: 'node-exporter'
     static_configs:
       - targets:
-          - 'node-exporter:9100'      # local machine
+          - 'host.docker.internal:9100'   # this machine (node-exporter runs with host networking)
           - '192.168.1.10:9100'       # node-01
           - '192.168.1.11:9100'       # node-02
           # add more machines here
@@ -369,9 +369,9 @@ services:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
       - '--storage.tsdb.retention.time=90d'     # keep 90 days of data
-      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
-      - '--web.console.templates=/usr/share/prometheus/consoles'
       - '--web.enable-lifecycle'                # allow config reload via API
+    extra_hosts:
+      - "host.docker.internal:host-gateway"     # reach node-exporter on the host network
 
   # ── Grafana ───────────────────────────────────────────────────
   grafana:
@@ -412,7 +412,7 @@ services:
 
   # ── cAdvisor ──────────────────────────────────────────────────
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:latest
+    image: ghcr.io/google/cadvisor:v0.60.6   # new releases are published here; check for the latest
     container_name: cadvisor
     restart: unless-stopped
     ports:
