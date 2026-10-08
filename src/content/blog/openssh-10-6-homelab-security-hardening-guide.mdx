@@ -1,0 +1,128 @@
+---
+title: "OpenSSH 10.6 Update: Homelab SSH Hardening"
+description: "What OpenSSH 10.6 changes for a homelab, from LZ77 compression and post-quantum keys to WarnWeakCrypto, plus a hardened sshd_config and fail2ban setup."
+pubDate: 2026-10-08
+readingTime: 8
+heroImage: "/images/openssh-10-6-homelab-security-hardening-guide.webp"
+heroImageAlt: "A CPU package lifted from its socket, pin grid catching a hard rim light, isolated on a seamless studio backdrop, nothing else in frame"
+section: "homelab"
+tags: ["openssh", "security", "linux", "fail2ban"]
+draft: false
+faqs:
+  - q: "Do I need to regenerate my standard ed25519 keys for OpenSSH 10.6?"
+    a: "No. Standard ed25519 keys remain secure and fully supported. Only keys generated using earlier experimental post-quantum extensions require regeneration."
+  - q: "Why is my fail2ban not blocking SSH probes after changing the port?"
+    a: "Fail2ban defaults to monitoring port 22. You must update the port directive in your jail.local configuration to match your custom SSH port."
+  - q: "Can I still use compression with OpenSSH 10.6?"
+    a: "Transport-level stream compression using LZ77 is disabled. Use application-level compression for your file transfers instead."
+---
+
+OpenSSH 10.6 was released on October 6, 2026. The release notes say the project is receiving more AI-assisted vulnerability reports and will, for now, ship releases more often so fixes reach users sooner. For a homelab that means two things: update when your distribution ships the new version, and do not rely on updates alone if SSH is reachable from the internet.
+
+This guide covers what 10.6 actually changes and a hardening baseline that cuts down the automated login attempts every exposed SSH server sees.
+
+## Why OpenSSH 10.6 Changed the Rules
+
+Version 10.6 is a security-focused release. These are the changes that matter most for a homelab:
+
+**LZ77 compression is disabled.** The maintainers removed the LZ77 dictionary coder from both the client and server. This closes a chosen-plaintext side channel, similar in spirit to CRIME and BREACH: an attacker who can inject data into one channel of an SSH session could use the shared compression dictionary to recover secrets from another channel. Compression still works, but it is less effective than before.
+
+**The ssh client refuses `$` and `\` in usernames.** This is a client-side change: `ssh` no longer accepts these characters in a destination username given on the command line, so a username from an untrusted source cannot inject shell commands, for example through a `ProxyCommand`. Scripts that build ssh commands from user input are the ones that benefit.
+
+**KDF round limits prevent offline attacks.** Key derivation function (KDF) rounds are capped at 1,000,000, and the default value is increased from 24 to 32. This raises the computational cost required to brute-force keys offline without locking up low-powered homelab hardware.
+
+## Auditing Your Post-Quantum Keys
+
+OpenSSH 10.6 enables the hybrid `ssh-mldsa44-ed25519` signature algorithm. It no longer uses the `@openssh.com` suffix of the earlier experimental implementation.
+
+If you generated keys with that experimental support before 10.6, the release notes say they must be regenerated or removed. Generate a compliant key using the standard command format:
+
+```bash
+ssh-keygen -t ssh-mldsa44-ed25519
+```
+
+The `sshd` process now activates the `WarnWeakCrypto` setting by default. If your automation scripts or old backup nodes connect using older key exchange methods lacking post-quantum safety, the server logs a warning. This generates significant log noise and flags outdated clients. Track down older automation nodes running outdated clients and upgrade them to prevent your authentication logs from overflowing.
+
+Standard `ed25519` keys generated without experimental extensions remain secure and fully supported. You do not need to replace them unless your threat model specifically requires post-quantum cryptography.
+
+## sshd_config: The 2026 Baseline
+
+Automated probes rely on default configurations. Lock down your daemon by creating a drop-in file at `/etc/ssh/sshd_config.d/99-homelab.conf`. Modern Linux distributions parse the `.d` directory automatically. This method is safer than editing the monolithic `sshd_config` file and ensures package updates do not overwrite your settings.
+
+```text
+Port 2222
+PasswordAuthentication no
+PermitRootLogin no
+KbdInteractiveAuthentication no
+X11Forwarding no
+AllowTcpForwarding no
+MaxAuthTries 3
+```
+
+Every line serves a specific mechanical purpose.
+
+- **Port 2222**: Most botnets scan port 22 across the entire IPv4 space in hours. Moving the port drops log noise by orders of magnitude.
+- **PasswordAuthentication no**: Passwords are vulnerable to credential stuffing. Cryptographic keys bypass this risk entirely.
+- **PermitRootLogin no**: Administer the system through a standard user account with `sudo` privileges. Never allow direct root logins.
+- **KbdInteractiveAuthentication no**: Stops PAM from prompting for passwords or secondary tokens over interactive keyboard sessions.
+- **X11Forwarding no**: Unless you specifically run graphical applications over SSH, disable this. X11 has known security design flaws.
+- **AllowTcpForwarding no**: Homelabbers frequently use SSH tunneling to access internal web interfaces. If you do not actively use SSH tunnels, set this to `no` to prevent unauthorized port forwarding.
+- **MaxAuthTries 3**: Disconnects the session after three failed attempts, forcing the client to initiate a new TCP connection.
+
+Open port 2222 in your firewall configuration before restarting the service. Failure to update the firewall rules will lock you out of your server. Apply the changes by restarting the daemon:
+
+```bash
+sudo systemctl restart ssh
+```
+
+*(On RHEL and Fedora systems, restart `sshd` instead).*
+
+## Defeating Automated Scanners with Fail2ban
+
+Even on a non-standard port, determined scanners will eventually find your SSH daemon. Fail2ban parses your system logs, matches regular expressions against failed authentication attempts, and executes firewall commands to drop traffic from the offending IP.
+
+Install fail2ban using your package manager. Do not edit the default `jail.conf` file directly. Package upgrades overwrite it. Create a custom configuration file at `/etc/fail2ban/jail.local`:
+
+```ini
+[DEFAULT]
+bantime = 24h
+findtime = 10m
+maxretry = 3
+backend = systemd
+
+[sshd]
+enabled = true
+port = 2222
+filter = sshd
+```
+
+This configuration watches the systemd journal for failed SSH logins. Setting `backend = systemd` matters on distributions that log only to the journal, such as recent Debian releases with no `/var/log/auth.log`: without it, fail2ban looks for a log file that does not exist and the jail does not start. With the systemd backend, no `logpath` is needed.
+
+If an IP address fails three times within ten minutes, fail2ban adds a firewall rule that drops all traffic from that IP for 24 hours.
+
+Restart the service and verify the jail status:
+
+```bash
+sudo systemctl restart fail2ban
+sudo fail2ban-client status sshd
+```
+
+## The CrowdSec Alternative
+
+If you manage multiple homelab nodes, fail2ban operates in isolation. CrowdSec provides an alternative that shares threat intelligence globally. When an IP address attacks a server in the CrowdSec network, that IP goes onto a community blocklist. Your server downloads this blocklist and preemptively bans the attacker before they even attempt an authentication request.
+
+CrowdSec parses logs using YAML scenarios rather than complex regular expressions. The base installation includes the SSH parser by default.
+
+```bash
+# Package names and repositories vary by distribution; follow the install guide at docs.crowdsec.net
+sudo apt install crowdsec crowdsec-firewall-bouncer-iptables
+sudo cscli metrics
+```
+
+The metrics command displays the active parsers and the number of lines processed. Run `sudo cscli decisions list` to view the active bans. The shared blocklist is the main advantage over fail2ban for internet-facing homelab servers.
+
+## What's Next
+
+- [Linux Homelab Security Hardening: Complete Checklist (2026)](/homelab/linux-security-hardening/)
+- [Mitigating 400+ Linux Kernel CVEs in Your Homelab](/homelab/linux-kernel-cves-homelab-patching-guide/)
+- [WireGuard vs Tailscale for Homelab Remote Access (2026)](/homelab/wireguard-tailscale-guide/)
