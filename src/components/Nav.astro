@@ -104,7 +104,29 @@ const navItems = [
     <a href="/newsletter/" class="nav-cta">SUBSCRIBE →</a>
   </div>
 
+  <button class="nav-search" id="nav-search" type="button" aria-label="Search articles" aria-haspopup="dialog">
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.6"/>
+      <path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+    </svg>
+    <span class="search-label">/search</span>
+  </button>
+
   <button class="nav-toggle" id="nav-toggle" aria-label="Toggle menu">☰</button>
+
+  <dialog class="search-dialog" id="search-dialog" aria-label="Search articles">
+    <div class="search-box">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.6"/>
+        <path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+      </svg>
+      <input id="search-input" type="search" placeholder="proxmox, wireguard, backup…" autocomplete="off"
+             spellcheck="false" aria-controls="search-results" aria-label="Search articles">
+      <button type="button" class="search-close" id="search-close" aria-label="Close search">esc</button>
+    </div>
+    <ul class="search-results" id="search-results" role="listbox"></ul>
+    <p class="search-hint" id="search-hint">Type to search all articles. ↑ ↓ to move, Enter to open.</p>
+  </dialog>
 
   <div class="nav-progress-track">
     <div id="nav-progress" class="nav-progress-bar"></div>
@@ -206,6 +228,51 @@ const navItems = [
   /* ── Hamburger ─── */
   .nav-toggle { display: none; background: none; border: none; color: var(--amber); font-size: 20px; cursor: pointer; }
 
+  /* ── Search ─── */
+  .nav-search {
+    display: flex; align-items: center; gap: 6px; margin-left: 20px;
+    background: none; border: 1px solid var(--border-mid); color: var(--text-dim);
+    font-family: var(--mono); font-size: 12px; letter-spacing: 0.1em;
+    padding: 5px 10px; cursor: pointer; transition: color 0.15s, border-color 0.15s;
+  }
+  .nav-search:hover, .nav-search:focus-visible { color: var(--amber); border-color: var(--border-amber); }
+
+  .search-dialog {
+    width: min(640px, calc(100vw - 32px)); max-height: min(70vh, 640px);
+    margin: 12vh auto 0; padding: 0;
+    background: var(--bg2); color: var(--text);
+    border: 1px solid var(--border-amber); box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+  }
+  .search-dialog[open] { display: flex; flex-direction: column; }
+  .search-dialog::backdrop { background: rgba(10,8,4,0.7); }
+  .search-box {
+    display: flex; align-items: center; gap: 10px; padding: 14px 16px;
+    border-bottom: 1px solid var(--border); color: var(--amber);
+  }
+  .search-box input {
+    flex: 1; min-width: 0; background: none; border: none; outline: none;
+    color: var(--text-bright); font-family: var(--mono); font-size: 15px;
+  }
+  .search-box input::-webkit-search-cancel-button { display: none; }
+  .search-close {
+    background: none; border: 1px solid var(--border-mid); color: var(--text-dim);
+    font-family: var(--mono); font-size: 11px; padding: 2px 6px; cursor: pointer;
+  }
+  /* results are injected by script, so their rules need :global() to escape Astro's scoping */
+  .search-results { list-style: none; margin: 0; padding: 6px 0; overflow-y: auto; }
+  .search-results :global(a) {
+    display: grid; gap: 3px; padding: 10px 16px; text-decoration: none;
+    border-left: 2px solid transparent;
+  }
+  .search-results :global(a[aria-selected="true"]), .search-results :global(a:hover) {
+    background: var(--amber-glow); border-left-color: var(--amber);
+  }
+  .search-results :global(.r-title) { color: var(--text-bright); font-family: var(--sans); font-size: 15px; font-weight: 600; }
+  .search-results :global(.r-meta) { color: var(--amber); font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; }
+  .search-results :global(.r-desc) { color: var(--text-dim); font-family: var(--sans); font-size: 13px; line-height: 1.45; }
+  .search-results :global(mark) { background: var(--amber-dim); color: inherit; }
+  .search-hint { margin: 0; padding: 10px 16px; border-top: 1px solid var(--border); color: var(--text-dim); font-family: var(--mono); font-size: 11px; }
+
   /* ── Reading progress bar ─── */
   .nav-progress-track {
     position: absolute; bottom: 0; left: 0; right: 0;
@@ -230,7 +297,10 @@ const navItems = [
     }
     .nav-links.open .has-dropdown { width: 100%; }
     .nav-links.open .dropdown { position: static; transform: none; display: none; margin-top: 8px; min-width: 0; box-shadow: none; }
-    .nav-toggle { display: block; margin-left: auto; }
+    .nav-toggle { display: block; margin-left: 12px; }
+    .nav-search { margin-left: auto; }
+    .search-label { display: none; }
+    .search-dialog { margin-top: 8vh; max-height: 80vh; }
   }
 </style>
 
@@ -278,6 +348,106 @@ const navItems = [
   const toggle = document.getElementById('nav-toggle');
   const links  = document.getElementById('nav-links');
   toggle?.addEventListener('click', () => links?.classList.toggle('open'));
+
+  // Search: the index is fetched only when the dialog is first opened
+  type Entry = { t: string; d: string; s: string; g: string[]; u: string };
+  const dialog  = document.getElementById('search-dialog') as HTMLDialogElement | null;
+  const input   = document.getElementById('search-input') as HTMLInputElement | null;
+  const results = document.getElementById('search-results');
+  const hint    = document.getElementById('search-hint');
+  let index: Entry[] | null = null;
+  let selected = 0;
+
+  const norm = (s: string) => s.toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '');
+  const escapeHtml = (s: string) => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
+  const highlight = (text: string, terms: string[]) => {
+    let html = escapeHtml(text);
+    for (const term of terms) {
+      if (term.length < 2) continue;
+      const re = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+      html = html.replace(re, '<mark>$1</mark>');
+    }
+    return html;
+  };
+
+  function search(q: string): Entry[] {
+    const terms = norm(q).split(/\s+/).filter(Boolean);
+    if (!terms.length || !index) return [];
+    const scored: { e: Entry; score: number }[] = [];
+    for (const e of index) {
+      const title = norm(e.t), tags = norm(e.g.join(' ')), desc = norm(e.d), sec = norm(e.s);
+      let score = 0;
+      // every term has to match somewhere; title and tag hits rank above description hits
+      const all = terms.every(term => {
+        let hit = false;
+        if (title.includes(term)) { score += 5; hit = true; }
+        if (tags.includes(term))  { score += 3; hit = true; }
+        if (sec.includes(term))   { score += 2; hit = true; }
+        if (desc.includes(term))  { score += 1; hit = true; }
+        return hit;
+      });
+      if (all) scored.push({ e, score });
+    }
+    return scored.sort((a, b) => b.score - a.score).slice(0, 20).map(x => x.e);
+  }
+
+  function render() {
+    if (!results || !input || !hint) return;
+    const q = input.value.trim();
+    const found = search(q);
+    const terms = norm(q).split(/\s+/).filter(Boolean);
+    selected = 0;
+    results.innerHTML = found.map((e, i) => `
+      <li role="none"><a role="option" href="${e.u}" aria-selected="${i === 0}">
+        <span class="r-meta">/${escapeHtml(e.s)}</span>
+        <span class="r-title">${highlight(e.t, terms)}</span>
+        <span class="r-desc">${highlight(e.d, terms)}</span>
+      </a></li>`).join('');
+    if (!index) hint.textContent = 'Loading articles…';
+    else if (!q) hint.textContent = `Type to search ${index.length} articles. ↑ ↓ to move, Enter to open.`;
+    else hint.textContent = found.length ? `${found.length} result${found.length === 1 ? '' : 's'}` : `No articles match "${q}". Try a shorter word.`;
+  }
+
+  function move(delta: number) {
+    const links = results?.querySelectorAll<HTMLAnchorElement>('a') ?? [];
+    if (!links.length) return;
+    links[selected]?.setAttribute('aria-selected', 'false');
+    selected = (selected + delta + links.length) % links.length;
+    links[selected].setAttribute('aria-selected', 'true');
+    links[selected].scrollIntoView({ block: 'nearest' });
+  }
+
+  async function openSearch() {
+    if (!dialog || !input) return;
+    if (!dialog.open) dialog.showModal();
+    input.select();
+    if (!index) {
+      render();
+      try { index = await (await fetch('/search-index.json')).json(); }
+      catch { if (hint) hint.textContent = 'Search could not load. Check your connection and try again.'; return; }
+      render();
+    }
+  }
+
+  document.getElementById('nav-search')?.addEventListener('click', openSearch);
+  document.getElementById('search-close')?.addEventListener('click', () => dialog?.close());
+  dialog?.addEventListener('click', e => { if (e.target === dialog) dialog.close(); });
+  input?.addEventListener('input', render);
+  input?.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); move(1); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); move(-1); }
+    else if (e.key === 'Enter') {
+      const link = results?.querySelectorAll<HTMLAnchorElement>('a')[selected];
+      if (link) { e.preventDefault(); window.location.href = link.href; }
+    }
+  });
+  document.addEventListener('keydown', e => {
+    const typing = e.target instanceof Element && e.target.closest('input, textarea, select, [contenteditable]');
+    if ((e.key === '/' && !typing) || (e.key === 'k' && (e.metaKey || e.ctrlKey))) {
+      e.preventDefault();
+      openSearch();
+    }
+  });
 
   // Reading progress
   const bar     = document.getElementById('nav-progress');
