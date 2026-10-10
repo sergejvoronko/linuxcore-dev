@@ -1,0 +1,148 @@
+---
+title: "Let's Encrypt 64-Day Certificates: Homelab SSL Automation"
+description: "Prepare your Caddy, Traefik cert renewal pipelines and homelab SSL automation for Let's Encrypt 64-day certificates before manual tasks break."
+pubDate: 2026-10-09
+readingTime: 8
+heroImage: "/images/lets-encrypt-64-day-certificates-homelab-reverse-proxy-guide.webp"
+heroImageAlt: "Colour-coded ethernet runs converging on a patch panel port block, in a domestic room corner at night, one lamp just off-frame"
+section: "homelab"
+tags: ["ssl", "security", "caddy", "traefik"]
+draft: false
+faqs:
+  - q: "When does Let's Encrypt switch to 64-day certificates?"
+    a: "The default classic ACME profile switches to 64-day certificates on February 10, 2027. A further reduction to 45 days takes effect in February 2028."
+  - q: "Will my existing 90-day certificates be revoked?"
+    a: "No. Any valid 90-day certificate issued before the cutoff date remains valid until its natural expiration."
+  - q: "Do I need to change my firewall settings for 64-day certificates?"
+    a: "No. The ACME challenge mechanisms (HTTP-01, DNS-01, TLS-ALPN-01) operate over the same ports. You only need to ensure your ACME client software is up to date."
+---
+
+If you set up your homelab reverse proxy a few years ago and forgot about it, the bill comes due in February 2027. Let's Encrypt is dropping the default validity period of its TLS certificates from 90 days to 64 days. One year later, that limit drops to 45 days.
+
+Manual certificate management is a dead discipline. If you still update DNS TXT records by hand or run `certbot renew` from a sticky note reminder, the new cadence will break your workflow. The CA/Browser Forum is pushing the entire industry toward shorter lifespans to limit the blast radius of compromised keys and force administrators to automate.
+
+Here is what changes, why your existing proxy configuration might fail, and how to audit Caddy, Traefik, Nginx Proxy Manager, and Certbot for the new normal.
+
+## The Problem with Hardcoded Math
+
+For the past decade, the industry standard was a 90-day certificate. Best practices dictated renewing that certificate at the 60-day mark. This left a 30-day buffer to handle transient network failures or DNS propagation delays.
+
+This 30-day buffer became baked into everything. Shell scripts, Docker images, and reverse proxy source code often hardcoded renewals to trigger exactly 30 days before expiration.
+
+That math fails as certificate lifespans shrink. 
+
+If you apply a 30-day renewal buffer to a 64-day certificate, your client attempts to renew after just 34 days of use. When the 45-day certificates arrive in 2028, a hardcoded 30-day threshold means your proxy will hammer the Let's Encrypt API for a new certificate a mere 15 days after issuance. That wastes bandwidth, triggers rate limits, and defeats the purpose of the expiration window.
+
+## The Fix: ACME Renewal Information (ARI)
+
+The technical solution to rigid renewal math is ACME Renewal Information (ARI), published as RFC 9773.
+
+Instead of the client calculating a renewal date locally, ARI allows the client to ask the Certificate Authority for a suggested renewal window. The CA responds with a JSON payload containing exact start and end timestamps. 
+
+This shifts the scheduling burden from your local proxy to the CA. If Let's Encrypt needs to balance infrastructure load or trigger an emergency mass revocation, they dictate the renewal window via ARI. Furthermore, Let's Encrypt exempts renewals from rate limits if the client uses ARI and requests the renewal inside the suggested window. If you run a homelab with dozens of subdomains and frequently hit the issuance caps, ARI eliminates that bottleneck.
+
+Your objective is to ensure your homelab reverse proxy uses an ARI-compatible client.
+
+## Auditing Your Reverse Proxy
+
+Different reverse proxies handle the transition to 64-day certificates with varying degrees of grace. Here is how the major players stack up as of late 2026.
+
+### Caddy
+
+Caddy handles the transition cleanly. Caddy version 2.8 and newer includes native support for ARI. 
+
+If you run Caddy in Docker Compose, check your image tag. Do not pin old minor versions indefinitely. Pull the latest release to ensure ARI handles the scheduling logic.
+
+```yaml
+services:
+  caddy:
+    image: caddy:2.8-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+```
+
+Caddy polls Let's Encrypt and replaces certificates exactly when the CA suggests. No configuration changes are required in your `Caddyfile`.
+
+### Nginx Proxy Manager (NPM)
+
+Nginx Proxy Manager wraps Certbot to handle certificate issuance. Because NPM bundles its dependencies inside its Docker image, your ARI compatibility depends entirely on how old your NPM container is.
+
+Certbot introduced ARI support in version 4.1.0. Older NPM images pin outdated Certbot versions that rely on legacy fractional math or hardcoded 30-day thresholds. 
+
+Update your NPM stack to the latest official release. Check your deployment logs and look for the Certbot execution string. If you see certificate renewals failing with rate limit errors, you are likely running an outdated image that is renewing too early and lacking ARI exemption flags.
+
+### Traefik
+
+Traefik requires closer attention. As of October 2026, Traefik maintainers are still finalizing native ARI support (tracked internally under issue #13808). 
+
+By default, Traefik attempts to renew Let's Encrypt certificates when they have 30 days of validity remaining. For the upcoming 64-day certificates, this means Traefik will renew at day 34. This functions mechanically, but it is inefficient and will become problematic when the 45-day limit takes effect.
+
+Do not attempt to fix this by hacking the `certificatesDuration` parameter in your `traefik.yml` configuration. Overriding duration settings causes conflicts with the ACME server's actual issuance logic and breaks the internal renewal timer. Leave the default settings intact and monitor the Traefik release notes for an upcoming minor version that merges ARI support.
+
+### Standalone Certbot and Cron
+
+If you manage certificates manually via Certbot and a cron job, your configuration files might contain ticking time bombs. 
+
+Inspect the configuration files in `/etc/letsencrypt/renewal/`. Open your domain `.conf` files and look for the `renew_before_expiry` directive.
+
+```bash
+cat /etc/letsencrypt/renewal/homelab.example.com.conf
+```
+
+If you followed an old tutorial, you might have uncommented `# renew_before_expiry = 30 days`. Delete this line or comment it back out. If you leave it active, Certbot prioritizes your hardcoded value over its internal fractional math and ARI data.
+
+Next, check your system cron jobs or systemd timers. 
+
+```bash
+systemctl list-timers | grep certbot
+```
+
+A script that runs `certbot renew` once a week is inadequate. Let's Encrypt expects clients to poll frequently enough to catch a 6-hour retry window during mass revocation events. A twice-daily cron execution is the minimum baseline required for modern SSL automation.
+
+```bash
+# Minimum recommended renewal frequency
+0 */12 * * * /usr/bin/certbot renew --quiet
+```
+
+## DNS Challenges and the Shrinking Authorization Window
+
+When certificate lifetimes drop to 64 days, the authorization reuse period drops with them. It shrinks from 30 days to 10 days in February 2027, and down to just 7 hours in 2028.
+
+This metric matters if you use the DNS-01 challenge to issue wildcard certificates or secure internal services without exposing port 80 to the internet. The authorization reuse period determines how long Let's Encrypt remembers that you own a domain after a successful challenge.
+
+With a 7-hour reuse period, your proxy must re-validate domain ownership every single time it requests a new certificate. The proxy must write a TXT record to your DNS provider, wait for propagation, and clear the record. 
+
+If you use a DNS provider without a reliable API, or if you previously updated TXT records by hand every few months, that workflow is dead. You must migrate your domains to a provider supported by your ACME client's DNS plugins (like Cloudflare, AWS Route 53, or DigitalOcean) and configure the API tokens in your proxy.
+
+## Testing in Staging
+
+Do not wait until February 2027 to find out if your homelab infrastructure relies on hardcoded assumptions. Let's Encrypt activates 64-day certificates in their staging environment on October 14, 2026.
+
+You can test your proxy's behavior by pointing it to the ACME staging URL. In Traefik, this means altering your certificate resolver definition:
+
+```yaml
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: admin@example.com
+      storage: acme.json
+      caServer: "https://acme-staging-v02.api.letsencrypt.org/directory"
+      httpChallenge:
+        entryPoint: web
+```
+
+Issue a staging certificate and observe the logs over the following weeks. Verify that the client waits for the correct renewal window and does not fall into a panic loop of continuous renewal requests. 
+
+The era of long-lived certificates is over. Audit your reverse proxies now, update your container images, and let the software handle the scheduling.
+
+## What's Next
+
+- [Docker Compose Homelab Stack: 20 Services, One File](/homelab/docker-compose-homelab-stack/)
+- [Linux Homelab Security Hardening: Complete Checklist (2026)](/homelab/linux-security-hardening/)
+- [Self-Hosting Behind CGNAT: Tunnels and Relays](/homelab/self-hosting-behind-cgnat-homelab-guide/)
