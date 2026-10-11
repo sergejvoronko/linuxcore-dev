@@ -1,0 +1,115 @@
+---
+title: "Linux Zswap Homelab Guide: Batched Writeback & Tuning"
+description: "Optimize Linux Zswap in your homelab. Learn how the new batched writeback I/O patch works, zswap vs zram, and how to overcommit Proxmox RAM."
+pubDate: 2026-10-11
+readingTime: 8
+heroImage: "/images/linux-zswap-batched-writeback-homelab-ram-tuning.webp"
+heroImageAlt: "Nested translucent compute cells partitioned inside a single chassis volume, in a domestic room corner at night, one lamp just off-frame"
+section: "homelab"
+tags: ["zswap", "proxmox", "memory overcommit", "linux kernel"]
+draft: false
+faqs:
+  - q: "What is the difference between Zswap and Zram?"
+    a: "Zram is a compressed block device that acts as swap in RAM but cannot evict pages to disk. Zswap is an intercepting cache for a physical disk swap, allowing compressed pages to be written back to storage when the RAM pool fills up."
+  - q: "How do the new batched writeback I/O patches improve Zswap?"
+    a: "Previously, Zswap issued one I/O operation per memory page during writeback. The new patches batch these operations during the LRU walk, allowing the block layer to merge them, which reduces I/O overhead and improves performance."
+  - q: "Should I enable the Zswap shrinker on a Proxmox host?"
+    a: "Yes. Enabling the shrinker allows the kernel to proactively write cold, compressed pages from the Zswap pool to the physical disk, freeing up RAM for active VMs and containers."
+---
+
+Homelab servers rarely have enough RAM. When administrators stack dense Proxmox virtual machines, Docker hosts, and large databases onto a single node, physical memory disappears fast. Instead of buying high-density DDR5 modules, administrators overcommit memory, relying on the Linux kernel to swap idle pages to disk.
+
+The problem with traditional swapping is disk latency and write amplification. Continuous swap operations throttle overall system throughput and burn through flash endurance, even on high-end NVMe drives. Compressed virtual memory solves this. By compressing swap pages in RAM before they ever hit the disk, Linux drastically reduces I/O overhead.
+
+A recent patch series added batched writeback I/O to Zswap. This update changes how the kernel handles swap eviction, making dense homelab virtualization much more efficient.
+
+## The Proxmox Memory Overcommit Zswap Equation
+
+Homelab administrators frequently confuse Zswap and Zram. Both utilize CPU cycles to compress memory pages, but they serve different architectural roles.
+
+Zram creates a virtual block device in RAM. Administrators initialize this block device, format it as swap space, and mount it. Zram operates without a physical backing disk. When the system swaps pages out, they go into the Zram block device. If the Zram pool fills to absolute capacity, the kernel has nowhere left to put memory. The Out-Of-Memory (OOM) killer process terminates applications to recover state. Zram works for single-purpose appliances or Raspberry Pi nodes where disk swapping destroys SD cards quickly. It falls short for heavy VM overcommit.
+
+Zswap requires a physical swap partition or swapfile on a storage drive. It hooks into the kernel frontswap API, acting as an intercepting cache for that physical swap space. When the memory subsystem attempts to swap a page, Zswap intercepts the operation, compresses the page, and holds it in a dynamically allocated memory pool.
+
+If the system experiences extreme memory pressure and the Zswap pool reaches its configured limit, it avoids an OOM condition. Instead, Zswap performs a Least Recently Used (LRU) eviction. It uncompresses the oldest, coldest pages in the pool and writes them out to the physical swap disk. This mechanism gives homelab servers a safety net. Systems gain the I/O reduction and speed of RAM compression alongside the overflow capacity of a physical storage drive.
+
+## The Zswap Batched Writeback I/O Upgrade
+
+The eviction process, moving pages from the Zswap RAM pool to physical disk storage, historically presented a performance bottleneck. When the Zswap limit was hit, the kernel dumped pages to disk individually.
+
+In October 2026, kernel developer Alexandre Ghiti posted a patch series that rewrote this behavior. The bottleneck originated from an earlier kernel commit (8f29aa226f82) that introduced `struct swap_io_ctx`. That prior commit allowed the standard memory reclaim process to merge swap writes of folios with consecutive slots into a single block I/O request. Zswap writeback missed out on this optimization. It continued issuing a single I/O operation for every individual entry.
+
+The new patches implement batched writeback I/O. The first patch modifies the Zswap LRU walk to batch its writeback operations. The second patch plugs the walk, pausing the dispatch of these requests until the batch is complete. This allows the lower-level block layer to merge the operations into larger, contiguous writes.
+
+For Proxmox hosts running dozens of idle VMs, this update reduces the CPU interrupt overhead generated during heavy swap events. In kernel compilation benchmarks, these patches yielded a 3 to 4 percent reduction in build times by alleviating I/O wait states. When a Proxmox node encounters a sudden memory spike and forces gigabytes of Zswap eviction, the storage controller receives a streamlined sequence of large writes instead of a storm of small, scattered blocks.
+
+## Configuring Zswap for Homelab Servers
+
+Most Linux distributions ship with Zswap compiled into the kernel but disabled by default. Enabling it requires modifying the kernel boot parameters.
+
+For a Proxmox node or a Debian-based Docker host, edit `/etc/default/grub` and append the required variables to the `GRUB_CMDLINE_LINUX_DEFAULT` string:
+
+```bash
+GRUB_CMDLINE_LINUX_DEFAULT="quiet zswap.enabled=1 zswap.compressor=zstd zswap.zpool=zsmalloc zswap.max_pool_percent=20"
+```
+
+Apply the changes and reboot the server:
+
+```bash
+update-grub
+reboot
+```
+
+These parameters define how the compression pool operates. The `zswap.max_pool_percent=20` flag instructs the kernel to allocate up to 20 percent of total system RAM to Zswap. On a 64GB homelab server, this provides roughly 12.8GB to the compressed cache.
+
+The `zpool` parameter determines the memory allocator. The default allocator on older kernels is `zbud`, which stores exactly two compressed pages per physical page, capping the compression ratio at 2:1. Changing this to `zsmalloc` allows the kernel to pack multiple compressed pages into a single physical page, drastically improving storage density for highly compressible VM memory.
+
+The `compressor` parameter defines the algorithm. While `lz4` prioritizes CPU speed, `zstd` provides a superior compression ratio. For background virtualization workloads where memory access is infrequent, `zstd` keeps more data off the physical disk.
+
+## Advanced Tuning: Shrinkers and Hysteresis
+
+Administrators can adjust Zswap runtime behavior directly through sysfs without rebooting. Two parameters directly impact how a homelab server handles continuous memory pressure: the accept threshold and the shrinker.
+
+When Zswap reaches the 20 percent pool limit, it begins evicting pages. If it immediately accepts new pages the moment space frees up, the system enters a thrashing state, constantly flipping pages in and out of the compression pool. To prevent this, Linux implements hysteresis via `accept_threshold_percent`.
+
+```bash
+# Refuse new pages until the pool drops to 90% of its maximum size
+echo 90 > /sys/module/zswap/parameters/accept_threshold_percent
+```
+
+With this configured, once the pool hits 100 percent of its allowed size, Zswap rejects new swap attempts and sends them directly to the physical disk. It continues rejecting pages until evictions reduce the pool to 90 percent capacity. This buffer stops CPU thrashing during spikes.
+
+By default, Zswap only evicts pages when it hits the maximum limit. If a Proxmox server has a large pool of cold, untouched memory residing in Zswap, administrators can enable the shrinker. This allows the memory management subsystem to proactively write cold pages back to disk, freeing up RAM before the limit is hit.
+
+```bash
+# Enable proactive cold page eviction
+echo Y > /sys/module/zswap/parameters/shrinker_enabled
+```
+
+## Managing Incompressible Pages and Cgroups
+
+Virtual memory compression only works if the data is compressible. If a Docker container heavily processes encrypted data or media files, its memory pages fail to compress.
+
+The Zswap subsystem calculates the compression ratio. If the algorithm yields a poor ratio, Zswap rejects the page and sends it straight to disk storage. Administrators can monitor these failures by checking the Zswap debug counters.
+
+```bash
+# View Zswap performance metrics
+grep -r . /sys/kernel/debug/zswap/
+```
+
+Watch the `reject_compress_poor` and `reject_compress_fail` counters. A rapid increase indicates that the workloads are primarily incompressible.
+
+For homelab environments running containerized workloads, Linux allows disabling Zswap writeback on a per-cgroup basis. If a specific Docker container holds data that should never be written to disk for security reasons, or writes data that constantly thrashes the swap file, administrators can disable writeback for that specific cgroup:
+
+```bash
+# Disable writeback for a specific container's cgroup
+echo 0 > /sys/fs/cgroup/system.slice/docker-a1b2c3d4.scope/memory.zswap.writeback
+```
+
+This configuration ensures the container memory pages remain in RAM or the Zswap pool, but never touch the physical SSD. This extends the lifespan of flash storage while forcing strict memory limits on specific applications.
+
+## What's Next
+
+- [Proxmox VE Homelab Setup: Install and Configure (2026)](/homelab/proxmox-homelab-setup/)
+- [Linux 7.4 Steal Governor: What It Means for Proxmox VMs](/homelab/linux-7-4-steal-governor-proxmox-kvm-vcpu-optimization/)
+- [Your Container Is Not a Sandbox: Use MicroVMs Instead](/homelab/docker-container-not-a-sandbox-microvm-homelab-isolation/)
