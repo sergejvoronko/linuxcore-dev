@@ -1,0 +1,220 @@
+---
+title: "Astro Starlight Testing: Test Code Snippets in CI"
+description: "Implement Astro Starlight testing in your homelab docs. Learn how to test code snippets in Astro Starlight, verify links, and set up Astro documentation CI/CD."
+pubDate: 2026-10-12
+readingTime: 8
+heroImage: "/images/astro-starlight-automated-docs-testing-ci-guide.webp"
+heroImageAlt: "A build pipeline of nested file blocks compiling into a static output tree, on a cluttered working desk, out-of-focus hand tools and a mug at the frame..."
+section: "astro"
+tags: ["testing", "ci-cd", "automation", "starlight"]
+draft: false
+faqs:
+  - q: "Can pytest-codeblocks test YAML files?"
+    a: "No. The pytest-codeblocks plugin specifically extracts and runs blocks tagged as python, sh, bash, or zsh. For YAML validation, you must use standard bash extraction paired with the relevant linter."
+  - q: "Does Lychee check links hidden in Starlight frontmatter?"
+    a: "Yes. Lychee extracts bare URLs and strings that resemble links across plain text, meaning it will catch broken URLs defined in your YAML frontmatter fields."
+  - q: "How do I skip specific markdown snippets in pytest-codeblocks?"
+    a: "Place an HTML comment reading <!--pytest-codeblocks:skip--> on the line immediately preceding the markdown code fence you want to ignore."
+---
+
+Homelab admins and technical writers rely on Astro Starlight to build fast documentation sites. Running `npm run build` compiles your Markdown and MDX files into static HTML. If the build exits with a zero status code, your CI pipeline turns green and the site deploys. 
+
+A green Astro build guarantees your Markdown parsed correctly. It guarantees your internal Astro routes resolve. It does not mean the commands you documented actually work.
+
+Documentation rots quickly. External reference links die when upstream vendors redesign their sites. Command line arguments change between package releases. Docker Compose syntax deprecates old top-level keys. If you copy a deployment snippet from your own wiki at 3 AM to recover a crashed node and the command fails, the documentation has failed.
+
+You need an automated documentation CI pipeline that tests the contents of your code snippets and the validity of your links. 
+
+## Detecting Link Rot with Lychee
+
+Standard Markdown link checkers often miss URLs embedded inside frontmatter or raw HTML blocks. Lychee is a fast, asynchronous link checker written in Rust. It extracts bare URLs, frontmatter links, and standard Markdown syntax across your entire Starlight `src/content/docs` directory.
+
+Add the Lychee GitHub Action to your repository. This workflow runs against your Markdown and MDX files on every pull request.
+
+```yaml
+name: Check Docs Links
+on: [push, pull_request]
+jobs:
+  lychee:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Link Checker
+        uses: lycheeverse/lychee-action@v2
+        with:
+          fail: true
+          args: "--verbose --no-progress './src/content/docs/**/*.md' './src/content/docs/**/*.mdx'"
+```
+
+### The Rate Limit Gotcha
+
+When CI runs Lychee concurrently across hundreds of links, strict Web Application Firewalls block the requests. Endpoints protected by Cloudflare or GitHub will often return HTTP 403 or 429 errors, instantly failing your pipeline.
+
+Create a `lychee.toml` configuration file in the root of your repository to manage rate limits and exclusions. Caching results prevents redundant queries to slow external servers.
+
+```toml
+# lychee.toml
+cache = true
+max_cache_age = "2d"
+
+# Ignore specific HTTP status codes that indicate anti-bot protection
+cache_exclude_status = "403, 429, 500.."
+
+exclude = [
+  # Exclude internal local hostnames referenced in docs
+  "http://192.168.*",
+  "http://10.0.*",
+  # Exclude heavily rate-limited domains
+  "https://github.com/.*"
+]
+```
+
+## Testing Shell Snippets with pytest-codeblocks
+
+Homelab documentation consists entirely of shell commands and configuration files. If you document a series of `mkdir` and `chown` operations to prepare a persistent volume, those commands need testing.
+
+The `pytest-codeblocks` plugin extracts code blocks tagged with `sh`, `bash`, or `zsh` from Markdown files and executes them natively in the CI environment. 
+
+To set this up in GitHub Actions, install Python, the plugin, and run it against your documentation directory. 
+
+```yaml
+name: Snippet Tests
+on: [push, pull_request]
+jobs:
+  test-snippets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pytest pytest-codeblocks
+      - run: pytest --codeblocks src/content/docs/
+```
+
+### Skipping Stateful Commands
+
+The CI runner executes the extracted commands on its own ephemeral filesystem. If a command exits with a non-zero code, the test fails. 
+
+This presents a problem for commands requiring specific homelab infrastructure. A command like `zpool create data /dev/nvme0n1` will fail because the GitHub Actions runner lacks ZFS and the physical block device. 
+
+You must instruct `pytest-codeblocks` to skip these blocks. Place the standard skip comment directly above the code fence in your Markdown file.
+
+```markdown
+Run the following command to format the disk:
+
+<!--pytest-codeblocks:skip-->
+```bash
+mkfs.ext4 /dev/sdb1
+```
+```
+
+Use `pytest-codeblocks` to test pure logic, string manipulation, sed replacements, and basic file operations. Skip the blocks that depend on hardware state.
+
+## Validating Docker Compose Manifests
+
+The `pytest-codeblocks` tool ignores `yaml` fences. Since Docker Compose is the default deployment method for most homelab services, unverified YAML blocks are a major source of drift. 
+
+A missing port mapping or a deprecated `version: '3'` declaration will pass the Starlight build but fail in production. You can validate these manifests by extracting them from the Markdown source and passing them directly to the `docker compose config` command. 
+
+The `config` subcommand validates schema structure and variable interpolation without attempting to start any containers. 
+
+Create a script named `scripts/test-compose.sh` in your repository.
+
+```bash
+#!/bin/bash
+# Validate Docker Compose blocks in Starlight docs
+# Usage: ./scripts/test-compose.sh
+
+set -e
+
+find src/content/docs -type f -name "*.md" -print0 | while IFS= read -r -d '' file; do
+  # Extract lines between ```yaml and ``` 
+  awk '/^```yaml/{flag=1; next} /^```/{flag=0; next} flag' "$file" > .tmp.yml
+  
+  if [ -s .tmp.yml ]; then
+    echo "Testing manifest in $file"
+    docker compose -f .tmp.yml config --quiet || {
+      echo "Failed schema validation in $file"
+      exit 1
+    }
+  fi
+done
+
+rm -f .tmp.yml
+```
+
+This script isolates the YAML blocks and pipes them into the Docker Compose binary. 
+
+### The Concatenation Gotcha
+
+The `awk` script extracts every YAML block in the file into a single `.tmp.yml` document. If you document an Ansible playbook and a Docker Compose manifest in the exact same Markdown file, the Docker engine will attempt to parse the Ansible logic as a Compose service. This results in a schema error.
+
+To avoid this, enforce language tag specificity in your Markdown files. Tag Compose blocks as ````yaml docker-compose` and modify the `awk` regex to match `/^```yaml docker-compose/`. This restricts the extraction strictly to container manifests.
+
+## E2E UI Testing with Playwright
+
+Astro Starlight provides a robust default UI, but custom server islands, overrides, and modified layout components can break rendering. A green build proves the static assets compiled. It does not prove the browser renders them correctly.
+
+Astro recommends `@playwright/test` for End-to-End browser validation. Playwright spins up a headless Chromium instance, navigates your site, and asserts that DOM elements exist.
+
+Install Playwright in your Starlight project.
+
+```bash
+npm init playwright@latest
+npm install wait-on --save-dev
+```
+
+Create a minimal test suite in `tests/docs.spec.ts` to verify the page loads without throwing JavaScript console errors.
+
+```typescript
+import { test, expect } from '@playwright/test';
+
+test('Docs render without JS errors', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+
+  await page.goto('http://localhost:4321/getting-started');
+  
+  // Assert no JS errors were caught
+  expect(errors).toHaveLength(0);
+  
+  // Assert the main header is visible
+  await expect(page.locator('h1')).toBeVisible();
+});
+```
+
+To run this in CI, the pipeline must start the Astro preview server, wait for it to bind to port 4321, and then execute the Playwright suite. The `wait-on` package handles the race condition between the server starting and Playwright navigating.
+
+```yaml
+name: Playwright UI Tests
+on: [push, pull_request]
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npm run build
+      
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
+        
+      - name: Run E2E Tests
+        run: |
+          npm run preview &
+          npx wait-on http://localhost:4321
+          npx playwright test
+```
+
+Astro documentation requires maintenance. Combining Lychee for link verification, `pytest-codeblocks` for shell snippet logic, Docker Compose schema validation, and Playwright for UI consistency guarantees that what you read in the wiki works on the server.
+
+## What's Next
+
+- [Astro 6.1.10: Server Island Security Fix Explained](/astro/astro-6-1-10-server-island-security-hardening/)
+- [Pagefind Astro Tutorial: Static Site Full Text Search](/astro/astro-static-site-search-pagefind-guide/)
+- [Docker Compose Homelab Stack: 20 Services, One File](/homelab/docker-compose-homelab-stack/)
+- [Astro + Cloudflare vs WordPress: €12/Year, Faster Site](/astro/astro-github-cloudflare-stack/)
