@@ -1,0 +1,124 @@
+---
+title: "Host Homelab APIs on AWS Lambda Web Functions"
+description: "Deploy low-traffic webhooks and web apps on AWS Lambda Web Functions instead of running continuous VPS instances or exposing your home network."
+pubDate: 2026-10-14
+readingTime: 6
+heroImage: "/images/aws-lambda-web-functions-homelab-api-guide.webp"
+heroImageAlt: "A spot-market ticker abstracted into pulsing volumetric columns, isolated on a seamless studio backdrop, nothing else in frame"
+section: "aws"
+tags: ["AWS", "serverless", "webhooks", "homelab"]
+draft: false
+faqs:
+  - q: "Can I run Python or Go on Lambda Web Functions?"
+    a: "At launch, AWS Lambda Web Functions only support Node.js 24 on Arm64. Other languages still require classic Lambda Event Functions or container deployments."
+  - q: "How do I secure the function endpoint?"
+    a: "You can use CloudFront Origin Access Control (OAC) to ensure your function only accepts traffic through your CloudFront distribution, blocking direct internet access."
+  - q: "Is this replacing classic AWS Lambda?"
+    a: "No. Classic Lambda functions have been renamed to Lambda Event Functions and remain the standard for event-driven processing like SQS queues and S3 triggers."
+---
+
+Receiving webhooks in a homelab environment creates a specific networking problem. Services like GitHub, Stripe, or custom Slack integrations require a public URL to send JSON payloads. Running a dedicated receiver means either exposing a port through your home firewall, maintaining an always-on Cloudflare Tunnel, or renting a continuous VPS. All of these require constant upkeep for an endpoint that might process only a few dozen requests a day.
+
+AWS released Lambda Web Functions in October 2026 to address HTTP-native workloads. This compute tier changes how you can host low-traffic APIs. You write a standard Node.js web application, deploy it to AWS, and pay only for active CPU cycles. The infrastructure sits dormant between requests, buffering your home network from the public internet without the idle costs of a traditional cloud server.
+
+## What Are AWS Lambda Web Functions?
+
+Prior to this release, running an Express or Fastify app on Lambda required an adapter layer. Developers relied on the AWS Lambda Web Adapter or libraries like `serverless-http` to translate HTTP requests into Lambda event payloads. Classic AWS Lambda operates on a strict event-driven model, processing a JSON event and returning a response.
+
+AWS Lambda Web Functions remove the translation layer entirely. The platform runs a native HTTP listener. When you deploy an Express application, it binds to a network port just like it does on your local machine. A single execution environment accepts up to 128 concurrent requests, reducing cold starts for concurrent traffic and simplifying connection pooling.
+
+To clarify the difference in programming models, AWS officially renamed standard Lambda functions to Lambda Event Functions.
+
+## Active CPU Billing Changes the Math
+
+Web Functions introduce active CPU billing. In classic Lambda Event Functions, AWS bills for every millisecond the function runs. This wall-clock billing means that if your code queries an external API and waits two seconds for a response, you pay for two seconds of full execution time.
+
+With active CPU billing, AWS meters the actual processor cycles used. When the Node.js event loop goes idle waiting for network I/O, the CPU usage drops, and the billing reflects that idle state. For homelabbers writing webhooks that query slow self-hosted databases or external third-party APIs, this architecture prevents wait time from inflating the monthly AWS bill. You only pay for the exact moments the CPU is actively crunching data or parsing JSON.
+
+## The Homelab Use Case
+
+Self-hosting a webhook receiver on AWS keeps external traffic entirely off your home connection. You can process incoming requests, validate cryptographic signatures, and then push the processed data into an AWS SQS queue or an S3 bucket for your internal servers to pick up on their own schedule.
+
+This decoupling provides a massive buffer. If an external service sends a thousand webhooks at once due to a batch job, the Web Function scales automatically to absorb the load. A local Raspberry Pi exposed directly to the internet might lock up under the same burst of traffic.
+
+Hosting this on a traditional cloud server also creates overhead. A small Lightsail instance or a low-end EC2 box requires regular `apt update` runs, SSH key management, and disk space monitoring. A Web Function requires zero operating system maintenance. You push the code, and AWS handles the underlying Firecracker microVMs.
+
+## Native Multi-Region Routing
+
+One major architectural difference between classic Lambda and Web Functions is global availability. When you deploy a Web Function, AWS automatically replicates your code across the regions you select.
+
+The platform provides a global URL ending in `.lambda-web.global.on.aws` that uses latency-based routing. When a service sends a webhook, the request routes to the nearest available AWS region. If you use the function to serve a lightweight server-side rendered (SSR) dashboard for your homelab, users experience faster load times regardless of their physical location. You do not need to configure Route 53 latency records or provision regional API Gateways to get this distribution.
+
+## Writing and Deploying a Web Function
+
+Because the environment runs standard Node.js applications, local development requires no specialized AWS emulators. You write a standard web application.
+
+Create a basic project directory and install your framework:
+
+```bash
+mkdir homelab-webhook && cd homelab-webhook
+npm init -y
+npm install express
+```
+
+Create an `index.js` file to handle a basic webhook:
+
+```javascript
+const express = require('express');
+const app = express();
+app.use(express.json());
+
+app.post('/webhook/github', (req, res) => {
+  console.log('GitHub webhook received');
+  
+  // Validate signature and process payload here
+  if (!req.body) {
+    return res.status(400).send('Bad Request');
+  }
+
+  // Push to an external queue or database
+  res.status(202).send('Accepted');
+});
+
+// The environment variable PORT is provided by AWS
+const port = process.env.PORT || 3000;
+app.listen(port, () => {
+  console.log(`Server listening on port ${port}`);
+});
+```
+
+To run this locally, execute `node index.js`.
+
+To deploy to AWS, use the AWS CLI. The service provisions an HTTPS URL automatically. Run the deployment command from your project directory:
+
+```bash
+aws lambda-web deploy \
+  --name homelab-github-receiver \
+  --code ./
+```
+
+The CLI bundles your source code, creates the Web Function, and returns your global URL in seconds. Every time you run the deployment command, the service creates a new immutable revision and shifts traffic to the updated code.
+
+## Current Limitations
+
+The service enforces strict constraints that dictate how you design your homelab APIs.
+
+At launch, Lambda Web Functions only support Node.js 24 running on Arm64 architecture (`nodejs24.x`). If your homelab scripts rely on Python, Go, or Rust, you must stick with classic Lambda Event Functions or build custom containers. There is no custom runtime support for Web Functions yet.
+
+State does not persist. Any files written to the local disk vanish when the execution environment shuts down. You must store persistent data externally, such as in an S3 bucket or a managed database.
+
+Directly connecting the function back to your homelab requires careful networking. Web Functions support Amazon Virtual Private Cloud (VPC) connectivity. To reach a local server inside your house, you can configure a Site-to-Site VPN or run a Tailscale subnet router inside an AWS VPC. The Web Function sends traffic through the VPC, hits the Tailscale node, and routes securely over the WireGuard mesh into your living room network. This keeps all incoming web traffic buffered in the cloud while the validated requests traverse a secure tunnel.
+
+## Securing the Public Endpoint
+
+By default, the `aws lambda-web deploy` command provisions a public URL. Anyone who finds the URL can send traffic to it. For internal APIs or strict webhook receivers, a wide-open endpoint presents a security risk.
+
+AWS provides CloudFront Origin Access Control (OAC) for Web Functions. You place a CloudFront distribution in front of the function and configure OAC. CloudFront signs every request sent to the origin. The Web Function endpoint verifies the signature and drops direct internet traffic that bypasses the CDN.
+
+You can then attach AWS WAF to the CloudFront distribution to filter traffic by IP address or require specific API headers. This restricts access entirely, ensuring only authorized services can trigger your homelab automation workflows.
+
+## What's Next
+
+- [A Minimal AWS Stack: VPS, DNS, Monitoring, Backups](/aws/ten-euro-month-aws-stack/)
+- [When to Move Your Homelab Workload to AWS (And When Not To)](/aws/when-to-move-homelab-to-aws/)
+- [Self-Hosting Behind CGNAT: Tunnels and Relays](/homelab/self-hosting-behind-cgnat-homelab-guide/)
