@@ -1,5 +1,17 @@
 [
   {
+    "slug": "3-server-rack-skull",
+    "productId": "6acf22920f4a9a82fa069684",
+    "name": "Server Rack Skull",
+    "blurb": "A 19-inch server chassis designed around a skull motif made from drive bays and blinking status lights. Printed in terminal phosphor green and amber on a heavy black shirt.",
+    "tag": "New",
+    "products": [
+      "Tee"
+    ],
+    "w": 604,
+    "h": 900
+  },
+  {
     "slug": "2-terminal-scythe-reaper",
     "productId": "6ac5e937928f980d04033bfd",
     "name": "Terminal Scythe Reaper",
