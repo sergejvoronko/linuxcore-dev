@@ -1,0 +1,161 @@
+---
+title: "GitLab Critical RCE: Patch Your Homelab Instances Now"
+description: "GitLab just disclosed a CVSS 10.0 RCE vulnerability. Here is how to apply the self-hosted GitLab update and homelab GitLab security patch to your server."
+pubDate: 2026-10-15
+readingTime: 8
+heroImage: "/images/gitlab-max-severity-rce-regex-compiler-homelab-patch.webp"
+heroImageAlt: "A circuit board trace macro where one path is broken and re-bridged, in a domestic room corner at night, one lamp just off-frame"
+section: "homelab"
+tags: ["GitLab", "CVE", "Docker", "Security"]
+draft: false
+faqs:
+  - q: "What is CVE-2026-97229?"
+    a: "CVE-2026-97229 is a CVSS 10.0 critical vulnerability in the GitLab CI/CD Regular Expression Compiler. It allows unauthenticated remote code execution via a crafted regular expression."
+  - q: "Which versions of GitLab are vulnerable?"
+    a: "Community Edition and Enterprise Edition versions 19.2 before 19.2.8, 19.3 before 19.3.4, and 19.4 before 19.4.2 require immediate patching."
+  - q: "How do I back up GitLab before updating?"
+    a: "Run the gitlab-backup create command, then manually copy /etc/gitlab/gitlab.rb and /etc/gitlab/gitlab-secrets.json to a secure location. The backup command does not include these critical files."
+---
+
+On October 12, 2026, GitLab disclosed a maximum-severity remote code execution vulnerability tracking under CVE-2026-97229. Holding a CVSS v3.1 score of 10.0, this flaw sits in the CI/CD Regular Expression Compiler. An unauthenticated attacker can send a crafted regular expression to a vulnerable instance, trigger an integer overflow, and execute arbitrary code on the host operating system.
+
+If your homelab runs a self-hosted GitLab instance, this is a drop-everything-and-patch event. Threat actors heavily target CI/CD infrastructure. An exploit here hands over full access to your source code, CI variables, deployment keys, and the underlying server.
+
+This guide details how to verify your exposure, back up your critical configuration, apply the security patch for both Omnibus and Docker deployments, and restrict network access so future zero-days hit a firewall instead of your application.
+
+## Vulnerable Versions
+
+Affected versions include both Community Edition (CE) and Enterprise Edition (EE):
+
+- 19.2.x before 19.2.8
+- 19.3.x before 19.3.4
+- 19.4.x before 19.4.2
+
+The patched releases are 19.4.2, 19.3.4, and 19.2.8. 
+
+To check your version from the command line on an Omnibus installation, run:
+
+```bash
+sudo gitlab-rake gitlab:env:info
+```
+
+For Docker, execute the same command inside the container:
+
+```bash
+docker exec -it gitlab gitlab-rake gitlab:env:info
+```
+
+Alternatively, log into the web interface as an administrator and check the Help page.
+
+## The Mandatory Pre-Patch Backup
+
+Do not skip backups. Upgrading GitLab triggers database migrations. If a migration fails or an update corrupts your environment, rolling back requires a clean database dump. 
+
+Run the application backup tool:
+
+```bash
+sudo gitlab-backup create
+```
+
+*(For Docker setups, prepend `docker exec -t gitlab` to the command).*
+
+Here is the major gotcha that catches out new homelab admins: the `gitlab-backup` command does not back up your configuration or your secrets. If your server dies and you only have the `.tar` backup file, you cannot restore it. The application encrypts two-factor authentication tokens and CI/CD variables using a key stored in `gitlab-secrets.json`. Without that file, your backup is useless.
+
+Manually copy these files to a secure location outside the server before you update:
+- `/etc/gitlab/gitlab.rb`
+- `/etc/gitlab/gitlab-secrets.json`
+- `/etc/gitlab/ssl/` (if using custom certificates)
+
+## Checking the Upgrade Path
+
+If your homelab server runs an older version like GitLab 19.1 or 18.x, you cannot install 19.4.2 directly. The official GitLab documentation specifies a strict upgrade path. Moving across multiple major or minor versions requires installing intermediate releases and allowing background migrations to complete before moving to the next step.
+
+When upgrading, the GitLab process executes database migrations in the background. You must verify these migrations finish before initiating the next update. Check migration status via the command line:
+
+```bash
+sudo gitlab-rake db:migrate:status
+```
+
+In the web interface, navigate to **Admin Area > Monitoring > Background Migrations**. Do not initiate the next package update until the queued jobs read zero. Forcing a jump over incomplete migrations guarantees database corruption.
+
+If you are stuck on an old version and do not have time to execute a multi-step upgrade path today, take the server offline or restrict network access entirely until you can schedule the downtime.
+
+## Applying the Patch: Omnibus (Debian/Ubuntu)
+
+If you are on a supported Debian or Ubuntu system and are already within the 19.4, 19.3, or 19.2 release tracks, you can patch the system using your package manager. 
+
+Update your package index and specify the exact patched version. Allowing the package manager to grab the latest available version is risky if you have ignored updates for months, as it will ignore the required upgrade path. 
+
+Assuming you are on the 19.4 release track, run:
+
+```bash
+sudo apt-get update
+sudo apt-get install gitlab-ce=19.4.2-ce.0
+```
+
+*(Replace `gitlab-ce` with `gitlab-ee` if you run the Enterprise Edition).*
+
+The package manager handles stopping the services, unpacking the update, and executing `gitlab-ctl reconfigure`. Once the command completes, your instance is secure.
+
+## Applying the Patch: Docker Compose
+
+Updating a Docker deployment means modifying your `docker-compose.yml` file to pull the patched image tag. 
+
+Never use the `:latest` tag for GitLab. It pulls the newest major version on container restart. Skipping required background migrations breaks the database. Always pin the exact version tag. 
+
+Update your `docker-compose.yml`:
+
+```yaml
+services:
+  gitlab:
+    image: 'gitlab/gitlab-ce:19.4.2-ce.0'
+    container_name: gitlab
+    restart: unless-stopped
+    hostname: 'gitlab.local.lan'
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'https://gitlab.local.lan'
+    ports:
+      - '80:80'
+      - '443:443'
+      - '22:22'
+    volumes:
+      - '/srv/gitlab/config:/etc/gitlab'
+      - '/srv/gitlab/logs:/var/log/gitlab'
+      - '/srv/gitlab/data:/var/opt/gitlab'
+    shm_size: '256m'
+```
+
+*Note the `shm_size` parameter. The GitLab container requires a minimum of 256MB for shared memory. Running without this causes Prometheus metrics and other internal components to crash silently.*
+
+Pull the new image and recreate the container:
+
+```bash
+docker compose pull gitlab
+docker compose up -d gitlab
+```
+
+Monitor the startup process:
+
+```bash
+docker compose logs -f gitlab
+```
+
+GitLab takes several minutes to boot. The container must execute a heavy reconfigure script, migrate the database schema, and restart Ruby processes. The web interface will return a `502 Bad Gateway` error during this phase. Wait until the logs output `gitlab Reconfigured!` before attempting to log in.
+
+## Network Boundary Lockdown
+
+CVE-2026-97229 is unauthenticated. Attackers constantly scan public IP addresses for open ports running vulnerable GitLab instances. 
+
+A homelab server does not need to sit on the public internet. If you currently forward port 443 from your router directly to your GitLab server, you are relying entirely on the application code for perimeter security. History shows this is a losing bet.
+
+Close the port at your firewall. Access your GitLab instance using a mesh VPN like Tailscale or WireGuard. This architecture ensures that only authenticated clients inside your private overlay network can reach the web interface or push code.
+
+If you require public access for external webhooks, place GitLab behind a reverse proxy or Cloudflare tunnel. Configure firewall rules or access policies to block all inbound traffic except for the specific IP ranges of the external services sending those webhooks. Your code repository should never respond to arbitrary internet traffic.
+
+## What's Next
+
+- [Mitigating 400+ Linux Kernel CVEs in Your Homelab](/homelab/linux-kernel-cves-homelab-patching-guide/)
+- [WireGuard vs Tailscale for Homelab Remote Access (2026)](/homelab/wireguard-tailscale-guide/)
+- [Linux Homelab Security Hardening: Complete Checklist (2026)](/homelab/linux-security-hardening/)
+- [Docker Compose Homelab Stack: 20 Services, One File](/homelab/docker-compose-homelab-stack/)
