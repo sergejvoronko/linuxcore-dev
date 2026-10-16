@@ -1,0 +1,105 @@
+---
+title: "Astro 7.4 Build Timings & Parallel Prerendering"
+description: "Use Astro 7.4 build timings and parallel prerendering to find bottlenecks and speed up your homelab CI/CD pipelines and Cloudflare Pages deployments."
+pubDate: 2026-10-16
+readingTime: 8
+heroImage: "/images/astro-7-4-build-timings-parallel-prerendering-guide.webp"
+heroImageAlt: "Layered CSS grid planes floating in parallax above a page skeleton, held in a pair of hands, only the hands and the subject lit"
+section: "astro"
+tags: ["astro 7.4", "build timings", "parallel prerendering", "ci-cd"]
+draft: false
+faqs:
+  - q: "Why does my Astro 7.4 build fail with a Node.js version error?"
+    a: "Astro 7.4 requires Node.js 22.22.0 or higher. The build stops immediately if an older version is detected, even if the installation succeeds."
+  - q: "How do I check what is slowing down my Astro build?"
+    a: "Run `npx astro build --timings`. This outputs a breakdown of time spent on Vite plugins, Markdown processing, page rendering, and images."
+  - q: "Will parallel prerendering work on Cloudflare Pages?"
+    a: "Yes, but it consumes more memory. If the parallel workers exceed the memory limits of the Cloudflare Pages build environment, the build process will crash."
+---
+
+Astro 7.4 ships with tooling built directly for CI/CD optimization. As a static site scales, build times inevitably creep upward. A pipeline that once finished in thirty seconds eventually takes five minutes. Identifying the actual bottleneck previously required isolating component trees and running blind tests. 
+
+The introduction of the `--timings` build flag and experimental parallel prerendering removes this ambiguity. You now have the exact metrics to identify heavy Vite plugins or slow Markdown processing, and the configuration options to distribute the rendering workload across multiple CPU cores. This fundamentally changes how administrators maintain Astro deployments on homelab servers and edge platforms.
+
+## The Node.js 22.22.0 Hard Cutoff
+
+Before optimizing any pipelines, you must align your deployment environment with Astro's updated runtime requirements. Astro 7.4 enforces a strict minimum Node.js version of `22.22.0`. 
+
+If your CI runner or base container pulls an older version, the `npm install` phase will still pass. The package manager logs a quiet `EBADENGINE` warning, which most automated systems ignore, exiting with a standard `0` code. The pipeline then proceeds to the build command and hard-fails with a `Node.js is not supported by Astro!` fatal error.
+
+You must explicitly define the target version across your environments. Relying on default system packages or outdated Docker image tags will break automated deployments. 
+
+For Cloudflare Pages, navigate to your project settings and set the `NODE_VERSION` environment variable to `22.22.0`. If you use GitHub Actions for your deployment logic, lock the version in your workflow file using the `actions/setup-node` step:
+
+```yaml
+steps:
+  - uses: actions/checkout@v4
+  - uses: actions/setup-node@v4
+    with:
+      node-version: '22.22.0'
+```
+
+If you self-host your CI runners, update your base Docker images to `node:22-alpine` to ensure you remain compliant with current LTS security patches while meeting Astro's requirements.
+
+## Profiling with the `--timings` Flag
+
+The most direct path to faster builds is knowing exactly what slows them down. Running `npx astro build --timings` prints a granular summary to standard output when the build finishes.
+
+Instead of guessing, the compiler breaks down the duration of every major phase:
+* **Vite plugins:** Exposes heavy JavaScript bundling processes.
+* **Markdown processing:** Highlights delays caused by custom remark or rehype plugins.
+* **Syntax highlighting:** Often the largest bottleneck. Tools like Shiki generate precise tokenized HTML using WebAssembly, which requires significant computational overhead. If your site hosts dozens of technical tutorials, you will immediately see Shiki dominating the build duration metrics.
+* **Page rendering:** Measures component logic and external data fetching.
+* **Image processing:** Shows the time spent resizing and converting local assets to WebP or AVIF formats.
+
+Run this command directly in your CI environment, not just on your local workstation. Timing data depends entirely on the host hardware. A powerful local desktop processor masks inefficiencies that cripple an underpowered VPS runner. 
+
+Use the output to justify architecture changes. If Shiki syntax highlighting consumes the vast majority of the rendering time, you can restrict the loaded languages to only those you actively use. If image processing blocks the thread, you can implement an external image service or pre-optimize large hero assets before committing them to the repository. Establish a baseline with the `--timings` flag, apply your fix, and rebuild to verify the optimization.
+
+## Separate Build and Runtime Image Services
+
+Astro 7.4 also introduces the ability to configure separate image services for prerendered and on-demand routes. This addresses a common conflict in hybrid rendering setups.
+
+Prerendered static pages execute entirely during the build step. They benefit from intensive, high-quality image optimization because the processing delay only occurs once in the CI pipeline. Conversely, on-demand Server-Side Rendered (SSR) routes require immediate responses. Running heavy image manipulation on an SSR route spikes server latency and degrades the user experience.
+
+By defining separate image services, you assign a rigorous local optimizer for static routes and a fast, lightweight external image proxy for on-demand requests. This maintains asset quality across the application without compromising runtime performance.
+
+## Enabling Parallel Prerendering
+
+Astro defaults to rendering static pages sequentially on a single thread. This ensures stability and predictable memory usage, but wastes hardware potential. Modern VPS instances and homelab hypervisors allocate multiple vCPUs to their virtual machines. A single-threaded build leaves those extra cores completely idle.
+
+Astro 7.4 includes an experimental flag for parallel prerendering. This instructs the build process to distribute the static route generation across multiple worker threads. For sites generating hundreds of Markdown files, parallel processing compresses the rendering phase significantly.
+
+To activate this feature, configure the experimental block in your `astro.config.mjs` file to enable the parallel prerendering flag. Check the official Astro documentation for the current flag syntax, as experimental keys update frequently. 
+
+This speed comes at the direct cost of memory consumption. Worker threads require independent memory allocation. Spawning concurrent rendering threads multiplies the baseline RAM requirement of your build pipeline. 
+
+If your deployment runner is a low-memory VPS, parallel prerendering will likely trigger the kernel Out of Memory (OOM) killer. The operating system will abruptly terminate the Node process, failing the build without a clear Astro error message. When testing this feature, monitor system resources using `htop` or `dmesg`. If you deploy on Cloudflare Pages, their build environment enforces a strict memory ceiling. Surpassing that limit results in a pipeline crash, requiring you to either revert to single-threaded builds or aggressively optimize your component memory footprint.
+
+## Homelab Build Pipelines with Docker Compose
+
+You do not need an external Platform as a Service to run advanced Astro pipelines. A simple Docker Compose configuration provides a reliable, isolated CI runner for homelab deployments. 
+
+Using the official Node.js Alpine image guarantees you meet the strict version requirements without altering your host operating system. The following `docker-compose.yml` snippet creates an ephemeral builder that installs dependencies, executes the build with timings enabled, and outputs the static assets to a mounted directory.
+
+```yaml
+services:
+  astro-builder:
+    image: node:22-alpine
+    container_name: ci-builder
+    environment:
+      - NODE_ENV=production
+    working_dir: /workspace
+    volumes:
+      - ./:/workspace
+    command: >
+      sh -c "npm ci && npx astro build --timings"
+```
+
+Once the container exits, the `/dist` output is ready for your web server. You can chain this command in a shell script, using the `--timings` log to automatically track build performance degradation over time. Redirect the standard output of this container to a log file, allowing you to flag any new component that drastically slows down the pipeline.
+
+## What's Next
+
+- [Astro 7 and Vite 8: What Changes When You Upgrade](/astro/astro-7-alpha-vite-v8-upgrade-what-to-expect/)
+- [Astro Cloudflare Pages Caching: HTML & i18n Routes](/astro/astro-cloudflare-pages-html-caching-i18n-guide/)
+- [Migrating Next.js to Astro: What Changes and Why](/astro/nextjs-to-astro-5-migration-homelab-cost-performance/)
