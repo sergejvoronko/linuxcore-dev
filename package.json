@@ -4,10 +4,10 @@
   "version": "2.0.0",
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build",
+    "build": "astro build && node scripts/slash-redirects.mjs",
     "preview": "astro preview",
     "astro": "astro",
-    "deploy": "astro build && wrangler deploy --config dist/server/wrangler.json"
+    "deploy": "npm run build && wrangler deploy --config dist/server/wrangler.json"
   },
   "dependencies": {
     "@astrojs/mdx": "^5.0.4",
