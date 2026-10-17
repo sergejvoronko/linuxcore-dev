@@ -7,7 +7,7 @@
     "verdict": "PASS"
   },
   "https://racknotes.pro/proxmox-gpu-passthrough/": {
-    "link_present": false,
-    "status_code": 403
+    "link_present": true,
+    "status_code": 200
   }
 }
